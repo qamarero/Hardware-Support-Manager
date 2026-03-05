@@ -1,10 +1,13 @@
 import type { NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { loginSchema } from "@/lib/validators/user";
+import { z } from "zod";
+
+const emailOnlySchema = z.object({
+  email: z.string().email(),
+});
 
 export const authConfig: NextAuthConfig = {
   pages: {
@@ -23,7 +26,7 @@ export const authConfig: NextAuthConfig = {
 
       if (isOnDashboard) {
         if (isLoggedIn) return true;
-        return false; // Redirect to login
+        return false;
       }
 
       if (isLoggedIn && nextUrl.pathname === "/login") {
@@ -47,11 +50,14 @@ export const authConfig: NextAuthConfig = {
   },
   providers: [
     Credentials({
+      credentials: {
+        email: { label: "Email", type: "email" },
+      },
       async authorize(credentials) {
-        const parsed = loginSchema.safeParse(credentials);
+        const parsed = emailOnlySchema.safeParse(credentials);
         if (!parsed.success) return null;
 
-        const { email, password } = parsed.data;
+        const { email } = parsed.data;
 
         const [user] = await db
           .select()
@@ -61,9 +67,7 @@ export const authConfig: NextAuthConfig = {
 
         if (!user || !user.active) return null;
 
-        const passwordMatch = await bcrypt.compare(password, user.passwordHash);
-        if (!passwordMatch) return null;
-
+        // TODO: Re-enable password verification
         return {
           id: user.id,
           name: user.name,

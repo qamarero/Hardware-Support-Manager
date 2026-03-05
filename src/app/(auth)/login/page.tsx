@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,16 +20,14 @@ export default function LoginPage() {
 
     const formData = new FormData(e.currentTarget);
     const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
 
     const result = await signIn("credentials", {
       email,
-      password,
       redirect: false,
     });
 
     if (result?.error) {
-      setError("Credenciales inválidas");
+      setError("No se encontró una cuenta con ese correo electrónico");
       setIsLoading(false);
     } else {
       router.push("/dashboard");
@@ -42,35 +39,17 @@ export default function LoginPage() {
     <Card className="w-full max-w-md">
       <CardHeader className="text-center">
         <CardTitle className="text-2xl">Hardware Support Manager</CardTitle>
-        <CardDescription>Inicia sesión para continuar</CardDescription>
+        <CardDescription>Introduce tu correo para continuar</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">Correo electrónico</Label>
             <Input
               id="email"
               name="email"
               type="email"
-              placeholder="admin@empresa.com"
-              required
-              disabled={isLoading}
-            />
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password">Contraseña</Label>
-              <Link
-                href="/reset-password"
-                className="text-xs text-muted-foreground underline-offset-4 hover:underline"
-              >
-                ¿Olvidaste tu contraseña?
-              </Link>
-            </div>
-            <Input
-              id="password"
-              name="password"
-              type="password"
+              placeholder="tu@empresa.com"
               required
               disabled={isLoading}
             />
@@ -79,16 +58,8 @@ export default function LoginPage() {
             <p className="text-sm text-destructive">{error}</p>
           )}
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Iniciando sesión..." : "Iniciar Sesión"}
+            {isLoading ? "Entrando..." : "Entrar"}
           </Button>
-          <div className="text-center text-sm">
-            <Link
-              href="/register"
-              className="text-muted-foreground underline-offset-4 hover:underline"
-            >
-              ¿Primera vez? Configurar sistema
-            </Link>
-          </div>
         </form>
       </CardContent>
     </Card>
