@@ -271,6 +271,32 @@
 
 ---
 
+### SESION 4 — 2026-03-05
+
+**Objetivo**: Reemplazar vista canvas kanban por grid con filtros de estado
+**Estado final**: COMPLETADA CON EXITO
+
+#### Que se hizo
+
+**Problema**: La vista canvas usaba columnas horizontales tipo kanban (7 para incidencias, 8 para RMAs) con ~2000-2240px de ancho, requiriendo scroll lateral excesivo.
+
+**Solucion**: Grid responsive con chips de filtro multi-select por estado.
+
+**Archivos modificados (4)**:
+- `src/components/shared/canvas-view.tsx` — Reescrito: nueva interfaz `CanvasStatus` + `CanvasItem`. Barra de chips de filtro (toggle multi-select) + grid responsive (`grid-cols-1 sm:2 lg:3 xl:4`). Chip "Todos" para resetear. Empty state con icono Inbox.
+- `src/components/shared/entity-card.tsx` — Añadida prop `statusBadge?: ReactNode` renderizada entre número/prioridad y título.
+- `src/components/incidents/incident-canvas.tsx` — Adaptado: genera `statuses` con conteo y `items` flat con `IncidentStateBadge` como statusBadge.
+- `src/components/rmas/rma-canvas.tsx` — Mismo patrón con `RmaStateBadge`.
+
+#### Verificaciones finales
+
+| Verificacion | Resultado |
+|---|---|
+| `npm run build` | PASA — 0 errores, 0 warnings |
+| `npm run lint` | PASA — 0 errores, 0 warnings |
+
+---
+
 ## Estado Actual del Proyecto
 
 ### Lo que ESTA hecho (Fases 1-3)

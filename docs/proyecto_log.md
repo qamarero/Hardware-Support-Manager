@@ -92,9 +92,9 @@ Rediseño visual completo con tema profesional y funcionalidades de dashboard y 
 - Botones de acciones rápidas (Nueva Incidencia, Nuevo RMA, Nuevo Cliente)
 - Server queries en `src/server/queries/dashboard.ts` con try/catch y defaults seguros
 
-**Vista Canvas/Kanban (componentes compartidos)**
-- `CanvasView`: contenedor scroll horizontal con columnas por estado
-- `EntityCard`: tarjeta con número coloreado, prioridad badge, aging badge, entidad relacionada
+**Vista Canvas (componentes compartidos)**
+- `CanvasView`: grid responsive con chips de filtro multi-select por estado (reemplaza kanban horizontal)
+- `EntityCard`: tarjeta con número coloreado, prioridad badge, status badge, aging badge, entidad relacionada
 - `AgingBadge`: verde (<1d), ámbar (1-3d), rojo (>3d) basado en `calculateAging()`
 - `ViewToggle`: toggle tabla/canvas con ToggleGroup de shadcn
 
