@@ -1,12 +1,12 @@
 import "dotenv/config";
-import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
 import bcrypt from "bcryptjs";
 import * as schema from "./schema";
 
 async function seed() {
-  const sql = neon(process.env.DATABASE_URL!);
-  const db = drizzle(sql, { schema });
+  const client = postgres(process.env.DATABASE_URL!, { prepare: false });
+  const db = drizzle(client, { schema });
 
   console.log("Seeding database...");
 
@@ -24,6 +24,8 @@ async function seed() {
 
   console.log("Admin user created: admin@hardware-support.local / admin123");
   console.log("Seed completed!");
+
+  await client.end();
 }
 
 seed().catch((err) => {

@@ -22,6 +22,7 @@ const ROUTE_LABELS: Record<string, string> = {
   settings: "Configuración",
   create: "Crear",
   edit: "Editar",
+  new: "Nuevo",
 };
 
 export function Breadcrumbs() {
