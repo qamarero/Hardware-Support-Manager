@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -51,13 +52,21 @@ export default function LoginPage() {
               id="email"
               name="email"
               type="email"
-              placeholder="admin@hardware-support.local"
+              placeholder="admin@empresa.com"
               required
               disabled={isLoading}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Contraseña</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Contraseña</Label>
+              <Link
+                href="/reset-password"
+                className="text-xs text-muted-foreground underline-offset-4 hover:underline"
+              >
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </div>
             <Input
               id="password"
               name="password"
@@ -72,6 +81,14 @@ export default function LoginPage() {
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? "Iniciando sesión..." : "Iniciar Sesión"}
           </Button>
+          <div className="text-center text-sm">
+            <Link
+              href="/register"
+              className="text-muted-foreground underline-offset-4 hover:underline"
+            >
+              ¿Primera vez? Configurar sistema
+            </Link>
+          </div>
         </form>
       </CardContent>
     </Card>
