@@ -10,6 +10,7 @@ interface EntityCardProps {
   title: string;
   priorityLabel?: string;
   priorityColor?: string;
+  statusBadge?: React.ReactNode;
   stateChangedAt?: Date | string | null;
   assignedUser?: string | null;
   relatedEntity?: string | null;
@@ -29,6 +30,7 @@ export function EntityCard({
   title,
   priorityLabel,
   priorityColor,
+  statusBadge,
   stateChangedAt,
   assignedUser,
   relatedEntity,
@@ -52,6 +54,9 @@ export function EntityCard({
               </Badge>
             )}
           </div>
+
+          {/* Status badge */}
+          {statusBadge && <div>{statusBadge}</div>}
 
           {/* Title */}
           <p className="line-clamp-2 text-sm leading-tight">{title}</p>

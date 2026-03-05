@@ -1,51 +1,108 @@
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+"use client";
 
-interface CanvasColumn {
+import { useState } from "react";
+import { Inbox } from "lucide-react";
+
+export interface CanvasStatus {
   id: string;
   label: string;
   color: string;
-  items: React.ReactNode[];
+  count: number;
+}
+
+export interface CanvasItem {
+  statusId: string;
+  node: React.ReactNode;
 }
 
 interface CanvasViewProps {
-  columns: CanvasColumn[];
+  statuses: CanvasStatus[];
+  items: CanvasItem[];
 }
 
-export function CanvasView({ columns }: CanvasViewProps) {
-  return (
-    <ScrollArea className="w-full">
-      <div className="flex gap-4 pb-4" style={{ minWidth: `${columns.length * 300}px` }}>
-        {columns.map((col) => (
-          <div
-            key={col.id}
-            className="flex w-[280px] shrink-0 flex-col rounded-lg border bg-muted/30"
-          >
-            {/* Column header with color bar */}
-            <div
-              className="h-1 rounded-t-lg"
-              style={{ backgroundColor: col.color }}
-            />
-            <div className="flex items-center justify-between px-3 py-2">
-              <h3 className="text-sm font-semibold">{col.label}</h3>
-              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1.5 text-xs font-medium text-muted-foreground">
-                {col.items.length}
-              </span>
-            </div>
+export function CanvasView({ statuses, items }: CanvasViewProps) {
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
 
-            {/* Cards */}
-            <div className="flex flex-col gap-2 px-2 pb-2">
-              {col.items.length === 0 ? (
-                <div className="flex h-20 items-center justify-center rounded-md border border-dashed text-xs text-muted-foreground">
-                  Sin elementos
-                </div>
-              ) : (
-                col.items
-              )}
-            </div>
-          </div>
-        ))}
+  const visibleStatuses = statuses.filter((s) => s.count > 0);
+
+  const filteredItems =
+    selectedStatuses.length === 0
+      ? items
+      : items.filter((item) => selectedStatuses.includes(item.statusId));
+
+  function toggleStatus(statusId: string) {
+    setSelectedStatuses((prev) =>
+      prev.includes(statusId)
+        ? prev.filter((s) => s !== statusId)
+        : [...prev, statusId]
+    );
+  }
+
+  function selectAll() {
+    setSelectedStatuses([]);
+  }
+
+  const isAllActive = selectedStatuses.length === 0;
+
+  return (
+    <div className="space-y-4">
+      {/* Filter chips */}
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={selectAll}
+          className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+            isAllActive
+              ? "border-primary bg-primary/10 text-primary"
+              : "border-border bg-background text-muted-foreground hover:bg-muted"
+          }`}
+        >
+          Todos ({items.length})
+        </button>
+        {visibleStatuses.map((status) => {
+          const isActive = selectedStatuses.includes(status.id);
+          return (
+            <button
+              key={status.id}
+              type="button"
+              onClick={() => toggleStatus(status.id)}
+              className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                isActive
+                  ? "text-foreground"
+                  : "border-border bg-background text-muted-foreground hover:bg-muted"
+              }`}
+              style={
+                isActive
+                  ? {
+                      borderColor: status.color,
+                      backgroundColor: `${status.color}15`,
+                    }
+                  : undefined
+              }
+            >
+              <span
+                className="mr-1.5 inline-block h-2 w-2 rounded-full"
+                style={{ backgroundColor: status.color }}
+              />
+              {status.label} ({status.count})
+            </button>
+          );
+        })}
       </div>
-      <ScrollBar orientation="horizontal" />
-    </ScrollArea>
+
+      {/* Grid */}
+      {filteredItems.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed py-16 text-muted-foreground">
+          <Inbox className="h-10 w-10" />
+          <p className="text-sm">No hay elementos con estos filtros</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {filteredItems.map((item, i) => (
+            <div key={i}>{item.node}</div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

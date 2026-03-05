@@ -1,7 +1,8 @@
 "use client";
 
-import { CanvasView } from "@/components/shared/canvas-view";
+import { CanvasView, type CanvasStatus, type CanvasItem } from "@/components/shared/canvas-view";
 import { EntityCard } from "@/components/shared/entity-card";
+import { RmaStateBadge } from "@/components/shared/state-badge";
 import { RMA_STATUS_LABELS, type RmaStatus } from "@/lib/constants/rmas";
 import type { RmaRow } from "@/server/queries/rmas";
 
@@ -32,31 +33,33 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function RmaCanvas({ data }: RmaCanvasProps) {
-  const columns = ACTIVE_STATUSES.map((status) => {
-    const items = data
-      .filter((rma) => rma.status === status)
-      .map((rma) => {
-        const deviceInfo = [rma.deviceBrand, rma.deviceModel].filter(Boolean).join(" ");
-        return (
+  const statuses: CanvasStatus[] = ACTIVE_STATUSES.map((status) => ({
+    id: status,
+    label: RMA_STATUS_LABELS[status],
+    color: STATUS_COLORS[status] ?? "#6b7280",
+    count: data.filter((rma) => rma.status === status).length,
+  }));
+
+  const items: CanvasItem[] = data
+    .filter((rma) => ACTIVE_STATUSES.includes(rma.status as RmaStatus))
+    .map((rma) => {
+      const deviceInfo = [rma.deviceBrand, rma.deviceModel].filter(Boolean).join(" ");
+      return {
+        statusId: rma.status,
+        node: (
           <EntityCard
             key={rma.id}
             number={rma.rmaNumber}
             href={`/rmas/${rma.id}`}
             title={deviceInfo || "Sin dispositivo"}
+            statusBadge={<RmaStateBadge status={rma.status as RmaStatus} />}
             stateChangedAt={rma.stateChangedAt}
             relatedEntity={rma.providerName}
             relatedEntityIcon="building"
           />
-        );
-      });
+        ),
+      };
+    });
 
-    return {
-      id: status,
-      label: RMA_STATUS_LABELS[status],
-      color: STATUS_COLORS[status] ?? "#6b7280",
-      items,
-    };
-  });
-
-  return <CanvasView columns={columns} />;
+  return <CanvasView statuses={statuses} items={items} />;
 }
