@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-
-export const metadata: Metadata = {
-  title: "RMAs",
-};
 import { RotateCcw, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getRmas } from "@/server/queries/rmas";
 import { RmaPageContent } from "@/components/rmas/rma-page-content";
 import type { SortOrder } from "@/types";
+
+export const metadata: Metadata = {
+  title: "RMAs",
+};
 
 export default async function RmasPage({
   searchParams,

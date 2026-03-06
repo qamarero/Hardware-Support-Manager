@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-
-export const metadata: Metadata = {
-  title: "Incidencias",
-};
 import { AlertTriangle, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getIncidents } from "@/server/queries/incidents";
 import { IncidentPageContent } from "@/components/incidents/incident-page-content";
 import type { SortOrder } from "@/types";
+
+export const metadata: Metadata = {
+  title: "Incidencias",
+};
 
 export default async function IncidentsPage({
   searchParams,

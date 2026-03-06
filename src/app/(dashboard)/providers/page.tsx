@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-
-export const metadata: Metadata = {
-  title: "Proveedores",
-};
 import { Plus, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getProviders } from "@/server/queries/providers";
 import { ProviderList } from "@/components/providers/provider-list";
+
+export const metadata: Metadata = {
+  title: "Proveedores",
+};
 
 interface ProvidersPageProps {
   searchParams: Promise<{

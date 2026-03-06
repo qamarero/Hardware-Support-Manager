@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-
-export const metadata: Metadata = {
-  title: "Clientes",
-};
 import { Plus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ClientList } from "@/components/clients/client-list";
 import { getClients } from "@/server/queries/clients";
 import type { SortOrder } from "@/types";
+
+export const metadata: Metadata = {
+  title: "Clientes",
+};
 
 export default async function ClientsPage({
   searchParams,

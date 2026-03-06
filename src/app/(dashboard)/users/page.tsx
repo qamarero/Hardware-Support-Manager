@@ -1,9 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-
-export const metadata: Metadata = {
-  title: "Usuarios",
-};
 import { redirect } from "next/navigation";
 import { Plus, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,6 +7,10 @@ import { UserList } from "@/components/users/user-list";
 import { getUsers } from "@/server/queries/users";
 import { requireRole } from "@/lib/auth/get-session";
 import type { SortOrder } from "@/types";
+
+export const metadata: Metadata = {
+  title: "Usuarios",
+};
 
 export default async function UsersPage({
   searchParams,
