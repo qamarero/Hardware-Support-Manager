@@ -131,10 +131,86 @@ src/server/actions/incidents.ts              # fetchIncidents wrapper
 src/server/actions/rmas.ts                   # fetchRmas wrapper
 ```
 
+### Phase 4+5: CRUD Incidencias y RMAs (Completada)
+
+CRUD completo con transiciones de estado, event log y adjuntos.
+
+**Server Actions**
+- `updateIncident`, `transitionIncident`, `createIncident` (con transacciones atómicas + event_log)
+- `updateRma`, `transitionRma`, `createRma` (mismo patrón)
+- `createAttachment`, `deleteAttachment` (Vercel Blob + DB + event_log)
+
+**Event Log & Adjuntos**
+- Timeline vertical con iconos por acción (Plus, Pencil, ArrowRight, Paperclip, Trash2)
+- Badges de estado from→to para transiciones
+- Upload via POST `/api/upload` + `createAttachment()`
+- Lista de adjuntos con icono por tipo, link de descarga, botón eliminar
+
+**Detalle y Transiciones**
+- `incident-detail.tsx` / `rma-detail.tsx`: modo lectura/edición con toggle
+- `StateTransitionButtons`: botones dinámicos según state machine + role
+- `TransitionDialog`: modal con textarea para comentario opcional
+
+**Rutas**: `/incidents/new`, `/incidents/[id]`, `/rmas/new`, `/rmas/[id]`
+
+### Phase 6: Pulido HSM (Completada)
+
+Dark mode, configuración, SLA KPIs, rediseño de tarjetas y UX polish.
+
+**Dark Mode**
+- `next-themes` integrado con ThemeProvider (`attribute="class"`)
+- Toggle Sun/Moon en header
+- Todos los colores hardcoded migrados a patrón dark-mode-safe: `bg-*-500/15 dark:bg-*-500/25`
+
+**Página de Configuración** (`/settings`)
+- Nueva tabla `app_settings` (clave-valor JSONB)
+- Sección Apariencia: selector tema (claro/oscuro/sistema)
+- Sección General: items por página, vista por defecto
+- Sección SLA: umbrales configurables por prioridad (respuesta + resolución en horas)
+
+**Dashboard con KPIs SLA**
+- 6 KPI cards: Incidencias Abiertas, RMAs Activos, SLA Cumplido (%), Resolución Media, Fuera de SLA, Tasa Reapertura
+- Chart Backlog por Antigüedad (<1d, 1-3d, 3-7d, 7+d)
+- Chart Rendimiento por Técnico (top 5 por resueltas)
+- Queries: `getSlaMetrics()`, `getAgingDistribution()`, `getTechnicianPerformance()`
+
+**Cronómetro SLA en Detalle**
+- `SlaIndicator`: barra de progreso con colores verde/ámbar/rojo
+- Muestra tiempo total, tiempo en estado actual, estado SLA
+
+**Rediseño de Tarjetas**
+- Hover flotante (`shadow-lg`, `-translate-y-1`, borde sutil)
+- Barra SLA lateral (3px verde/ámbar/rojo) en `EntityCard`
+- KPI cards con soporte para indicadores de tendencia
+
+**UX Polish + SEO**
+- Loading skeletons: dashboard, listas, detalle de incidencia, RMAs
+- Error boundary global con botón "Reintentar"
+- 404 personalizado con link al dashboard
+- `generateMetadata()` en páginas de detalle
+- Metadata estática en páginas de listado
+- Template de título: `%s | HSM`
+
+#### Archivos principales Phase 6:
+```
+src/components/shared/theme-provider.tsx    # ThemeProvider wrapper
+src/components/layout/theme-toggle.tsx      # Toggle Sun/Moon
+src/components/settings/                    # settings-content, theme-selector
+src/components/shared/sla-indicator.tsx     # Barra progreso SLA
+src/components/dashboard/aging-chart.tsx    # Chart backlog aging
+src/components/dashboard/technician-chart.tsx # Chart rendimiento técnicos
+src/lib/db/schema/settings.ts              # Tabla app_settings
+src/lib/constants/sla.ts                   # Umbrales SLA por defecto
+src/server/queries/settings.ts             # getSetting, getSlaThresholds
+src/server/actions/settings.ts             # updateSetting (upsert)
+src/server/queries/dashboard.ts            # getSlaMetrics, getAgingDistribution, getTechnicianPerformance
+src/app/error.tsx                          # Error boundary global
+src/app/not-found.tsx                      # 404 personalizado
+src/app/(dashboard)/*/loading.tsx          # Skeletons (4 archivos)
+```
+
 ## Próximas Fases
-- **Phase 4**: CRUD completo de Incidencias (formularios crear/editar, transiciones de estado, event log, file attachments)
-- **Phase 5**: CRUD completo de RMAs (formularios, tracking, vinculación a incidencias)
-- **Phase 6**: Pulido, optimización y deploy
+- **Phase 7**: Gestión de perfil, responsive mobile-first, export CSV, notificaciones email
 
 ## Notas de Deploy (Vercel)
 1. Conectar repositorio GitHub a Vercel
