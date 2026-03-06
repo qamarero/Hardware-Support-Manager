@@ -1,8 +1,9 @@
-import { pgTable, uuid, varchar, integer, timestamp } from "drizzle-orm/pg-core";
+import { uuid, varchar, integer, timestamp } from "drizzle-orm/pg-core";
+import { hsmSchema } from "./hsm-schema";
 import { entityTypeEnum } from "./event-logs";
 import { users } from "./users";
 
-export const attachments = pgTable("attachments", {
+export const attachments = hsmSchema.table("attachments", {
   id: uuid("id").defaultRandom().primaryKey(),
   entityType: entityTypeEnum("entity_type").notNull(),
   entityId: uuid("entity_id").notNull(),

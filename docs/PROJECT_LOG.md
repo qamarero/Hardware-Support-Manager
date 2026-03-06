@@ -25,7 +25,7 @@
 | Framework | Next.js (App Router) | 15.5.12 |
 | Lenguaje | TypeScript (strict) | ^5 |
 | ORM | Drizzle ORM | ^0.45.1 |
-| Base de datos | Neon PostgreSQL (serverless) | @neondatabase/serverless ^1.0.2 |
+| Base de datos | Supabase PostgreSQL (pooler) | postgres ^3.4.7 |
 | UI | shadcn/ui + Tailwind CSS | v4 |
 | Estado servidor | TanStack Query | v5.90.21 |
 | Estado URL | nuqs | ^2.8.9 |
@@ -386,6 +386,43 @@
 
 ---
 
+### SESION 6 — 2026-03-06
+
+**Objetivo**: Migración de Neon a Supabase PostgreSQL
+**Estado final**: COMPLETADA CON EXITO
+
+#### Que se hizo
+
+**Migración de base de datos**
+- Migrado de Neon PostgreSQL (serverless) a Supabase PostgreSQL (pooler)
+- Schema `hsm` creado en Supabase (proyecto `thkrkubkiasfqmiiwfbj`, región eu-west-3)
+- Rol dedicado `hsm_app` con acceso solo al schema `hsm`
+- Connection string actualizada: pooler (transaction mode, port 6543)
+- Driver cambiado: de `@neondatabase/serverless` a `postgres-js` con `prepare: false`
+
+**Cambios en schema Drizzle**
+- Todas las tablas migradas a `hsmSchema.table()` (en lugar de `pgTable`)
+- Todos los enums migrados a `hsmSchema.enum()` (en lugar de `pgEnum`)
+- `hsm-schema.ts` creado con `pgSchema("hsm")` como namespace
+- `drizzle.config.ts` actualizado con `schemaFilter: ["hsm"]`
+- `src/lib/db/index.ts` actualizado para usar postgres-js
+
+**Documentación**
+- `CLAUDE.md` actualizado con stack Supabase
+- `.env.example` actualizado con nuevas variables
+- Configuración MCP de Supabase añadida
+
+#### Verificaciones finales
+
+| Verificacion | Resultado |
+|---|---|
+| `npm run build` | PASA |
+| `npm run lint` | PASA |
+| `npm test` | PASA — 58 tests |
+| `npm run db:push` | Schema sincronizado en Supabase |
+
+---
+
 ## Estado Actual del Proyecto
 
 ### Lo que ESTA hecho (Fases 1-5)
@@ -447,7 +484,7 @@
 ## Variables de Entorno Requeridas
 
 ```bash
-DATABASE_URL=              # Neon PostgreSQL connection string
+DATABASE_URL=              # Supabase PostgreSQL pooler connection string
 NEXTAUTH_SECRET=           # openssl rand -base64 32
 NEXTAUTH_URL=              # http://localhost:3000 (dev)
 BLOB_READ_WRITE_TOKEN=     # Vercel Blob token

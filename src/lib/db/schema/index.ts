@@ -1,3 +1,4 @@
+export * from "./hsm-schema";
 export * from "./users";
 export * from "./clients";
 export * from "./providers";

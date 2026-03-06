@@ -1,8 +1,9 @@
-import { pgTable, uuid, varchar, boolean, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { uuid, varchar, boolean, timestamp } from "drizzle-orm/pg-core";
+import { hsmSchema } from "./hsm-schema";
 
-export const userRoleEnum = pgEnum("user_role", ["admin", "technician", "viewer"]);
+export const userRoleEnum = hsmSchema.enum("user_role", ["admin", "technician", "viewer"]);
 
-export const users = pgTable("users", {
+export const users = hsmSchema.table("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
   email: varchar("email", { length: 255 }).notNull().unique(),

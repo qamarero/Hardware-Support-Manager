@@ -16,7 +16,7 @@ Hardware Support Manager is an internal web application for a hardware support d
 | Framework | Next.js 15 (App Router) |
 | Language | TypeScript (strict mode) |
 | ORM | Drizzle ORM |
-| Database | Neon PostgreSQL (serverless driver) |
+| Database | Supabase PostgreSQL (pooler, schema `hsm`) |
 | UI Components | shadcn/ui + Tailwind CSS v4 |
 | Server State | TanStack Query v5 |
 | URL State | nuqs |
@@ -33,7 +33,7 @@ Hardware Support Manager is an internal web application for a hardware support d
 npm run dev          # Start development server (localhost:3000)
 npm run build        # Production build (also validates types)
 npm run lint         # Run ESLint
-npm run db:push      # Push Drizzle schema directly to Neon (dev only)
+npm run db:push      # Push Drizzle schema directly to Supabase (dev only)
 npm run db:migrate   # Run generated Drizzle migrations (production)
 npm run db:generate  # Generate migration files from schema changes
 npm run db:seed      # Seed database with demo data
@@ -68,7 +68,7 @@ src/
     shared/                     # Reusable components (data-table, file-uploader, state-badge, etc.)
   lib/
     db/
-      index.ts                  # Drizzle client (Neon serverless)
+      index.ts                  # Drizzle client (postgres-js via Supabase pooler)
       schema/                   # Drizzle table definitions (one file per entity)
       migrations/               # Migration utilities
     auth/                       # NextAuth.js v5 configuration
@@ -181,10 +181,11 @@ Sequential counter resets each year.
 
 ## Database
 
-### Drizzle ORM with Neon
+### Drizzle ORM with Supabase
 
-- Schema files in `src/lib/db/schema/` (one file per table/entity).
-- Client initialization in `src/lib/db/index.ts` using Neon serverless driver.
+- Schema files in `src/lib/db/schema/` (one file per table/entity, all in `hsm` PostgreSQL schema).
+- Schema namespace defined in `src/lib/db/schema/hsm-schema.ts` using `pgSchema("hsm")`.
+- Client initialization in `src/lib/db/index.ts` using postgres-js driver via Supabase pooler.
 - Use `drizzle-kit` commands for migrations (see Essential Commands).
 
 ### Schema Changes Workflow
@@ -246,7 +247,7 @@ npm run test:coverage # Coverage report
 ## Deployment
 
 - **Platform**: Vercel
-- **Database**: Neon PostgreSQL (connection via serverless driver)
+- **Database**: Supabase PostgreSQL (connection via pooler, schema `hsm`)
 - **File storage**: Vercel Blob
 - **Environment variables**: Set in Vercel dashboard (never in code)
 
@@ -279,7 +280,7 @@ const dbUrl = process.env.DATABASE_URL;
 ### Required Environment Variables
 
 ```bash
-DATABASE_URL=              # Neon PostgreSQL connection string
+DATABASE_URL=              # Supabase PostgreSQL pooler connection string
 NEXTAUTH_SECRET=           # NextAuth.js secret (generate with openssl rand -base64 32)
 NEXTAUTH_URL=              # App URL (http://localhost:3000 in dev)
 BLOB_READ_WRITE_TOKEN=     # Vercel Blob token
@@ -299,8 +300,8 @@ BLOB_READ_WRITE_TOKEN=     # Vercel Blob token
 
 **Database connection errors**
 - Verify `DATABASE_URL` is set and correct.
-- Neon databases may sleep after inactivity -- first request may be slow.
-- Ensure using the Neon serverless driver (`@neondatabase/serverless`), not `pg`.
+- Supabase pooler requires `prepare: false` in the postgres-js client options.
+- Connection uses a dedicated `hsm_app` role with access to the `hsm` schema only.
 
 **Drizzle schema out of sync**
 - Run `npm run db:push` (dev) or `npm run db:migrate` (prod) after schema changes.

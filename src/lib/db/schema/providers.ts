@@ -1,6 +1,7 @@
-import { pgTable, uuid, varchar, text, timestamp } from "drizzle-orm/pg-core";
+import { uuid, varchar, text, timestamp } from "drizzle-orm/pg-core";
+import { hsmSchema } from "./hsm-schema";
 
-export const providers = pgTable("providers", {
+export const providers = hsmSchema.table("providers", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
   email: varchar("email", { length: 255 }),

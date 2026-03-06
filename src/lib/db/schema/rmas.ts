@@ -1,14 +1,15 @@
-import { pgTable, uuid, varchar, text, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { uuid, varchar, text, timestamp } from "drizzle-orm/pg-core";
+import { hsmSchema } from "./hsm-schema";
 import { incidents } from "./incidents";
 import { providers } from "./providers";
 
-export const rmaStatusEnum = pgEnum("rma_status", [
+export const rmaStatusEnum = hsmSchema.enum("rma_status", [
   "borrador", "solicitado", "aprobado_proveedor", "enviado_proveedor",
   "recibido_proveedor", "en_reparacion_proveedor", "devuelto",
   "recibido_almacen", "cerrado", "cancelado",
 ]);
 
-export const rmas = pgTable("rmas", {
+export const rmas = hsmSchema.table("rmas", {
   id: uuid("id").defaultRandom().primaryKey(),
   rmaNumber: varchar("rma_number", { length: 20 }).notNull().unique(),
   incidentId: uuid("incident_id").references(() => incidents.id),

@@ -1,6 +1,7 @@
-import { pgTable, uuid, varchar, integer, uniqueIndex } from "drizzle-orm/pg-core";
+import { uuid, varchar, integer, uniqueIndex } from "drizzle-orm/pg-core";
+import { hsmSchema } from "./hsm-schema";
 
-export const sequences = pgTable("sequences", {
+export const sequences = hsmSchema.table("sequences", {
   id: uuid("id").defaultRandom().primaryKey(),
   prefix: varchar("prefix", { length: 10 }).notNull(),
   year: integer("year").notNull(),

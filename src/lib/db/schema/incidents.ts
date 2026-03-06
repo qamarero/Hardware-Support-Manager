@@ -1,21 +1,22 @@
-import { pgTable, uuid, varchar, text, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { uuid, varchar, text, timestamp } from "drizzle-orm/pg-core";
+import { hsmSchema } from "./hsm-schema";
 import { users } from "./users";
 import { clients } from "./clients";
 
-export const incidentStatusEnum = pgEnum("incident_status", [
+export const incidentStatusEnum = hsmSchema.enum("incident_status", [
   "nuevo", "en_triaje", "en_diagnostico", "esperando_repuesto",
   "en_reparacion", "esperando_cliente", "resuelto", "cerrado", "cancelado",
 ]);
 
-export const incidentPriorityEnum = pgEnum("incident_priority", [
+export const incidentPriorityEnum = hsmSchema.enum("incident_priority", [
   "baja", "media", "alta", "critica",
 ]);
 
-export const incidentCategoryEnum = pgEnum("incident_category", [
+export const incidentCategoryEnum = hsmSchema.enum("incident_category", [
   "hardware", "periferico", "red", "almacenamiento", "impresora", "monitor", "otro",
 ]);
 
-export const incidents = pgTable("incidents", {
+export const incidents = hsmSchema.table("incidents", {
   id: uuid("id").defaultRandom().primaryKey(),
   incidentNumber: varchar("incident_number", { length: 20 }).notNull().unique(),
   clientId: uuid("client_id").notNull().references(() => clients.id),
