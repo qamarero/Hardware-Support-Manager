@@ -3,28 +3,28 @@ import { INCIDENT_STATUS_LABELS, type IncidentStatus } from "@/lib/constants/inc
 import { RMA_STATUS_LABELS, type RmaStatus } from "@/lib/constants/rmas";
 
 const INCIDENT_STATUS_COLORS: Record<IncidentStatus, string> = {
-  nuevo: "bg-blue-100 text-blue-800 hover:bg-blue-100",
-  en_triaje: "bg-yellow-100 text-yellow-800 hover:bg-yellow-100",
-  en_diagnostico: "bg-orange-100 text-orange-800 hover:bg-orange-100",
-  esperando_repuesto: "bg-purple-100 text-purple-800 hover:bg-purple-100",
-  en_reparacion: "bg-indigo-100 text-indigo-800 hover:bg-indigo-100",
-  esperando_cliente: "bg-amber-100 text-amber-800 hover:bg-amber-100",
-  resuelto: "bg-green-100 text-green-800 hover:bg-green-100",
-  cerrado: "bg-gray-100 text-gray-800 hover:bg-gray-100",
-  cancelado: "bg-red-100 text-red-800 hover:bg-red-100",
+  nuevo: "bg-blue-500/15 text-blue-700 hover:bg-blue-500/15 dark:bg-blue-500/25 dark:text-blue-300",
+  en_triaje: "bg-yellow-500/15 text-yellow-700 hover:bg-yellow-500/15 dark:bg-yellow-500/25 dark:text-yellow-300",
+  en_diagnostico: "bg-orange-500/15 text-orange-700 hover:bg-orange-500/15 dark:bg-orange-500/25 dark:text-orange-300",
+  esperando_repuesto: "bg-purple-500/15 text-purple-700 hover:bg-purple-500/15 dark:bg-purple-500/25 dark:text-purple-300",
+  en_reparacion: "bg-indigo-500/15 text-indigo-700 hover:bg-indigo-500/15 dark:bg-indigo-500/25 dark:text-indigo-300",
+  esperando_cliente: "bg-amber-500/15 text-amber-700 hover:bg-amber-500/15 dark:bg-amber-500/25 dark:text-amber-300",
+  resuelto: "bg-green-500/15 text-green-700 hover:bg-green-500/15 dark:bg-green-500/25 dark:text-green-300",
+  cerrado: "bg-gray-500/15 text-gray-700 hover:bg-gray-500/15 dark:bg-gray-500/25 dark:text-gray-300",
+  cancelado: "bg-red-500/15 text-red-700 hover:bg-red-500/15 dark:bg-red-500/25 dark:text-red-300",
 };
 
 const RMA_STATUS_COLORS: Record<RmaStatus, string> = {
-  borrador: "bg-gray-100 text-gray-800 hover:bg-gray-100",
-  solicitado: "bg-blue-100 text-blue-800 hover:bg-blue-100",
-  aprobado_proveedor: "bg-green-100 text-green-800 hover:bg-green-100",
-  enviado_proveedor: "bg-indigo-100 text-indigo-800 hover:bg-indigo-100",
-  recibido_proveedor: "bg-purple-100 text-purple-800 hover:bg-purple-100",
-  en_reparacion_proveedor: "bg-orange-100 text-orange-800 hover:bg-orange-100",
-  devuelto: "bg-yellow-100 text-yellow-800 hover:bg-yellow-100",
-  recibido_almacen: "bg-teal-100 text-teal-800 hover:bg-teal-100",
-  cerrado: "bg-gray-100 text-gray-800 hover:bg-gray-100",
-  cancelado: "bg-red-100 text-red-800 hover:bg-red-100",
+  borrador: "bg-gray-500/15 text-gray-700 hover:bg-gray-500/15 dark:bg-gray-500/25 dark:text-gray-300",
+  solicitado: "bg-blue-500/15 text-blue-700 hover:bg-blue-500/15 dark:bg-blue-500/25 dark:text-blue-300",
+  aprobado_proveedor: "bg-green-500/15 text-green-700 hover:bg-green-500/15 dark:bg-green-500/25 dark:text-green-300",
+  enviado_proveedor: "bg-indigo-500/15 text-indigo-700 hover:bg-indigo-500/15 dark:bg-indigo-500/25 dark:text-indigo-300",
+  recibido_proveedor: "bg-purple-500/15 text-purple-700 hover:bg-purple-500/15 dark:bg-purple-500/25 dark:text-purple-300",
+  en_reparacion_proveedor: "bg-orange-500/15 text-orange-700 hover:bg-orange-500/15 dark:bg-orange-500/25 dark:text-orange-300",
+  devuelto: "bg-yellow-500/15 text-yellow-700 hover:bg-yellow-500/15 dark:bg-yellow-500/25 dark:text-yellow-300",
+  recibido_almacen: "bg-teal-500/15 text-teal-700 hover:bg-teal-500/15 dark:bg-teal-500/25 dark:text-teal-300",
+  cerrado: "bg-gray-500/15 text-gray-700 hover:bg-gray-500/15 dark:bg-gray-500/25 dark:text-gray-300",
+  cancelado: "bg-red-500/15 text-red-700 hover:bg-red-500/15 dark:bg-red-500/25 dark:text-red-300",
 };
 
 interface IncidentStateBadgeProps {

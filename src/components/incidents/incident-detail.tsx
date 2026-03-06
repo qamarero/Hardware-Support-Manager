@@ -11,6 +11,7 @@ import { IncidentStateBadge } from "@/components/shared/state-badge";
 import { AgingBadge } from "@/components/shared/aging-badge";
 import { EventLogTimeline } from "@/components/shared/event-log-timeline";
 import { AttachmentSection } from "@/components/shared/attachment-section";
+import { SlaIndicator } from "@/components/shared/sla-indicator";
 import { StateTransitionButtons } from "@/components/incidents/state-transition-buttons";
 import { IncidentForm } from "@/components/incidents/incident-form";
 import {
@@ -28,13 +29,14 @@ import {
   type IncidentCategory,
 } from "@/lib/constants/incidents";
 import type { IncidentRow } from "@/server/queries/incidents";
+import { DEFAULT_SLA_THRESHOLDS } from "@/lib/constants/sla";
 import type { CreateIncidentInput } from "@/lib/validators/incident";
 
 const PRIORITY_COLORS: Record<string, string> = {
-  baja: "bg-green-100 text-green-700 hover:bg-green-100",
-  media: "bg-blue-100 text-blue-700 hover:bg-blue-100",
-  alta: "bg-orange-100 text-orange-700 hover:bg-orange-100",
-  critica: "bg-red-100 text-red-700 hover:bg-red-100",
+  baja: "bg-green-500/15 text-green-700 hover:bg-green-500/15 dark:bg-green-500/25 dark:text-green-300",
+  media: "bg-blue-500/15 text-blue-700 hover:bg-blue-500/15 dark:bg-blue-500/25 dark:text-blue-300",
+  alta: "bg-orange-500/15 text-orange-700 hover:bg-orange-500/15 dark:bg-orange-500/25 dark:text-orange-300",
+  critica: "bg-red-500/15 text-red-700 hover:bg-red-500/15 dark:bg-red-500/25 dark:text-red-300",
 };
 
 interface IncidentDetailProps {
@@ -133,12 +135,20 @@ export function IncidentDetail({ incident: initialIncident }: IncidentDetailProp
         </div>
       </div>
 
-      {/* Transition buttons */}
-      <StateTransitionButtons
-        incidentId={incident.id}
-        currentStatus={incident.status as IncidentStatus}
-        onTransitionComplete={handleTransitionComplete}
-      />
+      {/* Transition buttons + SLA */}
+      <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
+        <StateTransitionButtons
+          incidentId={incident.id}
+          currentStatus={incident.status as IncidentStatus}
+          onTransitionComplete={handleTransitionComplete}
+        />
+        <SlaIndicator
+          createdAt={incident.createdAt}
+          stateChangedAt={incident.stateChangedAt}
+          resolvedAt={incident.resolvedAt}
+          slaHours={DEFAULT_SLA_THRESHOLDS.resolution[incident.priority] ?? 168}
+        />
+      </div>
 
       {/* Info cards */}
       <div className="grid gap-6 lg:grid-cols-2">

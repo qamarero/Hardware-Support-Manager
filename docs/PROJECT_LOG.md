@@ -423,9 +423,79 @@
 
 ---
 
+### SESION 7 — 2026-03-06
+
+**Objetivo**: Fase 6 — Pulido HSM (Dark Mode, Settings, SLA KPIs, Tarjetas, UX/SEO)
+**Estado final**: COMPLETADA CON EXITO
+
+#### Que se hizo
+
+**Paso 1 — Dark Mode + Sistema de Temas**
+- ThemeProvider (`next-themes`) integrado en `layout.tsx` con `attribute="class"`, `suppressHydrationWarning`
+- Toggle Sun/Moon en header (`theme-toggle.tsx`)
+- Todos los colores hardcoded (`bg-*-50/100 text-*-600/700/800`) migrados a patrón dark-mode-safe: `bg-*-500/15 text-*-700 dark:bg-*-500/25 dark:text-*-300`
+- Componentes actualizados: `kpi-card`, `entity-card`, `aging-badge`, `state-badge`, `incident-detail`, `incident-columns`, `user-columns`, `user-detail`
+- Headers de todas las páginas (incidents, rmas, clients, providers, users) actualizados
+
+**Paso 2 — Página de Configuración**
+- Nueva tabla `hsm.app_settings` (clave-valor JSONB) en `src/lib/db/schema/settings.ts`
+- Constantes SLA en `src/lib/constants/sla.ts` (umbrales por prioridad: response + resolution en horas)
+- Queries: `getSetting()`, `getSlaThresholds()`, `getDefaultPageSize()`, `getDefaultView()`
+- Action: `updateSetting()` (upsert por key)
+- Página `/settings` con 3 secciones:
+  - Apariencia: selector de tema (light/dark/system)
+  - General: items por página, vista por defecto (tabla/tarjetas)
+  - SLA: umbrales configurables por prioridad (response + resolution)
+
+**Paso 3 — Cronómetros SLA + KPIs de Impacto**
+- Nuevas queries en `dashboard.ts`:
+  - `getSlaMetrics()`: avg resolución, % SLA cumplido, overdue count, tasa reapertura, RMA turnaround, por prioridad
+  - `getAgingDistribution()`: buckets <1d, 1-3d, 3-7d, 7+d
+  - `getTechnicianPerformance()`: top 5 técnicos por incidencias resueltas + avg resolución
+- Dashboard rediseñado con 4 filas:
+  - Fila 1: 6 KPI cards (abiertas, RMAs, SLA%, resolución media, fuera SLA, tasa reapertura)
+  - Fila 2: tendencia 30d + distribución por estado
+  - Fila 3: backlog por antigüedad + rendimiento por técnico
+  - Fila 4: actividad reciente + acciones rápidas
+- `SlaIndicator` component: barra de progreso SLA en detalle de incidencia (verde/ámbar/rojo)
+
+**Paso 4 — Rediseño de Tarjetas**
+- `EntityCard`: hover flotante (`hover:shadow-lg hover:-translate-y-1`), borde sutil, barra SLA lateral (3px)
+- `KpiCard`: hover flotante, soporte para trend (↑/↓%), color `red` añadido
+- Incident canvas pasa `slaStatus` calculado a cada tarjeta
+
+**Paso 5 — UX Polish + SEO**
+- Loading skeletons: dashboard, incidents list, incident detail, RMAs list
+- Error boundary global con botón "Reintentar"
+- 404 personalizado con link al dashboard
+- `generateMetadata()` en detalle de incidencia y RMA
+- Metadata estática en todas las páginas de listado
+- Template de título: `%s | HSM`
+
+#### Verificaciones finales
+
+| Verificacion | Resultado |
+|---|---|
+| `npm run build` | PASA — 0 errores |
+| `npm run lint` | PASA — 0 errores, 0 warnings |
+| `npm test` | PASA — 58 tests en 7 archivos |
+
+#### Metricas
+
+| Metrica | Valor |
+|---|---|
+| Archivos nuevos | 16 |
+| Archivos modificados | 18 |
+| Componentes nuevos | 8 (theme-provider, theme-toggle, theme-selector, settings-content, sla-indicator, aging-chart, technician-chart, loading skeletons) |
+| Server queries nuevas | 4 (getSlaMetrics, getAgingDistribution, getTechnicianPerformance, settings) |
+| Server actions nuevas | 1 (updateSetting) |
+| Tablas nuevas | 1 (app_settings) |
+
+---
+
 ## Estado Actual del Proyecto
 
-### Lo que ESTA hecho (Fases 1-5)
+### Lo que ESTA hecho (Fases 1-6)
 - [x] Scaffolding completo (Next.js 15, Tailwind v4, shadcn/ui)
 - [x] Esquema de BD completo (8 tablas con relaciones)
 - [x] Sistema de autenticacion funcional (login/logout, roles, middleware)
@@ -453,16 +523,25 @@
 - [x] Numeros en listados como links clickables a detalle
 - [x] Botones "Nuevo" en paginas de listado
 
+- [x] Dark mode con next-themes (toggle en header, CSS variables .dark)
+- [x] Página de configuración (apariencia, SLA, general)
+- [x] Dashboard con KPIs SLA (compliance%, resolución media, overdue, reapertura)
+- [x] Charts: backlog aging, rendimiento por técnico
+- [x] SLA indicator en detalle de incidencia (barra progreso verde/ámbar/rojo)
+- [x] Tarjetas con hover flotante y barra SLA lateral
+- [x] Loading skeletons (dashboard, listas, detalle)
+- [x] Error boundary global + 404 personalizado
+- [x] SEO metadata en todas las páginas
+- [x] Todos los colores dark-mode-safe
+
 ### Lo que FALTA (Fases futuras)
 
-**Fase 6 — Pulido**
-- [ ] Pagina de configuracion
+**Fase 7 — Mejoras**
 - [ ] Gestion de perfil de usuario
-- [ ] Responsive design completo
-- [ ] Manejo de errores global
-- [ ] Loading states y skeletons
-- [ ] SEO y metadata
+- [ ] Responsive design completo (mobile-first)
 - [ ] Drag & drop en vista canvas (opcional)
+- [ ] Exportar incidencias/RMAs a CSV
+- [ ] Notificaciones por email
 
 ---
 

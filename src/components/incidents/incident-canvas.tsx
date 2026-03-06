@@ -4,7 +4,16 @@ import { CanvasView, type CanvasStatus, type CanvasItem } from "@/components/sha
 import { EntityCard } from "@/components/shared/entity-card";
 import { IncidentStateBadge } from "@/components/shared/state-badge";
 import { INCIDENT_STATUS_LABELS, INCIDENT_PRIORITY_LABELS, type IncidentStatus, type IncidentPriority } from "@/lib/constants/incidents";
+import { DEFAULT_SLA_THRESHOLDS } from "@/lib/constants/sla";
 import type { IncidentRow } from "@/server/queries/incidents";
+
+function getSlaStatus(incident: IncidentRow): "ok" | "warning" | "overdue" {
+  const slaHours = DEFAULT_SLA_THRESHOLDS.resolution[incident.priority] ?? 168;
+  const elapsed = (Date.now() - new Date(incident.createdAt).getTime()) / (1000 * 60 * 60);
+  if (elapsed > slaHours) return "overdue";
+  if (elapsed > slaHours * 0.75) return "warning";
+  return "ok";
+}
 
 interface IncidentCanvasProps {
   data: IncidentRow[];
@@ -54,6 +63,7 @@ export function IncidentCanvas({ data }: IncidentCanvasProps) {
           assignedUser={inc.assignedUserName}
           relatedEntity={inc.clientName}
           relatedEntityIcon="user"
+          slaStatus={getSlaStatus(inc)}
         />
       ),
     }));

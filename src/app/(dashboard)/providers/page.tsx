@@ -1,4 +1,9 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "Proveedores",
+};
 import { Plus, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getProviders } from "@/server/queries/providers";
@@ -35,7 +40,7 @@ export default async function ProvidersPage({ searchParams }: ProvidersPageProps
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400">
             <Building2 className="h-5 w-5" />
           </div>
           <div>

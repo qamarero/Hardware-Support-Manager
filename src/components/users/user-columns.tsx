@@ -84,7 +84,7 @@ export function getUserColumns({
       header: "Activo",
       cell: ({ row }) =>
         row.original.active ? (
-          <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+          <Badge className="bg-green-500/15 text-green-700 hover:bg-green-500/15 dark:bg-green-500/25 dark:text-green-300">
             Activo
           </Badge>
         ) : (

@@ -13,20 +13,20 @@ export function QuickActions() {
       <CardContent>
         <div className="grid gap-2">
           <Button asChild variant="outline" className="justify-start gap-2">
-            <Link href="/incidents">
-              <AlertTriangle className="h-4 w-4 text-blue-600" />
+            <Link href="/incidents/new">
+              <AlertTriangle className="h-4 w-4 text-primary" />
               Nueva Incidencia
             </Link>
           </Button>
           <Button asChild variant="outline" className="justify-start gap-2">
-            <Link href="/rmas">
-              <RotateCcw className="h-4 w-4 text-purple-600" />
+            <Link href="/rmas/new">
+              <RotateCcw className="h-4 w-4 text-primary" />
               Nuevo RMA
             </Link>
           </Button>
           <Button asChild variant="outline" className="justify-start gap-2">
             <Link href="/clients/new">
-              <Users className="h-4 w-4 text-emerald-600" />
+              <Users className="h-4 w-4 text-primary" />
               Nuevo Cliente
             </Link>
           </Button>

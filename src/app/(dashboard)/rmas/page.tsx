@@ -1,4 +1,9 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "RMAs",
+};
 import { RotateCcw, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getRmas } from "@/server/queries/rmas";
@@ -30,7 +35,7 @@ export default async function RmasPage({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-50 text-purple-600">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400">
             <RotateCcw className="h-5 w-5" />
           </div>
           <div>

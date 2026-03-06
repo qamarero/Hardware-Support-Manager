@@ -4,6 +4,7 @@ import { SessionProvider } from "next-auth/react";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/components/shared/query-provider";
+import { ThemeProvider } from "@/components/shared/theme-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -17,7 +18,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Hardware Support Manager",
+  title: {
+    default: "Hardware Support Manager",
+    template: "%s | HSM",
+  },
   description: "Sistema de gestión de soporte de hardware",
 };
 
@@ -27,16 +31,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <SessionProvider>
-          <QueryProvider>
-            <NuqsAdapter>
-              {children}
-              <Toaster richColors position="top-right" />
-            </NuqsAdapter>
-          </QueryProvider>
-        </SessionProvider>
+        <ThemeProvider>
+          <SessionProvider>
+            <QueryProvider>
+              <NuqsAdapter>
+                {children}
+                <Toaster richColors position="top-right" />
+              </NuqsAdapter>
+            </QueryProvider>
+          </SessionProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

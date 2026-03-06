@@ -3,6 +3,7 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Breadcrumbs } from "./breadcrumbs";
+import { ThemeToggle } from "./theme-toggle";
 
 export function AppHeader() {
   return (
@@ -10,6 +11,9 @@ export function AppHeader() {
       <SidebarTrigger />
       <Separator orientation="vertical" className="h-6" />
       <Breadcrumbs />
+      <div className="ml-auto">
+        <ThemeToggle />
+      </div>
     </header>
   );
 }

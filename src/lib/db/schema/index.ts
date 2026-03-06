@@ -7,4 +7,5 @@ export * from "./incidents";
 export * from "./rmas";
 export * from "./event-logs";
 export * from "./attachments";
+export * from "./settings";
 export * from "./relations";

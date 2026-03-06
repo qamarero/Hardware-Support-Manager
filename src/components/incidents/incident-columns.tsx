@@ -10,10 +10,10 @@ import { INCIDENT_PRIORITY_LABELS, type IncidentPriority } from "@/lib/constants
 import { formatDate } from "@/lib/utils/date-format";
 
 const PRIORITY_COLORS: Record<string, string> = {
-  baja: "bg-green-100 text-green-700 hover:bg-green-100",
-  media: "bg-blue-100 text-blue-700 hover:bg-blue-100",
-  alta: "bg-orange-100 text-orange-700 hover:bg-orange-100",
-  critica: "bg-red-100 text-red-700 hover:bg-red-100",
+  baja: "bg-green-500/15 text-green-700 hover:bg-green-500/15 dark:bg-green-500/25 dark:text-green-300",
+  media: "bg-blue-500/15 text-blue-700 hover:bg-blue-500/15 dark:bg-blue-500/25 dark:text-blue-300",
+  alta: "bg-orange-500/15 text-orange-700 hover:bg-orange-500/15 dark:bg-orange-500/25 dark:text-orange-300",
+  critica: "bg-red-500/15 text-red-700 hover:bg-red-500/15 dark:bg-red-500/25 dark:text-red-300",
 };
 
 export const incidentColumns: ColumnDef<IncidentRow, unknown>[] = [

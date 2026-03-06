@@ -14,11 +14,11 @@ export function AgingBadge({ stateChangedAt, thresholdDays = 3 }: AgingBadgeProp
 
   let colorClass: string;
   if (aging.days >= thresholdDays) {
-    colorClass = "bg-red-100 text-red-700 hover:bg-red-100";
+    colorClass = "bg-red-500/15 text-red-700 hover:bg-red-500/15 dark:bg-red-500/25 dark:text-red-300";
   } else if (aging.days >= 1) {
-    colorClass = "bg-amber-100 text-amber-700 hover:bg-amber-100";
+    colorClass = "bg-amber-500/15 text-amber-700 hover:bg-amber-500/15 dark:bg-amber-500/25 dark:text-amber-300";
   } else {
-    colorClass = "bg-green-100 text-green-700 hover:bg-green-100";
+    colorClass = "bg-green-500/15 text-green-700 hover:bg-green-500/15 dark:bg-green-500/25 dark:text-green-300";
   }
 
   return (
