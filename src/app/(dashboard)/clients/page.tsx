@@ -23,13 +23,32 @@ export default async function ClientsPage({
   const sortBy = typeof params.sortBy === "string" ? params.sortBy : "createdAt";
   const sortOrder = (typeof params.sortOrder === "string" ? params.sortOrder : "desc") as SortOrder;
 
-  const initialData = await getClients({
-    page,
-    pageSize,
-    search,
-    sortBy,
-    sortOrder,
-  });
+  let initialData;
+  try {
+    initialData = await getClients({
+      page,
+      pageSize,
+      search,
+      sortBy,
+      sortOrder,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return (
+      <div className="space-y-4 p-8">
+        <h1 className="text-2xl font-bold text-red-600">Error en Clientes</h1>
+        <pre className="rounded bg-red-50 p-4 text-sm text-red-800 dark:bg-red-950 dark:text-red-200">
+          {message}
+        </pre>
+        <pre className="rounded bg-gray-100 p-4 text-xs dark:bg-gray-900">
+          {error instanceof Error ? error.stack : "No stack trace"}
+        </pre>
+        <p className="text-sm text-muted-foreground">
+          DB_URL starts with: {process.env.DATABASE_URL?.substring(0, 40)}...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
