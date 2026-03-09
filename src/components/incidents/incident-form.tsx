@@ -29,6 +29,7 @@ import {
   INCIDENT_CATEGORY_LABELS,
   INCIDENT_PRIORITY_LABELS,
 } from "@/lib/constants/incidents";
+import { DEVICE_TYPE_LABELS } from "@/lib/constants/device-types";
 
 interface IncidentFormProps {
   clients: { id: string; name: string }[];
@@ -56,6 +57,7 @@ export function IncidentForm({
       category: defaultValues?.category ?? "hardware",
       priority: defaultValues?.priority ?? "media",
       assignedUserId: defaultValues?.assignedUserId ?? "",
+      deviceType: defaultValues?.deviceType ?? "",
       deviceBrand: defaultValues?.deviceBrand ?? "",
       deviceModel: defaultValues?.deviceModel ?? "",
       deviceSerialNumber: defaultValues?.deviceSerialNumber ?? "",
@@ -203,7 +205,34 @@ export function IncidentForm({
           )}
         />
 
-        <div className="grid gap-6 sm:grid-cols-3">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <FormField
+            control={form.control}
+            name="deviceType"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tipo de dispositivo</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar tipo" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {Object.entries(DEVICE_TYPE_LABELS).map(
+                      ([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      )
+                    )}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
           <FormField
             control={form.control}
             name="deviceBrand"

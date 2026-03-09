@@ -31,6 +31,11 @@ export const rmaColumns: ColumnDef<RmaRow, unknown>[] = [
     cell: ({ row }) => row.original.providerName ?? "-",
   },
   {
+    accessorKey: "clientName",
+    header: "Cliente",
+    cell: ({ row }) => row.original.clientName ?? "-",
+  },
+  {
     accessorKey: "deviceBrand",
     header: "Marca / Modelo",
     cell: ({ row }) => {

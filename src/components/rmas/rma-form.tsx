@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import {
   Form,
   FormControl,
@@ -22,15 +23,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  createRmaSchema,
-  type CreateRmaInput,
+  rmaFormSchema,
+  type RmaFormInput,
 } from "@/lib/validators/rma";
+import { DEVICE_TYPE_LABELS } from "@/lib/constants/device-types";
 
 interface RmaFormProps {
   providers: { id: string; name: string }[];
   incidents: { id: string; incidentNumber: string }[];
-  defaultValues?: Partial<CreateRmaInput>;
-  onSubmit: (data: CreateRmaInput) => void;
+  clients: { id: string; name: string }[];
+  defaultValues?: Partial<RmaFormInput>;
+  onSubmit: (data: RmaFormInput) => void;
   isSubmitting?: boolean;
   mode: "create" | "edit";
 }
@@ -38,19 +41,26 @@ interface RmaFormProps {
 export function RmaForm({
   providers,
   incidents,
+  clients,
   defaultValues,
   onSubmit,
   isSubmitting,
   mode,
 }: RmaFormProps) {
-  const form = useForm<CreateRmaInput>({
-    resolver: zodResolver(createRmaSchema),
+  const form = useForm<RmaFormInput>({
+    resolver: zodResolver(rmaFormSchema),
     defaultValues: {
       providerId: defaultValues?.providerId ?? "",
       incidentId: defaultValues?.incidentId ?? "",
+      clientId: defaultValues?.clientId ?? "",
+      deviceType: defaultValues?.deviceType ?? "",
       deviceBrand: defaultValues?.deviceBrand ?? "",
       deviceModel: defaultValues?.deviceModel ?? "",
       deviceSerialNumber: defaultValues?.deviceSerialNumber ?? "",
+      clientLocal: defaultValues?.clientLocal ?? "",
+      address: defaultValues?.address ?? "",
+      postalCode: defaultValues?.postalCode ?? "",
+      phone: defaultValues?.phone ?? "",
       trackingNumberOutgoing: defaultValues?.trackingNumberOutgoing ?? "",
       trackingNumberReturn: defaultValues?.trackingNumberReturn ?? "",
       providerRmaNumber: defaultValues?.providerRmaNumber ?? "",
@@ -61,144 +71,284 @@ export function RmaForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <FormField
-          control={form.control}
-          name="providerId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Proveedor *</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar proveedor" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {providers.map((provider) => (
-                    <SelectItem key={provider.id} value={provider.id}>
-                      {provider.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {/* Sección 1 — Relaciones */}
+        <div>
+          <h3 className="text-sm font-medium text-muted-foreground mb-4">Relaciones</h3>
+          <div className="grid gap-6 sm:grid-cols-3">
+            <FormField
+              control={form.control}
+              name="providerId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Proveedor *</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar proveedor" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {providers.map((provider) => (
+                        <SelectItem key={provider.id} value={provider.id}>
+                          {provider.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        <FormField
-          control={form.control}
-          name="incidentId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Incidencia vinculada</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sin vincular" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {incidents.map((incident) => (
-                    <SelectItem key={incident.id} value={incident.id}>
-                      {incident.incidentNumber}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+            <FormField
+              control={form.control}
+              name="clientId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Cliente</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sin cliente" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {clients.map((client) => (
+                        <SelectItem key={client.id} value={client.id}>
+                          {client.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        <div className="grid gap-6 sm:grid-cols-3">
-          <FormField
-            control={form.control}
-            name="deviceBrand"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Marca del dispositivo</FormLabel>
-                <FormControl>
-                  <Input placeholder="Ej: Dell, HP, Lenovo" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="deviceModel"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Modelo del dispositivo</FormLabel>
-                <FormControl>
-                  <Input placeholder="Ej: Latitude 5520" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="deviceSerialNumber"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Número de serie</FormLabel>
-                <FormControl>
-                  <Input placeholder="Nº de serie del dispositivo" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="incidentId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Incidencia vinculada</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sin vincular" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {incidents.map((incident) => (
+                        <SelectItem key={incident.id} value={incident.id}>
+                          {incident.incidentNumber}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-2">
-          <FormField
-            control={form.control}
-            name="trackingNumberOutgoing"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Nº seguimiento envío</FormLabel>
-                <FormControl>
-                  <Input placeholder="Número de seguimiento de envío" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        <Separator />
 
-          <FormField
-            control={form.control}
-            name="trackingNumberReturn"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Nº seguimiento devolución</FormLabel>
-                <FormControl>
-                  <Input placeholder="Número de seguimiento de devolución" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        {/* Sección 2 — Ubicación cliente */}
+        <div>
+          <h3 className="text-sm font-medium text-muted-foreground mb-4">Ubicación del cliente</h3>
+          <div className="grid gap-6 sm:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="clientLocal"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Local / Establecimiento</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Nombre del local" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Teléfono</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Teléfono de contacto" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="address"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Dirección</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Dirección completa" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="postalCode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Código postal</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ej: 28001" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
         </div>
 
-        <FormField
-          control={form.control}
-          name="providerRmaNumber"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Nº RMA proveedor</FormLabel>
-              <FormControl>
-                <Input placeholder="Número de RMA del proveedor" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <Separator />
 
+        {/* Sección 3 — Dispositivo */}
+        <div>
+          <h3 className="text-sm font-medium text-muted-foreground mb-4">Dispositivo</h3>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <FormField
+              control={form.control}
+              name="deviceType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipo de dispositivo</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar tipo" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {Object.entries(DEVICE_TYPE_LABELS).map(
+                        ([value, label]) => (
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
+                        )
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="deviceBrand"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Marca</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ej: Dell, HP" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="deviceModel"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Modelo</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ej: Latitude 5520" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="deviceSerialNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nº de serie</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Nº de serie" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        {/* Sección 4 — Seguimiento (solo en modo edición) */}
+        {mode === "edit" && (
+          <>
+            <Separator />
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground mb-4">Seguimiento</h3>
+              <div className="grid gap-6 sm:grid-cols-3">
+                <FormField
+                  control={form.control}
+                  name="trackingNumberOutgoing"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nº seguimiento envío</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Tracking de envío" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="trackingNumberReturn"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nº seguimiento devolución</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Tracking de devolución" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="providerRmaNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nº RMA proveedor</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Nº RMA del proveedor" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+          </>
+        )}
+
+        <Separator />
+
+        {/* Sección 5 — Notas */}
         <FormField
           control={form.control}
           name="notes"

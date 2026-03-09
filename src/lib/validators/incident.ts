@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DEVICE_TYPES } from "@/lib/constants/device-types";
 
 export const createIncidentSchema = z.object({
   clientId: z.string().uuid("Cliente inválido"),
@@ -7,6 +8,7 @@ export const createIncidentSchema = z.object({
   category: z.enum(["hardware", "periferico", "red", "almacenamiento", "impresora", "monitor", "otro"]),
   priority: z.enum(["baja", "media", "alta", "critica"]),
   assignedUserId: z.string().uuid("Usuario inválido").optional().or(z.literal("")),
+  deviceType: z.enum(DEVICE_TYPES).optional().or(z.literal("")),
   deviceBrand: z.string().max(255).optional().or(z.literal("")),
   deviceModel: z.string().max(255).optional().or(z.literal("")),
   deviceSerialNumber: z.string().max(255).optional().or(z.literal("")),

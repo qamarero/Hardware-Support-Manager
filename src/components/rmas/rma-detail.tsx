@@ -13,12 +13,13 @@ import { EventLogTimeline } from "@/components/shared/event-log-timeline";
 import { AttachmentSection } from "@/components/shared/attachment-section";
 import { RmaTransitionButtons } from "@/components/rmas/state-transition-buttons";
 import { RmaForm } from "@/components/rmas/rma-form";
-import { updateRma, fetchProvidersForSelect } from "@/server/actions/rmas";
+import { updateRma, fetchProvidersForSelect, fetchClientsForRmaSelect } from "@/server/actions/rmas";
 import { fetchIncidentsForSelect } from "@/server/actions/incidents";
 import { formatDateTime } from "@/lib/utils/date-format";
+import { DEVICE_TYPE_LABELS, type DeviceType } from "@/lib/constants/device-types";
 import type { RmaStatus } from "@/lib/constants/rmas";
 import type { RmaRow } from "@/server/queries/rmas";
-import type { CreateRmaInput } from "@/lib/validators/rma";
+import type { RmaFormInput } from "@/lib/validators/rma";
 
 interface RmaDetailProps {
   rma: RmaRow;
@@ -41,8 +42,14 @@ export function RmaDetail({ rma: initialRma }: RmaDetailProps) {
     enabled: isEditing,
   });
 
+  const { data: clients = [] } = useQuery({
+    queryKey: ["clients", "select"],
+    queryFn: () => fetchClientsForRmaSelect(),
+    enabled: isEditing,
+  });
+
   const updateMutation = useMutation({
-    mutationFn: (data: CreateRmaInput) => updateRma(rma.id, data),
+    mutationFn: (data: RmaFormInput) => updateRma(rma.id, data),
     onSuccess: (result) => {
       if (result.success) {
         toast.success("RMA actualizado correctamente");
@@ -70,12 +77,19 @@ export function RmaDetail({ rma: initialRma }: RmaDetailProps) {
             <RmaForm
               providers={providers}
               incidents={incidents}
+              clients={clients}
               defaultValues={{
                 providerId: rma.providerId,
                 incidentId: rma.incidentId ?? "",
+                clientId: rma.clientId ?? "",
+                deviceType: (rma.deviceType as RmaFormInput["deviceType"]) ?? "",
                 deviceBrand: rma.deviceBrand ?? "",
                 deviceModel: rma.deviceModel ?? "",
                 deviceSerialNumber: rma.deviceSerialNumber ?? "",
+                clientLocal: rma.clientLocal ?? "",
+                address: rma.address ?? "",
+                postalCode: rma.postalCode ?? "",
+                phone: rma.phone ?? "",
                 trackingNumberOutgoing: rma.trackingNumberOutgoing ?? "",
                 trackingNumberReturn: rma.trackingNumberReturn ?? "",
                 providerRmaNumber: rma.providerRmaNumber ?? "",
@@ -90,6 +104,10 @@ export function RmaDetail({ rma: initialRma }: RmaDetailProps) {
       </div>
     );
   }
+
+  const deviceTypeLabel = rma.deviceType
+    ? DEVICE_TYPE_LABELS[rma.deviceType as DeviceType] ?? rma.deviceType
+    : "-";
 
   return (
     <div className="space-y-6">
@@ -143,6 +161,12 @@ export function RmaDetail({ rma: initialRma }: RmaDetailProps) {
               </div>
               <div>
                 <dt className="text-sm font-medium text-muted-foreground">
+                  Cliente
+                </dt>
+                <dd className="mt-1 text-sm">{rma.clientName ?? "-"}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-muted-foreground">
                   Nº RMA Proveedor
                 </dt>
                 <dd className="mt-1 text-sm">
@@ -186,51 +210,95 @@ export function RmaDetail({ rma: initialRma }: RmaDetailProps) {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Dispositivo y Envío</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <dl className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <dt className="text-sm font-medium text-muted-foreground">
-                  Marca
-                </dt>
-                <dd className="mt-1 text-sm">{rma.deviceBrand || "-"}</dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-muted-foreground">
-                  Modelo
-                </dt>
-                <dd className="mt-1 text-sm">{rma.deviceModel || "-"}</dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-muted-foreground">
-                  Número de serie
-                </dt>
-                <dd className="mt-1 text-sm">
-                  {rma.deviceSerialNumber || "-"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-muted-foreground">
-                  Tracking envío
-                </dt>
-                <dd className="mt-1 text-sm">
-                  {rma.trackingNumberOutgoing || "-"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-muted-foreground">
-                  Tracking devolución
-                </dt>
-                <dd className="mt-1 text-sm">
-                  {rma.trackingNumberReturn || "-"}
-                </dd>
-              </div>
-            </dl>
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Dispositivo y Envío</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <dl className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <dt className="text-sm font-medium text-muted-foreground">
+                    Tipo de dispositivo
+                  </dt>
+                  <dd className="mt-1 text-sm">{deviceTypeLabel}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-muted-foreground">
+                    Marca
+                  </dt>
+                  <dd className="mt-1 text-sm">{rma.deviceBrand || "-"}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-muted-foreground">
+                    Modelo
+                  </dt>
+                  <dd className="mt-1 text-sm">{rma.deviceModel || "-"}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-muted-foreground">
+                    Número de serie
+                  </dt>
+                  <dd className="mt-1 text-sm">
+                    {rma.deviceSerialNumber || "-"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-muted-foreground">
+                    Tracking envío
+                  </dt>
+                  <dd className="mt-1 text-sm">
+                    {rma.trackingNumberOutgoing || "-"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-muted-foreground">
+                    Tracking devolución
+                  </dt>
+                  <dd className="mt-1 text-sm">
+                    {rma.trackingNumberReturn || "-"}
+                  </dd>
+                </div>
+              </dl>
+            </CardContent>
+          </Card>
+
+          {(rma.clientLocal || rma.address || rma.postalCode || rma.phone) && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Ubicación del cliente</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <dl className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <dt className="text-sm font-medium text-muted-foreground">
+                      Local
+                    </dt>
+                    <dd className="mt-1 text-sm">{rma.clientLocal || "-"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm font-medium text-muted-foreground">
+                      Teléfono
+                    </dt>
+                    <dd className="mt-1 text-sm">{rma.phone || "-"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm font-medium text-muted-foreground">
+                      Dirección
+                    </dt>
+                    <dd className="mt-1 text-sm">{rma.address || "-"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm font-medium text-muted-foreground">
+                      Código postal
+                    </dt>
+                    <dd className="mt-1 text-sm">{rma.postalCode || "-"}</dd>
+                  </div>
+                </dl>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
 
       {/* Dates */}

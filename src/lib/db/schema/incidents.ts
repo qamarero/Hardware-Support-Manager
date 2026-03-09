@@ -26,6 +26,7 @@ export const incidents = hsmSchema.table("incidents", {
   status: incidentStatusEnum("status").notNull().default("nuevo"),
   title: varchar("title", { length: 500 }).notNull(),
   description: text("description"),
+  deviceType: varchar("device_type", { length: 100 }),
   deviceBrand: varchar("device_brand", { length: 255 }),
   deviceModel: varchar("device_model", { length: 255 }),
   deviceSerialNumber: varchar("device_serial_number", { length: 255 }),

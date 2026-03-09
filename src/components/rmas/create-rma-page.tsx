@@ -5,9 +5,9 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { RmaForm } from "@/components/rmas/rma-form";
-import { createRma, fetchProvidersForSelect } from "@/server/actions/rmas";
+import { createRma, fetchProvidersForSelect, fetchClientsForRmaSelect } from "@/server/actions/rmas";
 import { fetchIncidentsForSelect } from "@/server/actions/incidents";
-import type { CreateRmaInput } from "@/lib/validators/rma";
+import type { RmaFormInput } from "@/lib/validators/rma";
 
 export function CreateRmaPage() {
   const router = useRouter();
@@ -22,8 +22,13 @@ export function CreateRmaPage() {
     queryFn: () => fetchIncidentsForSelect(),
   });
 
+  const { data: clients = [] } = useQuery({
+    queryKey: ["clients", "select"],
+    queryFn: () => fetchClientsForRmaSelect(),
+  });
+
   const createMutation = useMutation({
-    mutationFn: (data: CreateRmaInput) => createRma(data),
+    mutationFn: (data: RmaFormInput) => createRma(data),
     onSuccess: (result) => {
       if (result.success) {
         toast.success("RMA creado correctamente");
@@ -44,6 +49,7 @@ export function CreateRmaPage() {
         <RmaForm
           providers={providers}
           incidents={incidents}
+          clients={clients}
           onSubmit={(data) => createMutation.mutate(data)}
           isSubmitting={createMutation.isPending}
           mode="create"

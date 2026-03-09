@@ -42,6 +42,10 @@ export const rmasRelations = relations(rmas, ({ one }) => ({
     fields: [rmas.providerId],
     references: [providers.id],
   }),
+  client: one(clients, {
+    fields: [rmas.clientId],
+    references: [clients.id],
+  }),
 }));
 
 export const eventLogsRelations = relations(eventLogs, ({ one }) => ({

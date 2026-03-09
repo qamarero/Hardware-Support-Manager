@@ -30,6 +30,7 @@ import {
 } from "@/lib/constants/incidents";
 import type { IncidentRow } from "@/server/queries/incidents";
 import { DEFAULT_SLA_THRESHOLDS } from "@/lib/constants/sla";
+import { DEVICE_TYPE_LABELS, type DeviceType } from "@/lib/constants/device-types";
 import type { CreateIncidentInput } from "@/lib/validators/incident";
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -96,6 +97,7 @@ export function IncidentDetail({ incident: initialIncident }: IncidentDetailProp
                 category: incident.category as IncidentCategory,
                 priority: incident.priority as IncidentPriority,
                 assignedUserId: incident.assignedUserId ?? "",
+                deviceType: (incident.deviceType as CreateIncidentInput["deviceType"]) ?? "",
                 deviceBrand: incident.deviceBrand ?? "",
                 deviceModel: incident.deviceModel ?? "",
                 deviceSerialNumber: incident.deviceSerialNumber ?? "",
@@ -206,6 +208,16 @@ export function IncidentDetail({ incident: initialIncident }: IncidentDetailProp
           </CardHeader>
           <CardContent>
             <dl className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <dt className="text-sm font-medium text-muted-foreground">
+                  Tipo de dispositivo
+                </dt>
+                <dd className="mt-1 text-sm">
+                  {incident.deviceType
+                    ? DEVICE_TYPE_LABELS[incident.deviceType as DeviceType] ?? incident.deviceType
+                    : "-"}
+                </dd>
+              </div>
               <div>
                 <dt className="text-sm font-medium text-muted-foreground">
                   Marca

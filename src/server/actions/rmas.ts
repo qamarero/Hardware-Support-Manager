@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { rmas, providers, eventLogs } from "@/lib/db/schema";
+import { rmas, providers, clients, eventLogs } from "@/lib/db/schema";
 import { eq, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getRequiredSession } from "@/lib/auth/get-session";
@@ -37,12 +37,15 @@ export async function createRma(
         rmaNumber,
         providerId: parsed.data.providerId,
         incidentId: parsed.data.incidentId || null,
+        clientId: parsed.data.clientId || null,
+        deviceType: parsed.data.deviceType || null,
         deviceBrand: parsed.data.deviceBrand || null,
         deviceModel: parsed.data.deviceModel || null,
         deviceSerialNumber: parsed.data.deviceSerialNumber || null,
-        trackingNumberOutgoing: parsed.data.trackingNumberOutgoing || null,
-        trackingNumberReturn: parsed.data.trackingNumberReturn || null,
-        providerRmaNumber: parsed.data.providerRmaNumber || null,
+        clientLocal: parsed.data.clientLocal || null,
+        address: parsed.data.address || null,
+        postalCode: parsed.data.postalCode || null,
+        phone: parsed.data.phone || null,
         notes: parsed.data.notes || null,
       })
       .returning({ id: rmas.id });
@@ -77,12 +80,24 @@ export async function updateRma(
   if (parsed.data.providerId) values.providerId = parsed.data.providerId;
   if (parsed.data.incidentId !== undefined)
     values.incidentId = parsed.data.incidentId || null;
+  if (parsed.data.clientId !== undefined)
+    values.clientId = parsed.data.clientId || null;
+  if (parsed.data.deviceType !== undefined)
+    values.deviceType = parsed.data.deviceType || null;
   if (parsed.data.deviceBrand !== undefined)
     values.deviceBrand = parsed.data.deviceBrand || null;
   if (parsed.data.deviceModel !== undefined)
     values.deviceModel = parsed.data.deviceModel || null;
   if (parsed.data.deviceSerialNumber !== undefined)
     values.deviceSerialNumber = parsed.data.deviceSerialNumber || null;
+  if (parsed.data.clientLocal !== undefined)
+    values.clientLocal = parsed.data.clientLocal || null;
+  if (parsed.data.address !== undefined)
+    values.address = parsed.data.address || null;
+  if (parsed.data.postalCode !== undefined)
+    values.postalCode = parsed.data.postalCode || null;
+  if (parsed.data.phone !== undefined)
+    values.phone = parsed.data.phone || null;
   if (parsed.data.trackingNumberOutgoing !== undefined)
     values.trackingNumberOutgoing = parsed.data.trackingNumberOutgoing || null;
   if (parsed.data.trackingNumberReturn !== undefined)
@@ -191,4 +206,15 @@ export async function fetchProvidersForSelect(): Promise<
     .from(providers)
     .where(isNull(providers.deletedAt))
     .orderBy(providers.name);
+}
+
+export async function fetchClientsForRmaSelect(): Promise<
+  { id: string; name: string }[]
+> {
+  await getRequiredSession();
+  return db
+    .select({ id: clients.id, name: clients.name })
+    .from(clients)
+    .where(isNull(clients.deletedAt))
+    .orderBy(clients.name);
 }
