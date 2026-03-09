@@ -21,7 +21,8 @@ export function RmaList({ initialData }: RmaListProps) {
     queryKey: ["rmas", page, pageSize, search, sortBy, sortOrder],
     queryFn: () =>
       fetchRmas({ page, pageSize, search, sortBy, sortOrder: sortOrder as SortOrder }),
-    placeholderData: initialData,
+    initialData,
+    staleTime: 0,
   });
 
   return (

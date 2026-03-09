@@ -37,7 +37,8 @@ export function ClientList({ initialData }: ClientListProps) {
         sortBy,
         sortOrder: sortOrder as SortOrder,
       }),
-    placeholderData: initialData,
+    initialData,
+    staleTime: 0,
   });
 
   const deleteMutation = useMutation({

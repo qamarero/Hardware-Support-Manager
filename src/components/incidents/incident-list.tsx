@@ -21,7 +21,8 @@ export function IncidentList({ initialData }: IncidentListProps) {
     queryKey: ["incidents", page, pageSize, search, sortBy, sortOrder],
     queryFn: () =>
       fetchIncidents({ page, pageSize, search, sortBy, sortOrder: sortOrder as SortOrder }),
-    placeholderData: initialData,
+    initialData,
+    staleTime: 0,
   });
 
   return (
