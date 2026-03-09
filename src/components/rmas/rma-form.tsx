@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/shared/searchable-select";
 import {
   rmaFormSchema,
   type RmaFormInput,
@@ -81,20 +82,16 @@ export function RmaForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Proveedor *</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar proveedor" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {providers.map((provider) => (
-                        <SelectItem key={provider.id} value={provider.id}>
-                          {provider.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <SearchableSelect
+                      options={providers.map((p) => ({ value: p.id, label: p.name }))}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="Seleccionar proveedor"
+                      searchPlaceholder="Buscar proveedor..."
+                      emptyMessage="No se encontró proveedor."
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -106,20 +103,16 @@ export function RmaForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Cliente</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sin cliente" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {clients.map((client) => (
-                        <SelectItem key={client.id} value={client.id}>
-                          {client.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <SearchableSelect
+                      options={clients.map((c) => ({ value: c.id, label: c.name }))}
+                      value={field.value ?? ""}
+                      onValueChange={field.onChange}
+                      placeholder="Sin cliente"
+                      searchPlaceholder="Buscar cliente..."
+                      emptyMessage="No se encontró cliente."
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -131,20 +124,16 @@ export function RmaForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Incidencia vinculada</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sin vincular" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {incidents.map((incident) => (
-                        <SelectItem key={incident.id} value={incident.id}>
-                          {incident.incidentNumber}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <SearchableSelect
+                      options={incidents.map((i) => ({ value: i.id, label: i.incidentNumber }))}
+                      value={field.value ?? ""}
+                      onValueChange={field.onChange}
+                      placeholder="Sin vincular"
+                      searchPlaceholder="Buscar incidencia..."
+                      emptyMessage="No se encontró incidencia."
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

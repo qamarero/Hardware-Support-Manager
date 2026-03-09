@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/shared/searchable-select";
 import {
   createIncidentSchema,
   type CreateIncidentInput,
@@ -73,20 +74,16 @@ export function IncidentForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Cliente *</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar cliente" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {clients.map((client) => (
-                    <SelectItem key={client.id} value={client.id}>
-                      {client.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FormControl>
+                <SearchableSelect
+                  options={clients.map((c) => ({ value: c.id, label: c.name }))}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  placeholder="Seleccionar cliente"
+                  searchPlaceholder="Buscar cliente..."
+                  emptyMessage="No se encontró cliente."
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
