@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/shared/searchable-select";
+import { QuickAddClientDialog } from "@/components/shared/quick-add-client-dialog";
 import {
   createIncidentSchema,
   type CreateIncidentInput,
@@ -42,13 +44,14 @@ interface IncidentFormProps {
 }
 
 export function IncidentForm({
-  clients,
+  clients: initialClients,
   users,
   defaultValues,
   onSubmit,
   isSubmitting,
   mode,
 }: IncidentFormProps) {
+  const [clients, setClients] = useState(initialClients);
   const form = useForm<CreateIncidentInput>({
     resolver: zodResolver(createIncidentSchema),
     defaultValues: {
@@ -82,6 +85,14 @@ export function IncidentForm({
                   placeholder="Seleccionar cliente"
                   searchPlaceholder="Buscar cliente..."
                   emptyMessage="No se encontró cliente."
+                  emptyAction={
+                    <QuickAddClientDialog
+                      onClientCreated={(newClient) => {
+                        setClients((prev) => [...prev, newClient].sort((a, b) => a.name.localeCompare(b.name)));
+                        field.onChange(newClient.id);
+                      }}
+                    />
+                  }
                 />
               </FormControl>
               <FormMessage />

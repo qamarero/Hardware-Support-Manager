@@ -2,10 +2,10 @@
 
 import { db } from "@/lib/db";
 import { clients } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getRequiredSession } from "@/lib/auth/get-session";
-import { createClientSchema, updateClientSchema } from "@/lib/validators/client";
+import { createClientSchema, updateClientSchema, quickCreateClientSchema } from "@/lib/validators/client";
 import { getClients } from "@/server/queries/clients";
 import type { ActionResult, PaginationParams, PaginatedResult } from "@/types";
 import type { ClientRow } from "@/server/queries/clients";
@@ -72,6 +72,39 @@ export async function deleteClient(
 
   revalidatePath("/clients");
   return { success: true, data: undefined };
+}
+
+export async function quickCreateClient(
+  input: unknown
+): Promise<ActionResult<{ id: string; name: string }>> {
+  await getRequiredSession();
+
+  const parsed = quickCreateClientSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: "Datos inválidos" };
+  }
+
+  // Check for duplicate clientCode
+  const [existing] = await db
+    .select({ id: clients.id })
+    .from(clients)
+    .where(and(eq(clients.clientCode, parsed.data.clientCode), isNull(clients.deletedAt)))
+    .limit(1);
+
+  if (existing) {
+    return { success: false, error: `Ya existe un cliente con el ID "${parsed.data.clientCode}"` };
+  }
+
+  const [client] = await db
+    .insert(clients)
+    .values({
+      clientCode: parsed.data.clientCode,
+      name: parsed.data.name,
+    })
+    .returning({ id: clients.id, name: clients.name });
+
+  revalidatePath("/clients");
+  return { success: true, data: { id: client.id, name: client.name } };
 }
 
 export async function fetchClients(

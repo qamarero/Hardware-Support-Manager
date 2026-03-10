@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -23,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/shared/searchable-select";
+import { QuickAddClientDialog } from "@/components/shared/quick-add-client-dialog";
 import {
   rmaFormSchema,
   type RmaFormInput,
@@ -42,12 +44,13 @@ interface RmaFormProps {
 export function RmaForm({
   providers,
   incidents,
-  clients,
+  clients: initialClients,
   defaultValues,
   onSubmit,
   isSubmitting,
   mode,
 }: RmaFormProps) {
+  const [clients, setClients] = useState(initialClients);
   const form = useForm<RmaFormInput>({
     resolver: zodResolver(rmaFormSchema),
     defaultValues: {
@@ -111,6 +114,14 @@ export function RmaForm({
                       placeholder="Sin cliente"
                       searchPlaceholder="Buscar cliente..."
                       emptyMessage="No se encontró cliente."
+                      emptyAction={
+                        <QuickAddClientDialog
+                          onClientCreated={(newClient) => {
+                            setClients((prev) => [...prev, newClient].sort((a, b) => a.name.localeCompare(b.name)));
+                            field.onChange(newClient.id);
+                          }}
+                        />
+                      }
                     />
                   </FormControl>
                   <FormMessage />

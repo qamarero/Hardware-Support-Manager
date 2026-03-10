@@ -25,6 +25,7 @@ interface SearchableSelectProps {
   placeholder?: string;
   searchPlaceholder?: string;
   emptyMessage?: string;
+  emptyAction?: React.ReactNode;
   disabled?: boolean;
 }
 
@@ -35,6 +36,7 @@ export function SearchableSelect({
   placeholder = "Seleccionar...",
   searchPlaceholder = "Buscar...",
   emptyMessage = "Sin resultados.",
+  emptyAction,
   disabled,
 }: SearchableSelectProps) {
   const [open, setOpen] = useState(false);
@@ -64,7 +66,10 @@ export function SearchableSelect({
         <Command>
           <CommandInput placeholder={searchPlaceholder} />
           <CommandList>
-            <CommandEmpty>{emptyMessage}</CommandEmpty>
+            <CommandEmpty>
+              <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+              {emptyAction && <div className="mt-2">{emptyAction}</div>}
+            </CommandEmpty>
             <CommandGroup>
               {options.map((option) => (
                 <CommandItem

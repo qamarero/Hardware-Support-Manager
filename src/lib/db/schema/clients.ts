@@ -3,6 +3,7 @@ import { hsmSchema } from "./hsm-schema";
 
 export const clients = hsmSchema.table("clients", {
   id: uuid("id").defaultRandom().primaryKey(),
+  clientCode: varchar("client_code", { length: 50 }).unique(),
   name: varchar("name", { length: 255 }).notNull(),
   email: varchar("email", { length: 255 }),
   phone: varchar("phone", { length: 50 }),
