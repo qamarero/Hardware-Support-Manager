@@ -168,7 +168,7 @@ export function IncidentKanban({ data }: IncidentKanbanProps) {
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="flex gap-3 overflow-x-auto pb-4">
+      <div className="flex gap-2 pb-4">
         {KANBAN_STATUSES.map((status) => (
           <KanbanColumn
             key={status}

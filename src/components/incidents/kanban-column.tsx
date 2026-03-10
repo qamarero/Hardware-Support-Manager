@@ -18,7 +18,7 @@ export function KanbanColumn({ id, label, color, count, children }: KanbanColumn
     <div
       ref={setNodeRef}
       className={cn(
-        "flex w-72 shrink-0 flex-col rounded-lg border bg-muted/30 transition-colors",
+        "flex min-w-0 flex-1 flex-col rounded-lg border bg-muted/30 transition-colors",
         isOver && "ring-2 ring-offset-2 ring-offset-background"
       )}
       style={isOver ? { borderColor: color, "--tw-ring-color": color } as React.CSSProperties : undefined}

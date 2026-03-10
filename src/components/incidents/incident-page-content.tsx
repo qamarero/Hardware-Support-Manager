@@ -29,7 +29,7 @@ export function IncidentPageContent({ initialData }: IncidentPageContentProps) {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <ViewToggle view={view} onViewChange={setView} />
+        <ViewToggle view={view} onViewChange={setView} altLabel="Kanban" />
       </div>
       {view === "table" ? (
         <IncidentList initialData={initialData} />

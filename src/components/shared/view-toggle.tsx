@@ -6,9 +6,10 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 interface ViewToggleProps {
   view: "table" | "canvas";
   onViewChange: (view: "table" | "canvas") => void;
+  altLabel?: string;
 }
 
-export function ViewToggle({ view, onViewChange }: ViewToggleProps) {
+export function ViewToggle({ view, onViewChange, altLabel = "Canvas" }: ViewToggleProps) {
   return (
     <ToggleGroup
       type="single"
@@ -28,11 +29,11 @@ export function ViewToggle({ view, onViewChange }: ViewToggleProps) {
       </ToggleGroupItem>
       <ToggleGroupItem
         value="canvas"
-        aria-label="Vista canvas"
+        aria-label={`Vista ${altLabel.toLowerCase()}`}
         className="gap-1.5 rounded-md px-3 data-[state=on]:bg-background data-[state=on]:shadow-sm"
       >
         <LayoutGrid className="h-4 w-4" />
-        <span className="hidden sm:inline">Canvas</span>
+        <span className="hidden sm:inline">{altLabel}</span>
       </ToggleGroupItem>
     </ToggleGroup>
   );
