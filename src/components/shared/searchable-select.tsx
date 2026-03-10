@@ -1,17 +1,10 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Check, ChevronsUpDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
+import { Input } from "@/components/ui/input";
 import {
   Popover,
   PopoverContent,
@@ -49,21 +42,11 @@ export function SearchableSelect({
 
   const selectedLabel = options.find((o) => o.value === value)?.label;
 
-  // Filtrado manual: sin acentos, sin case, substring
   const filtered = useMemo(() => {
     if (!search) return options;
     const q = normalize(search);
     return options.filter((o) => normalize(o.label).includes(q));
   }, [options, search]);
-
-  // Filtro custom para cmdk: devuelve 1 si pasa nuestro filtro, 0 si no
-  const commandFilter = useCallback(
-    (itemValue: string, searchValue: string) => {
-      if (!searchValue) return 1;
-      return normalize(itemValue).includes(normalize(searchValue)) ? 1 : 0;
-    },
-    []
-  );
 
   return (
     <Popover open={open} onOpenChange={(v) => { setOpen(v); if (!v) setSearch(""); }}>
@@ -85,36 +68,51 @@ export function SearchableSelect({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <Command filter={commandFilter}>
-          <CommandInput
+        {/* Buscador propio — sin cmdk */}
+        <div className="flex items-center gap-2 border-b px-3 h-9">
+          <Search className="h-4 w-4 shrink-0 opacity-50" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder={searchPlaceholder}
-            onValueChange={setSearch}
+            className="h-8 border-0 p-0 shadow-none focus-visible:ring-0 text-sm"
           />
-          <CommandList>
-            <CommandEmpty>{emptyMessage}</CommandEmpty>
-            <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  value={option.label}
-                  onSelect={() => {
-                    onValueChange(option.value === value ? "" : option.value);
-                    setOpen(false);
-                    setSearch("");
-                  }}
-                >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      value === option.value ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  {option.label}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
+        </div>
+
+        {/* Lista de opciones */}
+        <div className="max-h-[300px] overflow-y-auto p-1">
+          {filtered.length > 0 ? (
+            filtered.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  onValueChange(option.value === value ? "" : option.value);
+                  setOpen(false);
+                  setSearch("");
+                }}
+                className={cn(
+                  "relative flex w-full cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none hover:bg-accent hover:text-accent-foreground",
+                  value === option.value && "bg-accent"
+                )}
+              >
+                <Check
+                  className={cn(
+                    "h-4 w-4 shrink-0",
+                    value === option.value ? "opacity-100" : "opacity-0"
+                  )}
+                />
+                {option.label}
+              </button>
+            ))
+          ) : (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              {emptyMessage}
+            </p>
+          )}
+        </div>
+
+        {/* Acción cuando no hay resultados (ej: añadir cliente) */}
         {emptyAction && filtered.length === 0 && search.length > 0 && (
           <div className="border-t p-2">{emptyAction}</div>
         )}
