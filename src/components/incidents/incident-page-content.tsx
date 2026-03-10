@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTableSearchParams } from "@/hooks/use-table-search-params";
 import { ViewToggle } from "@/components/shared/view-toggle";
 import { IncidentList } from "./incident-list";
-import { IncidentCanvas } from "./incident-canvas";
+import { IncidentKanban } from "./incident-kanban";
 import { fetchIncidents } from "@/server/actions/incidents";
 import type { PaginatedResult, SortOrder } from "@/types";
 import type { IncidentRow } from "@/server/queries/incidents";
@@ -18,8 +18,8 @@ export function IncidentPageContent({ initialData }: IncidentPageContentProps) {
   const [view, setView] = useState<"table" | "canvas">("table");
   const { search } = useTableSearchParams("createdAt");
 
-  // For canvas, fetch all (no pagination)
-  const { data: canvasData } = useQuery({
+  // For kanban, fetch all (no pagination)
+  const { data: kanbanData } = useQuery({
     queryKey: ["incidents-canvas", search],
     queryFn: () =>
       fetchIncidents({ page: 1, pageSize: 200, search, sortBy: "stateChangedAt", sortOrder: "asc" as SortOrder }),
@@ -34,7 +34,7 @@ export function IncidentPageContent({ initialData }: IncidentPageContentProps) {
       {view === "table" ? (
         <IncidentList initialData={initialData} />
       ) : (
-        <IncidentCanvas data={canvasData?.data ?? initialData.data} />
+        <IncidentKanban data={kanbanData?.data ?? initialData.data} />
       )}
     </div>
   );
