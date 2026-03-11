@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { IncidentForm } from "@/components/incidents/incident-form";
@@ -10,6 +10,7 @@ import type { CreateIncidentInput } from "@/lib/validators/incident";
 
 export function CreateIncidentPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const { data: clients = [] } = useQuery({
     queryKey: ["clients", "select"],
@@ -26,8 +27,8 @@ export function CreateIncidentPage() {
     onSuccess: (result) => {
       if (result.success) {
         toast.success("Incidencia creada correctamente");
+        queryClient.invalidateQueries({ queryKey: ["incidents"] });
         router.push("/incidents");
-        router.refresh();
       } else {
         toast.error(result.error);
       }

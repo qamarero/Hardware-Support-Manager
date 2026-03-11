@@ -44,10 +44,9 @@ interface IncidentDetailProps {
   incident: IncidentRow;
 }
 
-export function IncidentDetail({ incident: initialIncident }: IncidentDetailProps) {
+export function IncidentDetail({ incident }: IncidentDetailProps) {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
-  const [incident] = useState(initialIncident);
 
   const { data: clients = [] } = useQuery({
     queryKey: ["clients", "select"],

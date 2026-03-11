@@ -17,10 +17,9 @@ interface ClientDetailProps {
   client: ClientRow;
 }
 
-export function ClientDetail({ client: initialClient }: ClientDetailProps) {
+export function ClientDetail({ client }: ClientDetailProps) {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
-  const [client] = useState(initialClient);
 
   const updateMutation = useMutation({
     mutationFn: (data: CreateClientInput) => updateClient(client.id, data),

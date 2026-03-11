@@ -3,24 +3,22 @@
 import { db } from "@/lib/db";
 import { appSettings } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { getRequiredSession } from "@/lib/auth/get-session";
+import { requireRole } from "@/lib/auth/get-session";
 import type { ActionResult } from "@/types";
 
 export async function updateSetting(key: string, value: unknown): Promise<ActionResult<void>> {
-  try {
-    const existing = await db
-      .select({ id: appSettings.id })
-      .from(appSettings)
-      .where(eq(appSettings.key, key))
-      .limit(1);
+  await getRequiredSession();
+  await requireRole("admin");
 
-    if (existing.length > 0) {
-      await db
-        .update(appSettings)
-        .set({ value })
-        .where(eq(appSettings.key, key));
-    } else {
-      await db.insert(appSettings).values({ key, value });
-    }
+  try {
+    await db
+      .insert(appSettings)
+      .values({ key, value })
+      .onConflictDoUpdate({
+        target: appSettings.key,
+        set: { value },
+      });
 
     return { success: true, data: undefined };
   } catch {

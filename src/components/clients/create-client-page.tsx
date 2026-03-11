@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { ClientForm } from "@/components/clients/client-form";
@@ -10,14 +10,15 @@ import type { CreateClientInput } from "@/lib/validators/client";
 
 export function CreateClientPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const createMutation = useMutation({
     mutationFn: (data: CreateClientInput) => createClient(data),
     onSuccess: (result) => {
       if (result.success) {
         toast.success("Cliente creado correctamente");
+        queryClient.invalidateQueries({ queryKey: ["clients"] });
         router.push("/clients");
-        router.refresh();
       } else {
         toast.error(result.error);
       }

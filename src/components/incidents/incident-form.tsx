@@ -139,7 +139,7 @@ export function IncidentForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Categoría *</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar categoría" />
@@ -166,7 +166,7 @@ export function IncidentForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Prioridad</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar prioridad" />
@@ -194,7 +194,7 @@ export function IncidentForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Asignado a</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Sin asignar" />
@@ -220,7 +220,7 @@ export function IncidentForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Tipo de dispositivo</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar tipo" />

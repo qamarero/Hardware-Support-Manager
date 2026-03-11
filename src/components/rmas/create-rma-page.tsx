@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { RmaForm } from "@/components/rmas/rma-form";
@@ -11,6 +11,7 @@ import type { RmaFormInput } from "@/lib/validators/rma";
 
 export function CreateRmaPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const { data: providers = [] } = useQuery({
     queryKey: ["providers", "select"],
@@ -32,8 +33,8 @@ export function CreateRmaPage() {
     onSuccess: (result) => {
       if (result.success) {
         toast.success("RMA creado correctamente");
+        queryClient.invalidateQueries({ queryKey: ["rmas"] });
         router.push("/rmas");
-        router.refresh();
       } else {
         toast.error(result.error);
       }

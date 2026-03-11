@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { createProvider } from "@/server/actions/providers";
 import { ProviderForm } from "@/components/providers/provider-form";
@@ -10,12 +10,14 @@ import type { CreateProviderInput } from "@/lib/validators/provider";
 
 export function CreateProviderPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const createMutation = useMutation({
     mutationFn: (data: CreateProviderInput) => createProvider(data),
     onSuccess: (result) => {
       if (result.success) {
         toast.success("Proveedor creado correctamente");
+        queryClient.invalidateQueries({ queryKey: ["providers"] });
         router.push("/providers");
       } else {
         toast.error(result.error);

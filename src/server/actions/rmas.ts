@@ -149,23 +149,24 @@ export async function transitionRma(
 
   const { rmaId, toStatus, comment } = parsed.data;
 
-  const [current] = await db
-    .select({ status: rmas.status })
-    .from(rmas)
-    .where(eq(rmas.id, rmaId))
-    .limit(1);
+  const result = await db.transaction(async (tx) => {
+    const [current] = await tx
+      .select({ status: rmas.status })
+      .from(rmas)
+      .where(eq(rmas.id, rmaId))
+      .for("update")
+      .limit(1);
 
-  if (!current) {
-    return { success: false, error: "RMA no encontrado" };
-  }
+    if (!current) {
+      return { success: false as const, error: "RMA no encontrado" };
+    }
 
-  const fromStatus = current.status as RmaStatus;
+    const fromStatus = current.status as RmaStatus;
 
-  if (!isValidRmaTransition(fromStatus, toStatus as RmaStatus, userRole)) {
-    return { success: false, error: "Transición de estado no permitida" };
-  }
+    if (!isValidRmaTransition(fromStatus, toStatus as RmaStatus, userRole)) {
+      return { success: false as const, error: "Transición de estado no permitida" };
+    }
 
-  await db.transaction(async (tx) => {
     await tx
       .update(rmas)
       .set({
@@ -183,7 +184,13 @@ export async function transitionRma(
       userId: session.user.id,
       details: comment ? { comment } : undefined,
     });
+
+    return { success: true as const };
   });
+
+  if (!result.success) {
+    return { success: false, error: result.error };
+  }
 
   revalidatePath("/rmas");
   revalidatePath(`/rmas/${rmaId}`);

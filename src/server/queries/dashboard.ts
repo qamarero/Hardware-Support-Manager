@@ -150,7 +150,7 @@ export async function getSlaMetrics(): Promise<SlaMetrics> {
         and(
           eq(eventLogs.entityType, "incident"),
           eq(eventLogs.action, "transition"),
-          sql`${eventLogs.details}->>'fromStatus' = 'resuelto'`
+          eq(eventLogs.fromState, "resuelto")
         )
       );
     const totalResolved = await db

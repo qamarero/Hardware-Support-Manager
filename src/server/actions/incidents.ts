@@ -134,34 +134,35 @@ export async function transitionIncident(
 
   const { incidentId, toStatus, comment } = parsed.data;
 
-  const [current] = await db
-    .select({ status: incidents.status })
-    .from(incidents)
-    .where(eq(incidents.id, incidentId))
-    .limit(1);
+  const result = await db.transaction(async (tx) => {
+    const [current] = await tx
+      .select({ status: incidents.status })
+      .from(incidents)
+      .where(eq(incidents.id, incidentId))
+      .for("update")
+      .limit(1);
 
-  if (!current) {
-    return { success: false, error: "Incidencia no encontrada" };
-  }
+    if (!current) {
+      return { success: false as const, error: "Incidencia no encontrada" };
+    }
 
-  const fromStatus = current.status as IncidentStatus;
+    const fromStatus = current.status as IncidentStatus;
 
-  if (!isValidTransition(fromStatus, toStatus as IncidentStatus, userRole)) {
-    return { success: false, error: "Transición de estado no permitida" };
-  }
+    if (!isValidTransition(fromStatus, toStatus as IncidentStatus, userRole)) {
+      return { success: false as const, error: "Transición de estado no permitida" };
+    }
 
-  const updateValues: Record<string, unknown> = {
-    status: toStatus,
-    stateChangedAt: new Date(),
-  };
+    const updateValues: Record<string, unknown> = {
+      status: toStatus,
+      stateChangedAt: new Date(),
+    };
 
-  if (toStatus === "resuelto") {
-    updateValues.resolvedAt = new Date();
-  } else if (fromStatus === "resuelto" && toStatus !== "cerrado") {
-    updateValues.resolvedAt = null;
-  }
+    if (toStatus === "resuelto") {
+      updateValues.resolvedAt = new Date();
+    } else if (fromStatus === "resuelto" && toStatus !== "cerrado") {
+      updateValues.resolvedAt = null;
+    }
 
-  await db.transaction(async (tx) => {
     await tx
       .update(incidents)
       .set(updateValues)
@@ -176,7 +177,13 @@ export async function transitionIncident(
       userId: session.user.id,
       details: comment ? { comment } : undefined,
     });
+
+    return { success: true as const };
   });
+
+  if (!result.success) {
+    return { success: false, error: result.error };
+  }
 
   revalidatePath("/incidents");
   revalidatePath(`/incidents/${incidentId}`);

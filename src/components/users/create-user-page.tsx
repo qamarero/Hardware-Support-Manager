@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UserForm } from "@/components/users/user-form";
@@ -10,12 +10,14 @@ import type { CreateUserInput } from "@/lib/validators/user";
 
 export function CreateUserPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const mutation = useMutation({
     mutationFn: (data: CreateUserInput) => createUser(data),
     onSuccess: (result) => {
       if (result.success) {
         toast.success("Usuario creado correctamente");
+        queryClient.invalidateQueries({ queryKey: ["users"] });
         router.push("/users");
       } else {
         toast.error(result.error);

@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import { useQueryStates, parseAsInteger, parseAsString } from "nuqs";
 
 export function useTableSearchParams(defaultSortBy: string = "createdAt") {
@@ -14,21 +15,25 @@ export function useTableSearchParams(defaultSortBy: string = "createdAt") {
     { shallow: false }
   );
 
-  function setSearch(value: string) {
-    setParams({ search: value, page: 1 });
-  }
+  const setSearch = useCallback(
+    (value: string) => setParams({ search: value, page: 1 }),
+    [setParams]
+  );
 
-  function setSorting(sortBy: string, sortOrder: "asc" | "desc") {
-    setParams({ sortBy, sortOrder, page: 1 });
-  }
+  const setSorting = useCallback(
+    (sortBy: string, sortOrder: "asc" | "desc") => setParams({ sortBy, sortOrder, page: 1 }),
+    [setParams]
+  );
 
-  function setPage(page: number) {
-    setParams({ page });
-  }
+  const setPage = useCallback(
+    (page: number) => setParams({ page }),
+    [setParams]
+  );
 
-  function setPageSize(pageSize: number) {
-    setParams({ pageSize, page: 1 });
-  }
+  const setPageSize = useCallback(
+    (pageSize: number) => setParams({ pageSize, page: 1 }),
+    [setParams]
+  );
 
   return {
     ...params,

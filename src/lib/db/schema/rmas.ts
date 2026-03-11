@@ -13,9 +13,9 @@ export const rmaStatusEnum = hsmSchema.enum("rma_status", [
 export const rmas = hsmSchema.table("rmas", {
   id: uuid("id").defaultRandom().primaryKey(),
   rmaNumber: varchar("rma_number", { length: 20 }).notNull().unique(),
-  incidentId: uuid("incident_id").references(() => incidents.id),
-  providerId: uuid("provider_id").notNull().references(() => providers.id),
-  clientId: uuid("client_id").references(() => clients.id),
+  incidentId: uuid("incident_id").references(() => incidents.id, { onDelete: "restrict" }),
+  providerId: uuid("provider_id").notNull().references(() => providers.id, { onDelete: "restrict" }),
+  clientId: uuid("client_id").references(() => clients.id, { onDelete: "set null" }),
   status: rmaStatusEnum("status").notNull().default("borrador"),
   deviceType: varchar("device_type", { length: 100 }),
   deviceBrand: varchar("device_brand", { length: 255 }),

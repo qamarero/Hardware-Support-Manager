@@ -25,10 +25,9 @@ interface RmaDetailProps {
   rma: RmaRow;
 }
 
-export function RmaDetail({ rma: initialRma }: RmaDetailProps) {
+export function RmaDetail({ rma }: RmaDetailProps) {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
-  const [rma] = useState(initialRma);
 
   const { data: providers = [] } = useQuery({
     queryKey: ["providers", "select"],

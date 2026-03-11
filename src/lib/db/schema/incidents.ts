@@ -19,8 +19,8 @@ export const incidentCategoryEnum = hsmSchema.enum("incident_category", [
 export const incidents = hsmSchema.table("incidents", {
   id: uuid("id").defaultRandom().primaryKey(),
   incidentNumber: varchar("incident_number", { length: 20 }).notNull().unique(),
-  clientId: uuid("client_id").notNull().references(() => clients.id),
-  assignedUserId: uuid("assigned_user_id").references(() => users.id),
+  clientId: uuid("client_id").notNull().references(() => clients.id, { onDelete: "restrict" }),
+  assignedUserId: uuid("assigned_user_id").references(() => users.id, { onDelete: "set null" }),
   category: incidentCategoryEnum("category").notNull(),
   priority: incidentPriorityEnum("priority").notNull().default("media"),
   status: incidentStatusEnum("status").notNull().default("nuevo"),

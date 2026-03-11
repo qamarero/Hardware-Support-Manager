@@ -11,6 +11,6 @@ export const attachments = hsmSchema.table("attachments", {
   fileUrl: varchar("file_url", { length: 1000 }).notNull(),
   fileSize: integer("file_size").notNull(),
   fileType: varchar("file_type", { length: 255 }).notNull(),
-  uploadedBy: uuid("uploaded_by").references(() => users.id),
+  uploadedBy: uuid("uploaded_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

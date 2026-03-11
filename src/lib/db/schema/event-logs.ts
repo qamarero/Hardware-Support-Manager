@@ -11,7 +11,7 @@ export const eventLogs = hsmSchema.table("event_logs", {
   action: varchar("action", { length: 255 }).notNull(),
   fromState: varchar("from_state", { length: 100 }),
   toState: varchar("to_state", { length: 100 }),
-  userId: uuid("user_id").references(() => users.id),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
   details: jsonb("details"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
