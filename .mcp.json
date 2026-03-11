@@ -17,6 +17,40 @@
     "supabase": {
       "type": "http",
       "url": "https://mcp.supabase.com/mcp?project_ref=thkrkubkiasfqmiiwfbj"
+    },
+    "web-fetch": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@anthropic-ai/fetch-mcp"
+      ]
+    },
+    "github": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": ""
+      }
+    },
+    "markitdown": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@anthropic-ai/markitdown-mcp"
+      ]
+    },
+    "figma": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@anthropic-ai/figma-mcp"
+      ],
+      "env": {
+        "FIGMA_ACCESS_TOKEN": ""
+      }
     }
   }
 }

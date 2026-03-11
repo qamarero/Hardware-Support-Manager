@@ -244,6 +244,45 @@ npm run test:coverage # Coverage report
 - Use Vitest `describe`/`it` blocks with descriptive names (in English).
 - Mock external services (DB, storage) in unit tests.
 
+## Claude Code Tooling
+
+### Agents (`.claude/agents/`)
+
+| Agent | Propósito |
+|-------|-----------|
+| database-architect | Diseño de BD, schemas, migraciones |
+| frontend-developer | Desarrollo React/TypeScript frontend |
+| ui-ux-designer | Crítica UI/UX basada en investigación |
+| backend-architect | Arquitectura servidor |
+| fullstack-developer | Desarrollo cross-stack |
+| code-reviewer | Revisión de código y calidad |
+| typescript-pro | Patrones TypeScript avanzados |
+| test-engineer | Estrategia y ejecución de tests |
+| debugger | Investigación y resolución de bugs |
+| context-manager | Coordinación de contexto del proyecto |
+| prompt-engineer | Optimización de prompts |
+| error-detective | Análisis y resolución de errores |
+| deployment-engineer | Despliegue y CI/CD |
+| mcp-expert | Configuración de servidores MCP |
+| documentation-expert | Estándares de documentación |
+| ai-engineer | Ingeniería AI/ML |
+
+### Commands (`.claude/commands/`)
+
+`/commit` · `/ultra-think` · `/code-review` · `/refactor-code` · `/todo` · `/architecture-review` · `/update-docs` · `/explain-code`
+
+### MCP Servers (`.mcp.json`)
+
+| Server | Propósito |
+|--------|-----------|
+| supabase | Gestión proyecto Supabase (HTTP) |
+| neon | Base de datos Neon |
+| postgresql | Conexión PostgreSQL directa |
+| web-fetch | Obtención de contenido web |
+| github | Integración API GitHub |
+| markitdown | Conversión de documentos |
+| figma | Modo desarrollo Figma |
+
 ## Deployment
 
 - **Platform**: Vercel
