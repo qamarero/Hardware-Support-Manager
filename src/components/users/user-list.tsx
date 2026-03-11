@@ -37,8 +37,8 @@ export function UserList({ initialData }: UserListProps) {
         sortBy,
         sortOrder: sortOrder as SortOrder,
       }),
-    initialData,
     placeholderData: keepPreviousData,
+    staleTime: 0,
   });
 
   const data = queryData ?? initialData;

@@ -26,8 +26,8 @@ export function ProviderList({ initialData }: ProviderListProps) {
     queryKey: ["providers", { page, pageSize, search, sortBy, sortOrder }],
     queryFn: () =>
       fetchProviders({ page, pageSize, search, sortBy, sortOrder: sortOrder as SortOrder }),
-    initialData,
     placeholderData: keepPreviousData,
+    staleTime: 0,
   });
 
   const data = queryData ?? initialData;
