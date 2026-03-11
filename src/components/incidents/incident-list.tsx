@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useTableSearchParams } from "@/hooks/use-table-search-params";
 import { DataTable } from "@/components/shared/data-table";
 import { incidentColumns } from "./incident-columns";
@@ -21,7 +21,8 @@ export function IncidentList({ initialData }: IncidentListProps) {
     queryKey: ["incidents", page, pageSize, search, sortBy, sortOrder],
     queryFn: () =>
       fetchIncidents({ page, pageSize, search, sortBy, sortOrder: sortOrder as SortOrder }),
-    placeholderData: initialData,
+    initialData,
+    placeholderData: keepPreviousData,
   });
 
   const data = queryData ?? initialData;

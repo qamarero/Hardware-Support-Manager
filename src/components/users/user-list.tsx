@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { DataTable } from "@/components/shared/data-table";
 import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
@@ -37,7 +37,8 @@ export function UserList({ initialData }: UserListProps) {
         sortBy,
         sortOrder: sortOrder as SortOrder,
       }),
-    placeholderData: initialData,
+    initialData,
+    placeholderData: keepPreviousData,
   });
 
   const data = queryData ?? initialData;

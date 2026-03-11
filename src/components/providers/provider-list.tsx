@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { fetchProviders, deleteProvider } from "@/server/actions/providers";
 import { getProviderColumns } from "@/components/providers/provider-columns";
@@ -26,7 +26,8 @@ export function ProviderList({ initialData }: ProviderListProps) {
     queryKey: ["providers", { page, pageSize, search, sortBy, sortOrder }],
     queryFn: () =>
       fetchProviders({ page, pageSize, search, sortBy, sortOrder: sortOrder as SortOrder }),
-    placeholderData: initialData,
+    initialData,
+    placeholderData: keepPreviousData,
   });
 
   const data = queryData ?? initialData;
