@@ -25,7 +25,6 @@ import {
   LayoutDashboard,
   AlertTriangle,
   RotateCcw,
-  Users,
   Building2,
   UserCog,
   Settings,
@@ -37,7 +36,6 @@ const navigation = [
   { name: "Panel", href: "/dashboard", icon: LayoutDashboard },
   { name: "Incidencias", href: "/incidents", icon: AlertTriangle },
   { name: "RMAs", href: "/rmas", icon: RotateCcw },
-  { name: "Clientes", href: "/clients", icon: Users },
   { name: "Proveedores", href: "/providers", icon: Building2 },
 ];
 

@@ -2,7 +2,6 @@ import { uuid, varchar, text, timestamp } from "drizzle-orm/pg-core";
 import { hsmSchema } from "./hsm-schema";
 import { incidents } from "./incidents";
 import { providers } from "./providers";
-import { clients } from "./clients";
 
 export const rmaStatusEnum = hsmSchema.enum("rma_status", [
   "borrador", "solicitado", "aprobado_proveedor", "enviado_proveedor",
@@ -15,7 +14,9 @@ export const rmas = hsmSchema.table("rmas", {
   rmaNumber: varchar("rma_number", { length: 20 }).notNull().unique(),
   incidentId: uuid("incident_id").references(() => incidents.id, { onDelete: "restrict" }),
   providerId: uuid("provider_id").notNull().references(() => providers.id, { onDelete: "restrict" }),
-  clientId: uuid("client_id").references(() => clients.id, { onDelete: "set null" }),
+  clientName: varchar("client_name", { length: 500 }),
+  clientExternalId: varchar("client_external_id", { length: 255 }),
+  clientIntercomUrl: varchar("client_intercom_url", { length: 1000 }),
   status: rmaStatusEnum("status").notNull().default("borrador"),
   deviceType: varchar("device_type", { length: 100 }),
   deviceBrand: varchar("device_brand", { length: 255 }),

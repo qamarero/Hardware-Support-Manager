@@ -5,17 +5,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { IncidentForm } from "@/components/incidents/incident-form";
-import { createIncident, fetchClientsForSelect, fetchUsersForSelect } from "@/server/actions/incidents";
+import { createIncident, fetchUsersForSelect } from "@/server/actions/incidents";
 import type { CreateIncidentInput } from "@/lib/validators/incident";
 
 export function CreateIncidentPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-
-  const { data: clients = [] } = useQuery({
-    queryKey: ["clients", "select"],
-    queryFn: () => fetchClientsForSelect(),
-  });
 
   const { data: users = [] } = useQuery({
     queryKey: ["users", "select"],
@@ -42,7 +37,6 @@ export function CreateIncidentPage() {
     <Card>
       <CardContent className="pt-6">
         <IncidentForm
-          clients={clients}
           users={users}
           onSubmit={(data) => createMutation.mutate(data)}
           isSubmitting={createMutation.isPending}

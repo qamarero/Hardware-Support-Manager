@@ -1,6 +1,5 @@
 export * from "./hsm-schema";
 export * from "./users";
-export * from "./clients";
 export * from "./providers";
 export * from "./sequences";
 export * from "./incidents";

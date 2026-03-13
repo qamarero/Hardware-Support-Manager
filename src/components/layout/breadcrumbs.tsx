@@ -16,7 +16,6 @@ const ROUTE_LABELS: Record<string, string> = {
   dashboard: "Panel",
   incidents: "Incidencias",
   rmas: "RMAs",
-  clients: "Clientes",
   providers: "Proveedores",
   users: "Usuarios",
   settings: "Configuración",

@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { incidents, rmas, clients, providers, eventLogs } from "@/lib/db/schema";
+import { incidents, rmas, providers, eventLogs } from "@/lib/db/schema";
 import { eq, count, isNull, sql, desc, gte, not, inArray, and } from "drizzle-orm";
 import { users } from "@/lib/db/schema";
 import { getSlaThresholds } from "./settings";
@@ -7,7 +7,6 @@ import { getSlaThresholds } from "./settings";
 export interface DashboardStats {
   openIncidents: number;
   activeRmas: number;
-  totalClients: number;
   totalProviders: number;
 }
 
@@ -55,7 +54,7 @@ const CLOSED_RMA_STATUSES = ["cerrado", "cancelado"] as const;
 
 export async function getDashboardStats(): Promise<DashboardStats> {
   try {
-    const [openIncidentsResult, activeRmasResult, totalClientsResult, totalProvidersResult] =
+    const [openIncidentsResult, activeRmasResult, totalProvidersResult] =
       await Promise.all([
         db
           .select({ count: count() })
@@ -67,10 +66,6 @@ export async function getDashboardStats(): Promise<DashboardStats> {
           .where(not(inArray(rmas.status, [...CLOSED_RMA_STATUSES]))),
         db
           .select({ count: count() })
-          .from(clients)
-          .where(isNull(clients.deletedAt)),
-        db
-          .select({ count: count() })
           .from(providers)
           .where(isNull(providers.deletedAt)),
       ]);
@@ -78,11 +73,10 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     return {
       openIncidents: openIncidentsResult[0].count,
       activeRmas: activeRmasResult[0].count,
-      totalClients: totalClientsResult[0].count,
       totalProviders: totalProvidersResult[0].count,
     };
   } catch {
-    return { openIncidents: 0, activeRmas: 0, totalClients: 0, totalProviders: 0 };
+    return { openIncidents: 0, activeRmas: 0, totalProviders: 0 };
   }
 }
 

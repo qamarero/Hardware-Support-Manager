@@ -1,10 +1,9 @@
 import { db } from "@/lib/db";
-import { incidents, clients, users } from "@/lib/db/schema";
+import { incidents, users } from "@/lib/db/schema";
 import { eq, or, asc, desc, count, sql, type AnyColumn } from "drizzle-orm";
 import type { PaginationParams, PaginatedResult } from "@/types";
 
 export type IncidentRow = typeof incidents.$inferSelect & {
-  clientName: string | null;
   assignedUserName: string | null;
 };
 
@@ -18,7 +17,7 @@ export async function getIncidents(
     ? or(
         sql`${incidents.incidentNumber} ILIKE ${`%${search}%`}`,
         sql`unaccent(${incidents.title}) ILIKE unaccent(${`%${search}%`})`,
-        sql`unaccent(${clients.name}) ILIKE unaccent(${`%${search}%`})`
+        sql`unaccent(${incidents.clientName}) ILIKE unaccent(${`%${search}%`})`
       )
     : undefined;
 
@@ -30,7 +29,7 @@ export async function getIncidents(
       .select({
         id: incidents.id,
         incidentNumber: incidents.incidentNumber,
-        clientId: incidents.clientId,
+        clientName: incidents.clientName,
         assignedUserId: incidents.assignedUserId,
         category: incidents.category,
         priority: incidents.priority,
@@ -45,11 +44,9 @@ export async function getIncidents(
         updatedAt: incidents.updatedAt,
         resolvedAt: incidents.resolvedAt,
         stateChangedAt: incidents.stateChangedAt,
-        clientName: clients.name,
         assignedUserName: users.name,
       })
       .from(incidents)
-      .leftJoin(clients, eq(incidents.clientId, clients.id))
       .leftJoin(users, eq(incidents.assignedUserId, users.id))
       .where(searchCondition)
       .orderBy(orderBy)
@@ -58,7 +55,6 @@ export async function getIncidents(
     db
       .select({ count: count() })
       .from(incidents)
-      .leftJoin(clients, eq(incidents.clientId, clients.id))
       .where(searchCondition),
   ]);
 
@@ -78,7 +74,7 @@ export async function getIncidentById(id: string): Promise<IncidentRow | null> {
     .select({
       id: incidents.id,
       incidentNumber: incidents.incidentNumber,
-      clientId: incidents.clientId,
+      clientName: incidents.clientName,
       assignedUserId: incidents.assignedUserId,
       category: incidents.category,
       priority: incidents.priority,
@@ -93,11 +89,9 @@ export async function getIncidentById(id: string): Promise<IncidentRow | null> {
       updatedAt: incidents.updatedAt,
       resolvedAt: incidents.resolvedAt,
       stateChangedAt: incidents.stateChangedAt,
-      clientName: clients.name,
       assignedUserName: users.name,
     })
     .from(incidents)
-    .leftJoin(clients, eq(incidents.clientId, clients.id))
     .leftJoin(users, eq(incidents.assignedUserId, users.id))
     .where(eq(incidents.id, id))
     .limit(1);

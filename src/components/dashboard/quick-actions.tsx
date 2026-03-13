@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, RotateCcw, Users, Zap } from "lucide-react";
+import { AlertTriangle, RotateCcw, Zap } from "lucide-react";
 
 export function QuickActions() {
   return (
@@ -22,12 +22,6 @@ export function QuickActions() {
             <Link href="/rmas/new">
               <RotateCcw className="h-4 w-4 text-primary" />
               Nuevo RMA
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="justify-start gap-2">
-            <Link href="/clients/new">
-              <Users className="h-4 w-4 text-primary" />
-              Nuevo Cliente
             </Link>
           </Button>
         </div>

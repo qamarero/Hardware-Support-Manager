@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,8 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SearchableSelect } from "@/components/shared/searchable-select";
-import { QuickAddClientDialog } from "@/components/shared/quick-add-client-dialog";
 import {
   createIncidentSchema,
   type CreateIncidentInput,
@@ -35,7 +32,6 @@ import {
 import { DEVICE_TYPE_LABELS } from "@/lib/constants/device-types";
 
 interface IncidentFormProps {
-  clients: { id: string; name: string }[];
   users: { id: string; name: string }[];
   defaultValues?: Partial<CreateIncidentInput>;
   onSubmit: (data: CreateIncidentInput) => void;
@@ -44,18 +40,16 @@ interface IncidentFormProps {
 }
 
 export function IncidentForm({
-  clients: initialClients,
   users,
   defaultValues,
   onSubmit,
   isSubmitting,
   mode,
 }: IncidentFormProps) {
-  const [clients, setClients] = useState(initialClients);
   const form = useForm<CreateIncidentInput>({
     resolver: zodResolver(createIncidentSchema),
     defaultValues: {
-      clientId: defaultValues?.clientId ?? "",
+      clientName: defaultValues?.clientName ?? "",
       title: defaultValues?.title ?? "",
       description: defaultValues?.description ?? "",
       category: defaultValues?.category ?? "hardware",
@@ -73,27 +67,12 @@ export function IncidentForm({
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <FormField
           control={form.control}
-          name="clientId"
+          name="clientName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Cliente *</FormLabel>
+              <FormLabel>Cliente</FormLabel>
               <FormControl>
-                <SearchableSelect
-                  options={clients.map((c) => ({ value: c.id, label: c.name }))}
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  placeholder="Seleccionar cliente"
-                  searchPlaceholder="Buscar cliente..."
-                  emptyMessage="No se encontró cliente."
-                  emptyAction={
-                    <QuickAddClientDialog
-                      onClientCreated={(newClient) => {
-                        setClients((prev) => [...prev, newClient].sort((a, b) => a.name.localeCompare(b.name)));
-                        field.onChange(newClient.id);
-                      }}
-                    />
-                  }
-                />
+                <Input placeholder="Nombre del cliente" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

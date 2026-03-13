@@ -13,7 +13,7 @@ import { EventLogTimeline } from "@/components/shared/event-log-timeline";
 import { AttachmentSection } from "@/components/shared/attachment-section";
 import { RmaTransitionButtons } from "@/components/rmas/state-transition-buttons";
 import { RmaForm } from "@/components/rmas/rma-form";
-import { updateRma, fetchProvidersForSelect, fetchClientsForRmaSelect } from "@/server/actions/rmas";
+import { updateRma, fetchProvidersForSelect } from "@/server/actions/rmas";
 import { fetchIncidentsForSelect } from "@/server/actions/incidents";
 import { formatDateTime } from "@/lib/utils/date-format";
 import { DEVICE_TYPE_LABELS, type DeviceType } from "@/lib/constants/device-types";
@@ -38,12 +38,6 @@ export function RmaDetail({ rma }: RmaDetailProps) {
   const { data: incidents = [] } = useQuery({
     queryKey: ["incidents", "select"],
     queryFn: () => fetchIncidentsForSelect(),
-    enabled: isEditing,
-  });
-
-  const { data: clients = [] } = useQuery({
-    queryKey: ["clients", "select"],
-    queryFn: () => fetchClientsForRmaSelect(),
     enabled: isEditing,
   });
 
@@ -76,11 +70,12 @@ export function RmaDetail({ rma }: RmaDetailProps) {
             <RmaForm
               providers={providers}
               incidents={incidents}
-              clients={clients}
               defaultValues={{
                 providerId: rma.providerId,
                 incidentId: rma.incidentId ?? "",
-                clientId: rma.clientId ?? "",
+                clientName: rma.clientName ?? "",
+                clientExternalId: rma.clientExternalId ?? "",
+                clientIntercomUrl: rma.clientIntercomUrl ?? "",
                 deviceType: (rma.deviceType as RmaFormInput["deviceType"]) ?? "",
                 deviceBrand: rma.deviceBrand ?? "",
                 deviceModel: rma.deviceModel ?? "",
@@ -163,6 +158,31 @@ export function RmaDetail({ rma }: RmaDetailProps) {
                   Cliente
                 </dt>
                 <dd className="mt-1 text-sm">{rma.clientName ?? "-"}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-muted-foreground">
+                  ID externo cliente
+                </dt>
+                <dd className="mt-1 text-sm">{rma.clientExternalId || "-"}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-muted-foreground">
+                  URL Intercom
+                </dt>
+                <dd className="mt-1 text-sm">
+                  {rma.clientIntercomUrl ? (
+                    <a
+                      href={rma.clientIntercomUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      {rma.clientIntercomUrl}
+                    </a>
+                  ) : (
+                    "-"
+                  )}
+                </dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-muted-foreground">

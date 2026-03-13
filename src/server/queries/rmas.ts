@@ -1,12 +1,11 @@
 import { db } from "@/lib/db";
-import { rmas, incidents, providers, clients } from "@/lib/db/schema";
+import { rmas, incidents, providers } from "@/lib/db/schema";
 import { eq, or, asc, desc, count, sql, type AnyColumn } from "drizzle-orm";
 import type { PaginationParams, PaginatedResult } from "@/types";
 
 export type RmaRow = typeof rmas.$inferSelect & {
   providerName: string | null;
   incidentNumber: string | null;
-  clientName: string | null;
 };
 
 export async function getRmas(
@@ -19,7 +18,7 @@ export async function getRmas(
     ? or(
         sql`${rmas.rmaNumber} ILIKE ${`%${search}%`}`,
         sql`unaccent(${providers.name}) ILIKE unaccent(${`%${search}%`})`,
-        sql`unaccent(${clients.name}) ILIKE unaccent(${`%${search}%`})`,
+        sql`unaccent(${rmas.clientName}) ILIKE unaccent(${`%${search}%`})`,
         sql`unaccent(${rmas.deviceBrand}) ILIKE unaccent(${`%${search}%`})`,
         sql`unaccent(${rmas.deviceModel}) ILIKE unaccent(${`%${search}%`})`
       )
@@ -35,7 +34,9 @@ export async function getRmas(
         rmaNumber: rmas.rmaNumber,
         incidentId: rmas.incidentId,
         providerId: rmas.providerId,
-        clientId: rmas.clientId,
+        clientName: rmas.clientName,
+        clientExternalId: rmas.clientExternalId,
+        clientIntercomUrl: rmas.clientIntercomUrl,
         status: rmas.status,
         deviceType: rmas.deviceType,
         deviceBrand: rmas.deviceBrand,
@@ -54,12 +55,10 @@ export async function getRmas(
         stateChangedAt: rmas.stateChangedAt,
         providerName: providers.name,
         incidentNumber: incidents.incidentNumber,
-        clientName: clients.name,
       })
       .from(rmas)
       .leftJoin(providers, eq(rmas.providerId, providers.id))
       .leftJoin(incidents, eq(rmas.incidentId, incidents.id))
-      .leftJoin(clients, eq(rmas.clientId, clients.id))
       .where(searchCondition)
       .orderBy(orderBy)
       .limit(pageSize)
@@ -68,7 +67,6 @@ export async function getRmas(
       .select({ count: count() })
       .from(rmas)
       .leftJoin(providers, eq(rmas.providerId, providers.id))
-      .leftJoin(clients, eq(rmas.clientId, clients.id))
       .where(searchCondition),
   ]);
 
@@ -90,7 +88,9 @@ export async function getRmaById(id: string): Promise<RmaRow | null> {
       rmaNumber: rmas.rmaNumber,
       incidentId: rmas.incidentId,
       providerId: rmas.providerId,
-      clientId: rmas.clientId,
+      clientName: rmas.clientName,
+      clientExternalId: rmas.clientExternalId,
+      clientIntercomUrl: rmas.clientIntercomUrl,
       status: rmas.status,
       deviceType: rmas.deviceType,
       deviceBrand: rmas.deviceBrand,
@@ -109,12 +109,10 @@ export async function getRmaById(id: string): Promise<RmaRow | null> {
       stateChangedAt: rmas.stateChangedAt,
       providerName: providers.name,
       incidentNumber: incidents.incidentNumber,
-      clientName: clients.name,
     })
     .from(rmas)
     .leftJoin(providers, eq(rmas.providerId, providers.id))
     .leftJoin(incidents, eq(rmas.incidentId, incidents.id))
-    .leftJoin(clients, eq(rmas.clientId, clients.id))
     .where(eq(rmas.id, id))
     .limit(1);
 

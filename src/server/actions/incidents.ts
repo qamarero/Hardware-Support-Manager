@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { incidents, clients, users, eventLogs } from "@/lib/db/schema";
+import { incidents, users, eventLogs } from "@/lib/db/schema";
 import { eq, isNull, notInArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getRequiredSession } from "@/lib/auth/get-session";
@@ -35,7 +35,7 @@ export async function createIncident(
       .insert(incidents)
       .values({
         incidentNumber,
-        clientId: parsed.data.clientId,
+        clientName: parsed.data.clientName || null,
         title: parsed.data.title,
         description: parsed.data.description || null,
         category: parsed.data.category,
@@ -75,7 +75,7 @@ export async function updateIncident(
   }
 
   const values: Record<string, unknown> = {};
-  if (parsed.data.clientId) values.clientId = parsed.data.clientId;
+  if (parsed.data.clientName !== undefined) values.clientName = parsed.data.clientName || null;
   if (parsed.data.title) values.title = parsed.data.title;
   if (parsed.data.description !== undefined)
     values.description = parsed.data.description || null;
@@ -195,17 +195,6 @@ export async function fetchIncidents(
 ): Promise<PaginatedResult<IncidentRow>> {
   await getRequiredSession();
   return getIncidents(params);
-}
-
-export async function fetchClientsForSelect(): Promise<
-  { id: string; name: string }[]
-> {
-  await getRequiredSession();
-  return db
-    .select({ id: clients.id, name: clients.name })
-    .from(clients)
-    .where(isNull(clients.deletedAt))
-    .orderBy(clients.name);
 }
 
 export async function fetchUsersForSelect(): Promise<

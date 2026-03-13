@@ -16,7 +16,6 @@ import { StateTransitionButtons } from "@/components/incidents/state-transition-
 import { IncidentForm } from "@/components/incidents/incident-form";
 import {
   updateIncident,
-  fetchClientsForSelect,
   fetchUsersForSelect,
 } from "@/server/actions/incidents";
 import { formatDateTime } from "@/lib/utils/date-format";
@@ -47,12 +46,6 @@ interface IncidentDetailProps {
 export function IncidentDetail({ incident }: IncidentDetailProps) {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
-
-  const { data: clients = [] } = useQuery({
-    queryKey: ["clients", "select"],
-    queryFn: () => fetchClientsForSelect(),
-    enabled: isEditing,
-  });
 
   const { data: users = [] } = useQuery({
     queryKey: ["users", "select"],
@@ -87,10 +80,9 @@ export function IncidentDetail({ incident }: IncidentDetailProps) {
         <Card>
           <CardContent className="pt-6">
             <IncidentForm
-              clients={clients}
               users={users}
               defaultValues={{
-                clientId: incident.clientId,
+                clientName: incident.clientName ?? "",
                 title: incident.title,
                 description: incident.description ?? "",
                 category: incident.category as IncidentCategory,

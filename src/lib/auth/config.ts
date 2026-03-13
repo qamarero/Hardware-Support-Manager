@@ -16,7 +16,6 @@ export const authConfig: NextAuthConfig = {
       const isOnDashboard = nextUrl.pathname.startsWith("/dashboard") ||
         nextUrl.pathname.startsWith("/incidents") ||
         nextUrl.pathname.startsWith("/rmas") ||
-        nextUrl.pathname.startsWith("/clients") ||
         nextUrl.pathname.startsWith("/providers") ||
         nextUrl.pathname.startsWith("/users") ||
         nextUrl.pathname.startsWith("/settings");
