@@ -34,6 +34,10 @@ export async function createClient(
         intercomUrl: parsed.data.intercomUrl || null,
         email: parsed.data.email || null,
         phone: parsed.data.phone || null,
+        contactName: parsed.data.contactName || null,
+        address: parsed.data.address || null,
+        city: parsed.data.city || null,
+        postalCode: parsed.data.postalCode || null,
         notes: parsed.data.notes || null,
       })
       .returning({ id: clients.id });
@@ -69,6 +73,10 @@ export async function updateClient(
   if (parsed.data.intercomUrl !== undefined) values.intercomUrl = parsed.data.intercomUrl || null;
   if (parsed.data.email !== undefined) values.email = parsed.data.email || null;
   if (parsed.data.phone !== undefined) values.phone = parsed.data.phone || null;
+  if (parsed.data.contactName !== undefined) values.contactName = parsed.data.contactName || null;
+  if (parsed.data.address !== undefined) values.address = parsed.data.address || null;
+  if (parsed.data.city !== undefined) values.city = parsed.data.city || null;
+  if (parsed.data.postalCode !== undefined) values.postalCode = parsed.data.postalCode || null;
   if (parsed.data.notes !== undefined) values.notes = parsed.data.notes || null;
 
   const [client] = await db.transaction(async (tx) => {

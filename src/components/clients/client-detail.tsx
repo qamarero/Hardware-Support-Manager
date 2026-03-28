@@ -164,6 +164,10 @@ export function ClientDetail({ client }: ClientDetailProps) {
                 intercomUrl: client.intercomUrl ?? "",
                 email: client.email ?? "",
                 phone: client.phone ?? "",
+                contactName: client.contactName ?? "",
+                address: client.address ?? "",
+                city: client.city ?? "",
+                postalCode: client.postalCode ?? "",
                 notes: client.notes ?? "",
               }}
               onSubmit={(data) => updateMutation.mutate(data)}
@@ -227,6 +231,32 @@ export function ClientDetail({ client }: ClientDetailProps) {
                   <span className="inline-flex items-center gap-1">
                     <Phone className="h-3 w-3" />
                     {client.phone}
+                  </span>
+                ) : (
+                  "-"
+                )}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Contacto</p>
+              <p className="text-sm">
+                {client.contactName ? (
+                  <span className="inline-flex items-center gap-1">
+                    <User className="h-3 w-3" />
+                    {client.contactName}
+                  </span>
+                ) : (
+                  "-"
+                )}
+              </p>
+            </div>
+            <div className="md:col-span-2">
+              <p className="text-sm font-medium text-muted-foreground">Dirección</p>
+              <p className="text-sm">
+                {client.address || client.city || client.postalCode ? (
+                  <span className="inline-flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    {[client.address, client.postalCode, client.city].filter(Boolean).join(", ") || "-"}
                   </span>
                 ) : (
                   "-"

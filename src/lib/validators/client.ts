@@ -6,6 +6,10 @@ export const createClientSchema = z.object({
   intercomUrl: z.string().max(1000).optional().or(z.literal("")),
   email: z.string().email("Email inválido").max(255).optional().or(z.literal("")),
   phone: z.string().max(50).optional().or(z.literal("")),
+  contactName: z.string().max(255).optional().or(z.literal("")),
+  address: z.string().optional().or(z.literal("")),
+  city: z.string().max(255).optional().or(z.literal("")),
+  postalCode: z.string().max(20).optional().or(z.literal("")),
   notes: z.string().optional().or(z.literal("")),
 });
 

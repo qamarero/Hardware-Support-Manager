@@ -41,6 +41,10 @@ export function ClientForm({
       intercomUrl: defaultValues?.intercomUrl ?? "",
       email: defaultValues?.email ?? "",
       phone: defaultValues?.phone ?? "",
+      contactName: defaultValues?.contactName ?? "",
+      address: defaultValues?.address ?? "",
+      city: defaultValues?.city ?? "",
+      postalCode: defaultValues?.postalCode ?? "",
       notes: defaultValues?.notes ?? "",
     },
   });
@@ -129,7 +133,70 @@ export function ClientForm({
           </div>
         </div>
 
-        {/* Seccion 2: Notas */}
+        {/* Seccion 2: Contacto y Dirección */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Contacto y Dirección</h3>
+          <Separator />
+
+          <FormField
+            control={form.control}
+            name="contactName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Nombre del contacto</FormLabel>
+                <FormControl>
+                  <Input placeholder="Persona de contacto en el cliente" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="address"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Dirección</FormLabel>
+                <FormControl>
+                  <Input placeholder="Calle, número, piso..." {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="city"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Ciudad</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ciudad" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="postalCode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Código postal</FormLabel>
+                  <FormControl>
+                    <Input placeholder="28001" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        {/* Seccion 3: Notas */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Notas</h3>
           <Separator />
