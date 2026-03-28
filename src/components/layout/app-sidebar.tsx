@@ -12,9 +12,11 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { useAlertBadges } from "./sidebar-badges";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,7 +62,14 @@ function UserAvatar({ name }: { name: string }) {
 export function AppSidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
+  const { data: badges } = useAlertBadges();
   const isAdmin = session?.user?.role === "admin";
+
+  const badgeMap: Record<string, number | undefined> = {
+    "/incidents": badges?.incidents,
+    "/rmas": badges?.rmas,
+    "/warehouse": badges?.warehouse,
+  };
   const userName = session?.user?.name ?? "Usuario";
   const userRole = session?.user?.role ?? "viewer";
 
@@ -100,6 +109,9 @@ export function AppSidebar() {
                       <span>{item.name}</span>
                     </Link>
                   </SidebarMenuButton>
+                  {badgeMap[item.href] != null && badgeMap[item.href]! > 0 && (
+                    <SidebarMenuBadge>{badgeMap[item.href]}</SidebarMenuBadge>
+                  )}
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>

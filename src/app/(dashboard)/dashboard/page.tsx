@@ -23,6 +23,8 @@ import {
   getAgingDistribution,
   getTechnicianPerformance,
 } from "@/server/queries/dashboard";
+import { getAlertItems } from "@/server/queries/alerts";
+import { AttentionWidget } from "@/components/dashboard/attention-widget";
 
 export const metadata: Metadata = {
   title: "Panel de Control",
@@ -36,7 +38,7 @@ function formatHours(hours: number | null): string {
 }
 
 export default async function DashboardPage() {
-  const [stats, activity, distribution, trend, sla, aging, technicians] =
+  const [stats, activity, distribution, trend, sla, aging, technicians, alerts] =
     await Promise.all([
       getDashboardStats(),
       getRecentActivity(),
@@ -45,6 +47,7 @@ export default async function DashboardPage() {
       getSlaMetrics(),
       getAgingDistribution(),
       getTechnicianPerformance(),
+      getAlertItems(),
     ]);
 
   return (
@@ -90,6 +93,11 @@ export default async function DashboardPage() {
           color={sla.reopenRate > 5 ? "red" : "green"}
         />
       </div>
+
+      {/* Attention Widget */}
+      {alerts.totalCount > 0 && (
+        <AttentionWidget initialData={alerts} />
+      )}
 
       {/* Row 2: Trend + Distribution */}
       <div className="grid gap-4 lg:grid-cols-3">

@@ -14,17 +14,21 @@ import { Palette, Clock, Settings2, Loader2, MessageSquareText } from "lucide-re
 import { ThemeSelector } from "./theme-selector";
 import { updateSetting } from "@/server/actions/settings";
 import { SLA_PRIORITY_LABELS, type SlaThresholds } from "@/lib/constants/sla";
+import { AlertThresholdsCard } from "./alert-thresholds-card";
+import type { AlertThresholds } from "@/lib/constants/alerts";
 
 interface SettingsContentProps {
   initialSla: SlaThresholds;
   initialPageSize: number;
   initialView: "table" | "canvas";
+  initialAlertThresholds: AlertThresholds;
 }
 
 export function SettingsContent({
   initialSla,
   initialPageSize,
   initialView,
+  initialAlertThresholds,
 }: SettingsContentProps) {
   const router = useRouter();
   const [sla, setSla] = useState(initialSla);
@@ -208,6 +212,9 @@ export function SettingsContent({
           </Button>
         </CardContent>
       </Card>
+
+      {/* Umbrales de Alertas */}
+      <AlertThresholdsCard initialThresholds={initialAlertThresholds} />
 
       {/* Plantillas de mensajes */}
       <Card>

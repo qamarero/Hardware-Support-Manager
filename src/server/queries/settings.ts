@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { appSettings } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { DEFAULT_SLA_THRESHOLDS, type SlaThresholds } from "@/lib/constants/sla";
+import { DEFAULT_ALERT_THRESHOLDS, type AlertThresholds } from "@/lib/constants/alerts";
 
 export async function getSetting<T>(key: string, defaultValue: T): Promise<T> {
   try {
@@ -20,6 +21,10 @@ export async function getSetting<T>(key: string, defaultValue: T): Promise<T> {
 
 export async function getSlaThresholds(): Promise<SlaThresholds> {
   return getSetting("sla_thresholds", DEFAULT_SLA_THRESHOLDS);
+}
+
+export async function getAlertThresholds(): Promise<AlertThresholds> {
+  return getSetting("alert_thresholds", DEFAULT_ALERT_THRESHOLDS);
 }
 
 export async function getDefaultPageSize(): Promise<number> {

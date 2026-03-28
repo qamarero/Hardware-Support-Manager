@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Settings } from "lucide-react";
-import { getSlaThresholds, getDefaultPageSize, getDefaultView } from "@/server/queries/settings";
+import { getSlaThresholds, getDefaultPageSize, getDefaultView, getAlertThresholds } from "@/server/queries/settings";
 import { SettingsContent } from "@/components/settings/settings-content";
 
 export const metadata: Metadata = {
@@ -8,10 +8,11 @@ export const metadata: Metadata = {
 };
 
 export default async function SettingsPage() {
-  const [slaThresholds, defaultPageSize, defaultView] = await Promise.all([
+  const [slaThresholds, defaultPageSize, defaultView, alertThresholds] = await Promise.all([
     getSlaThresholds(),
     getDefaultPageSize(),
     getDefaultView(),
+    getAlertThresholds(),
   ]);
 
   return (
@@ -31,6 +32,7 @@ export default async function SettingsPage() {
         initialSla={slaThresholds}
         initialPageSize={defaultPageSize}
         initialView={defaultView}
+        initialAlertThresholds={alertThresholds}
       />
     </div>
   );
