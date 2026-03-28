@@ -410,12 +410,52 @@ src/server/actions/incidents.ts              # +fetchIncidentById
 
 ---
 
-## Próximas Fases
+### Fase 3: Alertas y Notificaciones In-App (Completada - 2026-03-28)
 
-### Fase 3: Alertas y Notificaciones In-App (Pendiente)
-- Widget de alertas en dashboard para items estancados
-- Badges en sidebar con contadores (incidencias abiertas, RMAs pendientes)
-- Alertas por tiempo en estado (SLA próximo a vencer)
+Sistema de alertas computadas sobre datos existentes (sin tabla nueva en BD). Tres entregables: widget dashboard, badges sidebar, configuración de umbrales.
+
+**Alertas computadas (4 tipos):**
+- Incidencias estancadas: sin cambio de estado > N días (default 3)
+- RMAs en proveedor: estado `en_proveedor` > N días (default 7)
+- RMAs en almacén: estados `borrador`/`aprobado`/`recibido_oficina` > N días (default 5)
+- SLA en riesgo: tiempo consumido > N% del umbral SLA (default 80%)
+
+**Widget "Requiere Atención" en Dashboard:**
+- Card con borde ámbar, icono AlertTriangle, badge con total
+- Grid 4 columnas agrupando items por tipo de alerta
+- Cada item: link al detalle, número, título truncado, badge días estancado (color-coded), badge prioridad
+- Solo se renderiza si hay items (dashboard limpio si no hay alertas)
+
+**Badges en Sidebar:**
+- `useAlertBadges()` hook con TanStack Query (polling cada 2 min, stale 1 min)
+- `SidebarMenuBadge` en rutas `/incidents`, `/rmas`, `/warehouse` con contadores
+- Server action `fetchAlertCounts()` retorna solo COUNTs (lightweight para polling)
+
+**Configuración en Settings:**
+- Card "Umbrales de Alertas" con 4 inputs numéricos
+- Persistencia en `app_settings` (key `alert_thresholds`)
+- Sigue patrón existente de SLA thresholds (mutation + toast)
+
+**Sin migración SQL necesaria** — alertas computadas desde `stateChangedAt` existente + umbrales en `app_settings`.
+
+#### Archivos principales Fase 3:
+```
+src/lib/constants/alerts.ts                    # NUEVO — AlertThresholds type + defaults + labels
+src/server/queries/settings.ts                 # MODIFICADO — +getAlertThresholds()
+src/server/queries/alerts.ts                   # NUEVO — getAlertItems() + getAlertCounts() (4 queries paralelas)
+src/server/actions/alerts.ts                   # NUEVO — fetchAlertCounts + fetchAlertItems (con auth)
+src/components/dashboard/attention-widget.tsx   # NUEVO — Widget "Requiere Atención"
+src/app/(dashboard)/dashboard/page.tsx         # MODIFICADO — +getAlertItems en Promise.all, +AttentionWidget
+src/components/settings/alert-thresholds-card.tsx # NUEVO — Card config umbrales alertas
+src/components/settings/settings-content.tsx   # MODIFICADO — +AlertThresholdsCard + prop initialAlertThresholds
+src/app/(dashboard)/settings/page.tsx          # MODIFICADO — +getAlertThresholds() en Promise.all
+src/components/layout/sidebar-badges.tsx       # NUEVO — useAlertBadges() hook (TanStack Query polling)
+src/components/layout/app-sidebar.tsx          # MODIFICADO — +SidebarMenuBadge rendering con badgeMap
+```
+
+---
+
+## Próximas Fases
 
 ### Fase 4: Importación Manual desde Intercom (Pendiente)
 - Formulario para pegar datos de Intercom y crear incidencia/RMA

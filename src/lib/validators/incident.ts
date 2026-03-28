@@ -32,6 +32,7 @@ export const transitionIncidentSchema = z.object({
     "esperando_proveedor", "resuelto", "cerrado", "cancelado",
   ]),
   comment: z.string().optional(),
+  resolutionType: z.enum(["standard", "derivado_rma"]).optional(),
 });
 
 export type CreateIncidentInput = z.infer<typeof createIncidentSchema>;

@@ -34,7 +34,6 @@ export interface AlertBadgeCounts {
 }
 
 const CLOSED_INCIDENT_STATUSES = ["cerrado", "cancelado", "resuelto"] as const;
-const CLOSED_RMA_STATUSES = ["cerrado", "cancelado"] as const;
 const WAREHOUSE_STATUSES = ["borrador", "aprobado", "recibido_oficina"] as const;
 
 export async function getAlertItems(): Promise<AlertSummary> {

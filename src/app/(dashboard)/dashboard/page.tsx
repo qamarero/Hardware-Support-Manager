@@ -26,6 +26,8 @@ import {
 import { getAlertItems } from "@/server/queries/alerts";
 import { AttentionWidget } from "@/components/dashboard/attention-widget";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Panel de Control",
 };

@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { incidents, users, clients } from "@/lib/db/schema";
+import { incidents, users, clients, rmas } from "@/lib/db/schema";
 import { eq, or, asc, desc, count, sql, type AnyColumn } from "drizzle-orm";
 import type { PaginationParams, PaginatedResult } from "@/types";
 
@@ -56,6 +56,8 @@ export async function getIncidents(
         updatedAt: incidents.updatedAt,
         resolvedAt: incidents.resolvedAt,
         stateChangedAt: incidents.stateChangedAt,
+        slaPausedMs: incidents.slaPausedMs,
+        resolutionType: incidents.resolutionType,
         assignedUserName: users.name,
         clientCompanyName: clients.name,
       })
@@ -113,6 +115,8 @@ export async function getIncidentById(id: string): Promise<IncidentRow | null> {
       updatedAt: incidents.updatedAt,
       resolvedAt: incidents.resolvedAt,
       stateChangedAt: incidents.stateChangedAt,
+      slaPausedMs: incidents.slaPausedMs,
+      resolutionType: incidents.resolutionType,
       assignedUserName: users.name,
       clientCompanyName: clients.name,
     })
@@ -123,6 +127,23 @@ export async function getIncidentById(id: string): Promise<IncidentRow | null> {
     .limit(1);
 
   return incident ?? null;
+}
+
+export interface LinkedRma {
+  id: string;
+  rmaNumber: string;
+  status: string;
+}
+
+export async function getLinkedRmas(incidentId: string): Promise<LinkedRma[]> {
+  return db
+    .select({
+      id: rmas.id,
+      rmaNumber: rmas.rmaNumber,
+      status: rmas.status,
+    })
+    .from(rmas)
+    .where(eq(rmas.incidentId, incidentId));
 }
 
 function getSortColumn(sortBy: string): AnyColumn {

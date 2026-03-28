@@ -17,6 +17,7 @@ import { IncidentForm } from "@/components/incidents/incident-form";
 import {
   updateIncident,
   fetchUsersForSelect,
+  fetchLinkedRmas,
 } from "@/server/actions/incidents";
 import { formatDateTime } from "@/lib/utils/date-format";
 import { Badge } from "@/components/ui/badge";
@@ -30,8 +31,11 @@ import {
 import type { IncidentRow } from "@/server/queries/incidents";
 import { DEFAULT_SLA_THRESHOLDS } from "@/lib/constants/sla";
 import { DEVICE_TYPE_LABELS, type DeviceType } from "@/lib/constants/device-types";
+import { RmaStateBadge } from "@/components/shared/state-badge";
+import type { RmaStatus } from "@/lib/constants/rmas";
 import type { CreateIncidentInput } from "@/lib/validators/incident";
 import { TemplatePicker } from "@/components/message-templates/template-picker";
+import { RotateCcw } from "lucide-react";
 
 const PRIORITY_COLORS: Record<string, string> = {
   baja: "bg-green-500/15 text-green-700 hover:bg-green-500/15 dark:bg-green-500/25 dark:text-green-300",
@@ -52,6 +56,11 @@ export function IncidentDetail({ incident }: IncidentDetailProps) {
     queryKey: ["users", "select"],
     queryFn: () => fetchUsersForSelect(),
     enabled: isEditing,
+  });
+
+  const { data: linkedRmas = [] } = useQuery({
+    queryKey: ["linked-rmas", incident.id],
+    queryFn: () => fetchLinkedRmas(incident.id),
   });
 
   const updateMutation = useMutation({
@@ -127,6 +136,12 @@ export function IncidentDetail({ incident }: IncidentDetailProps) {
             >
               {INCIDENT_PRIORITY_LABELS[incident.priority as IncidentPriority] ?? incident.priority}
             </Badge>
+            {incident.resolutionType === "derivado_rma" && (
+              <Badge variant="outline" className="bg-purple-500/15 text-purple-700 dark:bg-purple-500/25 dark:text-purple-300">
+                <RotateCcw className="mr-1 h-3 w-3" />
+                Derivado a RMA
+              </Badge>
+            )}
           </div>
           <p className="mt-1 text-lg text-muted-foreground">{incident.title}</p>
         </div>
@@ -175,6 +190,8 @@ export function IncidentDetail({ incident }: IncidentDetailProps) {
           stateChangedAt={incident.stateChangedAt}
           resolvedAt={incident.resolvedAt}
           slaHours={DEFAULT_SLA_THRESHOLDS.resolution[incident.priority] ?? 168}
+          slaPausedMs={incident.slaPausedMs}
+          currentStatus={incident.status}
         />
       </div>
 
@@ -276,6 +293,32 @@ export function IncidentDetail({ incident }: IncidentDetailProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* RMAs vinculados */}
+      {linkedRmas.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <RotateCcw className="h-5 w-5" />
+              RMAs Vinculados
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-3">
+              {linkedRmas.map((rma) => (
+                <Link
+                  key={rma.id}
+                  href={`/rmas/${rma.id}`}
+                  className="flex items-center gap-2 rounded-lg border p-3 hover:bg-accent transition-colors"
+                >
+                  <span className="font-mono text-sm font-medium">{rma.rmaNumber}</span>
+                  <RmaStateBadge status={rma.status as RmaStatus} />
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Intercom + Contacto */}
       {(incident.intercomUrl || incident.intercomEscalationId || incident.contactName || incident.pickupAddress) && (

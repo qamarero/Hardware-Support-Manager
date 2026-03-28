@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
+import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TransitionDialog } from "@/components/shared/transition-dialog";
 import { transitionIncident } from "@/server/actions/incidents";
@@ -23,6 +25,7 @@ export function StateTransitionButtons({
   currentStatus,
   onTransitionComplete,
 }: StateTransitionButtonsProps) {
+  const router = useRouter();
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const [selectedTransition, setSelectedTransition] =
@@ -32,11 +35,16 @@ export function StateTransitionButtons({
   const transitions = getAvailableTransitions(currentStatus, userRole);
 
   const mutation = useMutation({
-    mutationFn: (vars: { toStatus: string; comment?: string }) =>
+    mutationFn: (vars: {
+      toStatus: string;
+      comment?: string;
+      resolutionType?: "standard" | "derivado_rma";
+    }) =>
       transitionIncident({
         incidentId,
         toStatus: vars.toStatus,
         comment: vars.comment,
+        resolutionType: vars.resolutionType,
       }),
     onSuccess: (result) => {
       if (result.success) {
@@ -45,6 +53,10 @@ export function StateTransitionButtons({
           queryKey: ["event-logs", "incident", incidentId],
         });
         onTransitionComplete();
+
+        if (selectedTransition?.resolutionType === "derivado_rma") {
+          router.push(`/rmas/new?incidentId=${incidentId}`);
+        }
       } else {
         toast.error(result.error);
       }
@@ -61,23 +73,33 @@ export function StateTransitionButtons({
   return (
     <>
       <div className="flex flex-wrap gap-2">
-        {transitions.map((t) => (
-          <Button
-            key={`${t.from}-${t.to}`}
-            variant={t.to === "cancelado" ? "destructive" : "default"}
-            size="sm"
-            onClick={() => setSelectedTransition(t)}
-          >
-            {t.label}
-          </Button>
-        ))}
+        {transitions.map((t) => {
+          const isRma = t.resolutionType === "derivado_rma";
+          const isCancelado = t.to === "cancelado";
+
+          return (
+            <Button
+              key={`${t.from}-${t.to}-${t.resolutionType ?? ""}`}
+              variant={isCancelado ? "destructive" : isRma ? "outline" : "default"}
+              size="sm"
+              onClick={() => setSelectedTransition(t)}
+            >
+              {isRma && <RotateCcw className="mr-2 h-4 w-4" />}
+              {t.label}
+            </Button>
+          );
+        })}
       </div>
 
       <TransitionDialog
         open={!!selectedTransition}
         onConfirm={(comment) =>
           selectedTransition &&
-          mutation.mutate({ toStatus: selectedTransition.to, comment })
+          mutation.mutate({
+            toStatus: selectedTransition.to,
+            comment,
+            resolutionType: selectedTransition.resolutionType,
+          })
         }
         onCancel={() => setSelectedTransition(null)}
         transitionLabel={selectedTransition?.label ?? ""}

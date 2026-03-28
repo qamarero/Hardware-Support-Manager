@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CreateClientDialog } from "@/components/shared/create-client-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
@@ -80,6 +82,9 @@ export function IncidentForm({
     },
   });
 
+  const queryClient = useQueryClient();
+  const [clientDialogOpen, setClientDialogOpen] = useState(false);
+
   const selectedClientId = form.watch("clientId");
 
   const { data: clientsData = [] } = useQuery({
@@ -147,6 +152,18 @@ export function IncidentForm({
                       placeholder="Seleccionar cliente..."
                       searchPlaceholder="Buscar cliente..."
                       emptyMessage="No se encontraron clientes."
+                      emptyAction={
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-start"
+                          onClick={() => setClientDialogOpen(true)}
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Crear nuevo cliente
+                        </Button>
+                      }
                     />
                   </FormControl>
                   <FormMessage />
@@ -517,6 +534,17 @@ export function IncidentForm({
           </Button>
         </div>
       </form>
+
+      <CreateClientDialog
+        open={clientDialogOpen}
+        onOpenChange={setClientDialogOpen}
+        initialName=""
+        onClientCreated={({ clientId, clientName }) => {
+          queryClient.invalidateQueries({ queryKey: ["clients", "select"] });
+          form.setValue("clientId", clientId);
+          form.setValue("clientName", clientName);
+        }}
+      />
     </Form>
   );
 }

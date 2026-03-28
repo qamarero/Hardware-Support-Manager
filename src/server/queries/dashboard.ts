@@ -84,10 +84,10 @@ export async function getSlaMetrics(): Promise<SlaMetrics> {
   try {
     const sla = await getSlaThresholds();
 
-    // Average resolution time (resolved incidents only)
+    // Average resolution time (resolved incidents only) — subtracting paused time
     const avgResResult = await db
       .select({
-        avgHours: sql<number>`avg(extract(epoch from (${incidents.resolvedAt} - ${incidents.createdAt})) / 3600)`,
+        avgHours: sql<number>`avg((extract(epoch from (${incidents.resolvedAt} - ${incidents.createdAt})) * 1000 - CAST(${incidents.slaPausedMs} AS bigint)) / 3600000.0)`,
       })
       .from(incidents)
       .where(
@@ -97,15 +97,15 @@ export async function getSlaMetrics(): Promise<SlaMetrics> {
         )
       );
 
-    // SLA compliance: % of resolved incidents within their priority threshold
+    // SLA compliance: % of resolved incidents within their priority threshold (subtracting paused time)
     const complianceResult = await db
       .select({
         total: count(),
         compliant: sql<number>`count(*) filter (where
-          (${incidents.priority} = 'critica' and extract(epoch from (${incidents.resolvedAt} - ${incidents.createdAt})) / 3600 <= ${sla.resolution.critica}) or
-          (${incidents.priority} = 'alta' and extract(epoch from (${incidents.resolvedAt} - ${incidents.createdAt})) / 3600 <= ${sla.resolution.alta}) or
-          (${incidents.priority} = 'media' and extract(epoch from (${incidents.resolvedAt} - ${incidents.createdAt})) / 3600 <= ${sla.resolution.media}) or
-          (${incidents.priority} = 'baja' and extract(epoch from (${incidents.resolvedAt} - ${incidents.createdAt})) / 3600 <= ${sla.resolution.baja})
+          (${incidents.priority} = 'critica' and (extract(epoch from (${incidents.resolvedAt} - ${incidents.createdAt})) * 1000 - CAST(${incidents.slaPausedMs} AS bigint)) / 3600000.0 <= ${sla.resolution.critica}) or
+          (${incidents.priority} = 'alta' and (extract(epoch from (${incidents.resolvedAt} - ${incidents.createdAt})) * 1000 - CAST(${incidents.slaPausedMs} AS bigint)) / 3600000.0 <= ${sla.resolution.alta}) or
+          (${incidents.priority} = 'media' and (extract(epoch from (${incidents.resolvedAt} - ${incidents.createdAt})) * 1000 - CAST(${incidents.slaPausedMs} AS bigint)) / 3600000.0 <= ${sla.resolution.media}) or
+          (${incidents.priority} = 'baja' and (extract(epoch from (${incidents.resolvedAt} - ${incidents.createdAt})) * 1000 - CAST(${incidents.slaPausedMs} AS bigint)) / 3600000.0 <= ${sla.resolution.baja})
         )`,
       })
       .from(incidents)
@@ -120,7 +120,7 @@ export async function getSlaMetrics(): Promise<SlaMetrics> {
     const compliant = complianceResult[0].compliant;
     const compliancePercent = total > 0 ? Math.round((compliant / total) * 100) : 100;
 
-    // Overdue: open incidents exceeding resolution SLA for their priority
+    // Overdue: open incidents exceeding resolution SLA for their priority (subtracting paused time)
     const overdueResult = await db
       .select({ count: count() })
       .from(incidents)
@@ -128,10 +128,10 @@ export async function getSlaMetrics(): Promise<SlaMetrics> {
         and(
           not(inArray(incidents.status, [...CLOSED_INCIDENT_STATUSES, "resuelto"])),
           sql`(
-            (${incidents.priority} = 'critica' and extract(epoch from (now() - ${incidents.createdAt})) / 3600 > ${sla.resolution.critica}) or
-            (${incidents.priority} = 'alta' and extract(epoch from (now() - ${incidents.createdAt})) / 3600 > ${sla.resolution.alta}) or
-            (${incidents.priority} = 'media' and extract(epoch from (now() - ${incidents.createdAt})) / 3600 > ${sla.resolution.media}) or
-            (${incidents.priority} = 'baja' and extract(epoch from (now() - ${incidents.createdAt})) / 3600 > ${sla.resolution.baja})
+            (${incidents.priority} = 'critica' and (extract(epoch from (now() - ${incidents.createdAt})) * 1000 - CAST(${incidents.slaPausedMs} AS bigint)) / 3600000.0 > ${sla.resolution.critica}) or
+            (${incidents.priority} = 'alta' and (extract(epoch from (now() - ${incidents.createdAt})) * 1000 - CAST(${incidents.slaPausedMs} AS bigint)) / 3600000.0 > ${sla.resolution.alta}) or
+            (${incidents.priority} = 'media' and (extract(epoch from (now() - ${incidents.createdAt})) * 1000 - CAST(${incidents.slaPausedMs} AS bigint)) / 3600000.0 > ${sla.resolution.media}) or
+            (${incidents.priority} = 'baja' and (extract(epoch from (now() - ${incidents.createdAt})) * 1000 - CAST(${incidents.slaPausedMs} AS bigint)) / 3600000.0 > ${sla.resolution.baja})
           )`
         )
       );
@@ -230,7 +230,7 @@ export async function getTechnicianPerformance(): Promise<TechnicianPerformance[
       .select({
         name: users.name,
         resolved: count(),
-        avgHours: sql<number>`avg(extract(epoch from (${incidents.resolvedAt} - ${incidents.createdAt})) / 3600)`,
+        avgHours: sql<number>`avg((extract(epoch from (${incidents.resolvedAt} - ${incidents.createdAt})) * 1000 - CAST(${incidents.slaPausedMs} AS bigint)) / 3600000.0)`,
       })
       .from(incidents)
       .innerJoin(users, eq(incidents.assignedUserId, users.id))

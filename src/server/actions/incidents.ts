@@ -12,9 +12,9 @@ import {
 } from "@/lib/validators/incident";
 import { isValidTransition } from "@/lib/state-machines/incident";
 import { generateSequentialId } from "@/lib/utils/id-generator";
-import { getIncidents, getIncidentById } from "@/server/queries/incidents";
+import { getIncidents, getIncidentById, getLinkedRmas } from "@/server/queries/incidents";
 import type { ActionResult, PaginationParams, PaginatedResult } from "@/types";
-import type { IncidentRow } from "@/server/queries/incidents";
+import type { IncidentRow, LinkedRma } from "@/server/queries/incidents";
 import type { IncidentStatus } from "@/lib/constants/incidents";
 import type { UserRole } from "@/lib/constants/roles";
 
@@ -178,11 +178,18 @@ export async function transitionIncident(
     return { success: false, error: "Datos inválidos" };
   }
 
-  const { incidentId, toStatus, comment } = parsed.data;
+  const { incidentId, toStatus, comment, resolutionType } = parsed.data;
+
+  // States where SLA clock is paused (waiting on external parties)
+  const PAUSED_STATES: IncidentStatus[] = ["esperando_cliente", "esperando_proveedor"];
 
   const result = await db.transaction(async (tx) => {
     const [current] = await tx
-      .select({ status: incidents.status })
+      .select({
+        status: incidents.status,
+        stateChangedAt: incidents.stateChangedAt,
+        slaPausedMs: incidents.slaPausedMs,
+      })
       .from(incidents)
       .where(eq(incidents.id, incidentId))
       .for("update")
@@ -203,16 +210,30 @@ export async function transitionIncident(
       stateChangedAt: new Date(),
     };
 
+    // SLA pause accumulation: when leaving a paused state, add the time spent paused
+    if (PAUSED_STATES.includes(fromStatus)) {
+      const pausedSince = new Date(current.stateChangedAt).getTime();
+      const pausedDuration = Date.now() - pausedSince;
+      const existingPaused = parseInt(current.slaPausedMs || "0", 10);
+      updateValues.slaPausedMs = String(existingPaused + pausedDuration);
+    }
+
     if (toStatus === "resuelto") {
       updateValues.resolvedAt = new Date();
+      updateValues.resolutionType = resolutionType || "standard";
     } else if (fromStatus === "resuelto" && toStatus !== "cerrado") {
       updateValues.resolvedAt = null;
+      updateValues.resolutionType = null;
     }
 
     await tx
       .update(incidents)
       .set(updateValues)
       .where(eq(incidents.id, incidentId));
+
+    const eventDetails: Record<string, unknown> = {};
+    if (comment) eventDetails.comment = comment;
+    if (resolutionType === "derivado_rma") eventDetails.resolutionType = "derivado_rma";
 
     await tx.insert(eventLogs).values({
       entityType: "incident",
@@ -221,7 +242,7 @@ export async function transitionIncident(
       fromState: fromStatus,
       toState: toStatus,
       userId: session.user.id,
-      details: comment ? { comment } : undefined,
+      details: Object.keys(eventDetails).length > 0 ? eventDetails : undefined,
     });
 
     return { success: true as const };
@@ -268,4 +289,9 @@ export async function fetchIncidentsForSelect(): Promise<
 export async function fetchIncidentById(id: string): Promise<IncidentRow | null> {
   await getRequiredSession();
   return getIncidentById(id);
+}
+
+export async function fetchLinkedRmas(incidentId: string): Promise<LinkedRma[]> {
+  await getRequiredSession();
+  return getLinkedRmas(incidentId);
 }

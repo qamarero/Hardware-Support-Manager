@@ -44,4 +44,6 @@ export const incidents = hsmSchema.table("incidents", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull().$onUpdate(() => new Date()),
   resolvedAt: timestamp("resolved_at", { withTimezone: true }),
   stateChangedAt: timestamp("state_changed_at", { withTimezone: true }).defaultNow().notNull(),
+  slaPausedMs: varchar("sla_paused_ms", { length: 50 }).default("0").notNull(),
+  resolutionType: varchar("resolution_type", { length: 50 }),
 });

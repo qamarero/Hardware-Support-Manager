@@ -6,6 +6,7 @@ export interface StateTransition {
   to: IncidentStatus;
   label: string;
   requiredRole: UserRole[];
+  resolutionType?: "standard" | "derivado_rma";
 }
 
 export const INCIDENT_TRANSITIONS: StateTransition[] = [
@@ -20,6 +21,7 @@ export const INCIDENT_TRANSITIONS: StateTransition[] = [
   { from: "en_gestion", to: "esperando_cliente", label: "Esperar Cliente", requiredRole: ["admin", "technician"] },
   { from: "en_gestion", to: "esperando_proveedor", label: "Esperar Proveedor", requiredRole: ["admin", "technician"] },
   { from: "en_gestion", to: "resuelto", label: "Marcar Resuelto", requiredRole: ["admin", "technician"] },
+  { from: "en_gestion", to: "resuelto", label: "Derivar a RMA", requiredRole: ["admin", "technician"], resolutionType: "derivado_rma" },
   { from: "en_gestion", to: "cancelado", label: "Cancelar", requiredRole: ["admin"] },
   // From esperando_cliente
   { from: "esperando_cliente", to: "en_gestion", label: "Reanudar Gestión", requiredRole: ["admin", "technician"] },

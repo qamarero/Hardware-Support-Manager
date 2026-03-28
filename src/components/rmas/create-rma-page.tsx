@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,7 +11,9 @@ import type { RmaFormInput } from "@/lib/validators/rma";
 
 export function CreateRmaPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+  const prefilledIncidentId = searchParams.get("incidentId") ?? undefined;
 
   const { data: providers = [] } = useQuery({
     queryKey: ["providers", "select"],
@@ -45,6 +47,7 @@ export function CreateRmaPage() {
         <RmaForm
           providers={providers}
           incidents={incidents}
+          defaultValues={prefilledIncidentId ? { incidentId: prefilledIncidentId } : undefined}
           onSubmit={(data) => createMutation.mutate(data)}
           isSubmitting={createMutation.isPending}
           mode="create"

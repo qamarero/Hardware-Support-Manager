@@ -5,16 +5,16 @@ export interface SlaThresholds {
 
 export const DEFAULT_SLA_THRESHOLDS: SlaThresholds = {
   response: {
-    critica: 4,
-    alta: 8,
-    media: 24,
-    baja: 48,
+    critica: 2,
+    alta: 4,
+    media: 8,
+    baja: 24,
   },
   resolution: {
-    critica: 24,
-    alta: 48,
-    media: 168,
-    baja: 336,
+    critica: 8,
+    alta: 24,
+    media: 72,
+    baja: 168,
   },
 };
 
