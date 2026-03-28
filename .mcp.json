@@ -1,22 +1,12 @@
 {
   "mcpServers": {
-    "neon": {
-      "type": "http",
-      "url": "https://mcp.neon.tech/mcp"
-    },
     "postgresql": {
       "command": "npx",
       "args": [
         "-y",
-        "@modelcontextprotocol/server-postgres"
-      ],
-      "env": {
-        "POSTGRES_CONNECTION_STRING": "postgresql://user:password@localhost:5432/dbname"
-      }
-    },
-    "supabase": {
-      "type": "http",
-      "url": "https://mcp.supabase.com/mcp?project_ref=thkrkubkiasfqmiiwfbj"
+        "@modelcontextprotocol/server-postgres",
+        "postgresql://hsm_app.thkrkubkiasfqmiiwfbj:YOUR_HSM_APP_PASSWORD@aws-0-YOUR_REGION.pooler.supabase.com:6543/postgres?options=--search_path%3Dhsm"
+      ]
     },
     "web-fetch": {
       "command": "npx",
@@ -51,6 +41,10 @@
       "env": {
         "FIGMA_ACCESS_TOKEN": ""
       }
+    },
+    "supabase": {
+      "type": "http",
+      "url": "https://mcp.supabase.com/mcp?project_ref=thkrkubkiasfqmiiwfbj"
     }
   }
 }

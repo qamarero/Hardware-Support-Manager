@@ -14,15 +14,23 @@ async function seed() {
 
   await db
     .insert(schema.users)
-    .values({
-      name: "Administrador",
-      email: "admin@hardware-support.local",
-      passwordHash,
-      role: "admin",
-    })
+    .values([
+      {
+        name: "Administrador",
+        email: "admin@hardware-support.local",
+        passwordHash,
+        role: "admin",
+      },
+      {
+        name: "Domingo Bueno",
+        email: "domingo.bueno@qamarero.com",
+        passwordHash,
+        role: "admin",
+      },
+    ])
     .onConflictDoNothing();
 
-  console.log("Admin user created: admin@hardware-support.local / admin123");
+  console.log("Admin users created: admin@hardware-support.local, domingo.bueno@qamarero.com");
 
   // Seed providers
   const providerData = [
