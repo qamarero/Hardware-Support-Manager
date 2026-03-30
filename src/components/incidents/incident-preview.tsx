@@ -52,7 +52,7 @@ export function IncidentPreviewPopover({ incident }: IncidentPreviewProps) {
           <Eye className="h-4 w-4" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="start" side="right">
+      <PopoverContent className="w-96 p-0" align="start" side="right" style={{ animationTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)" }}>
         <div className="p-4 space-y-3">
           {/* Header */}
           <div className="flex items-center gap-2 flex-wrap">

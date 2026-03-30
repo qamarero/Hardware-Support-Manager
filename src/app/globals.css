@@ -288,6 +288,19 @@
     animation: eyeBlink 600ms ease-in-out;
   }
 
+  /* Popover open glow — ring + shadow reveal (Emil) */
+  [data-slot="popover-content"] {
+    transition: box-shadow 250ms var(--ease-out-expo);
+  }
+
+  [data-slot="popover-content"][data-state="open"] {
+    box-shadow: 0 0 0 1px oklch(0.623 0.214 259 / 0.1), 0 8px 30px oklch(0 0 0 / 0.12);
+  }
+
+  .dark [data-slot="popover-content"][data-state="open"] {
+    box-shadow: 0 0 0 1px oklch(0.623 0.214 259 / 0.15), 0 8px 30px oklch(0 0 0 / 0.3);
+  }
+
   /* Reduced motion: keep opacity, remove movement */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
