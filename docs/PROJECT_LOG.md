@@ -545,6 +545,43 @@
 
 ---
 
+## SESSION 8 — 2026-03-30
+
+**Objetivo**: Fix bug edicion, UI polish Emil Kowalski, sorting tablas, preview popover
+**Estado final**: COMPLETADA CON EXITO (4 commits, deploy Vercel OK)
+
+### Que se hizo
+
+| Commit | Tipo | Descripcion |
+|--------|------|-------------|
+| `6386e28` | fix | Edicion incidencias/RMAs fallaba: tipado Drizzle, try/catch, checks `!== undefined` |
+| `f44bdfb` | feat | UI polish Emil: 20 archivos, keyframes, card refinada, hover glow, stagger, timeline, charts |
+| `8793f47` | feat | Sorting por columnas + preview ojo (popover) en tablas incidencias y RMAs |
+| `8fd822d` | feat | Popover animations Emil: zoom-97, 250/180ms asimetrico, ring glow, w-96 |
+
+### Metricas
+
+| Metrica | Valor |
+|---------|-------|
+| Archivos modificados | ~30 |
+| Archivos nuevos | 2 (incident-preview.tsx, rma-preview.tsx) |
+| Lineas netas | +600 aprox |
+| Keyframes CSS nuevos | 6 (scaleIn, slideInLeft, countUp, shimmer, eyeBlink, popover glow) |
+| Columnas sortables | 6 incidencias + 4 RMAs |
+| Warnings Vercel pendientes | 2 (imports no usados en quick-actions y quick-capture-page) |
+
+### Decisiones de la sesion
+
+| Decision | Razon |
+|----------|-------|
+| Default sort `stateChangedAt desc` | Muestra primero las incidencias mas estancadas (requieren atencion) |
+| Filosofia Emil Kowalski (CSS-only) | 0 dependencias nuevas, GPU-only animations, ease-out-expo, stagger 30-80ms |
+| Preview como Popover (no Sheet) | Mas ligero, no bloquea la tabla, cierre instantaneo |
+| zoom-in-97 en vez de 95 | Emil: nada aparece desde scale(0), 0.97 es mas sutil |
+| Duraciones asimetricas 250/180ms | Emil: entrada lenta (usuario observa), salida rapida (sistema responde) |
+
+---
+
 ## Decisiones Tecnicas Importantes
 
 | Decision | Razon |

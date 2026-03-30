@@ -455,6 +455,166 @@ src/components/layout/app-sidebar.tsx          # MODIFICADO — +SidebarMenuBadg
 
 ---
 
+### Sesión 2026-03-30 — Fix edición, UI Polish Emil, Sorting, Preview Popover
+
+**4 commits** | **~30 archivos modificados** | **2 componentes nuevos** | Deploy Vercel OK
+
+---
+
+#### Entregable 1: Fix edición de incidencias y RMAs (`6386e28`)
+
+**Bug**: Al editar una incidencia existente (cambiar técnico, prioridad, etc.) fallaba con toast rojo genérico "Error al actualizar". La creación funcionaba correctamente.
+
+**Causa raíz**:
+- `values` tipado como `Record<string, unknown>` → Drizzle generaba SQL inválido
+- Sin try/catch → errores se propagaban sin mensaje descriptivo
+- Checks con truthiness (`if (parsed.data.title)`) en vez de `!== undefined` → campos con valor legítimo no se incluían en el UPDATE
+
+**Fix aplicado**:
+- Tipar `values` como `Partial<typeof incidents.$inferInsert>` (Drizzle type-safe)
+- Envolver transacción DB en try/catch con mensajes reales del error
+- Usar `!== undefined` para todos los campos (title, category, priority, providerId)
+- Mostrar qué campos fallan validación Zod en el toast
+- Fix adicional: `SelectTrigger` `w-fit` → `w-full` para layout correcto
+
+**Archivos**: `server/actions/incidents.ts`, `server/actions/rmas.ts`, `ui/select.tsx`
+
+---
+
+#### Entregable 2: UI Polish — Filosofía Emil Kowalski (`f44bdfb`)
+
+**20 archivos** | +169/-53 líneas | 0 dependencias nuevas (todo CSS + Tailwind)
+
+Principios Emil aplicados: solo animar transform+opacity (GPU), ease-out para entradas, duraciones <300ms, stagger 30-80ms, nunca scale(0), hover gateado con `@media (hover: hover)`.
+
+| Mejora | Detalle |
+|--------|---------|
+| **Keyframes nuevos** | `scaleIn`, `slideInLeft`, `countUp`, `shimmer` + clases utilidad |
+| **Card base refinada** | Sombra multicapa OKLch + borde fino `border-border/50` + transición border-color |
+| **Hover glow primario** | Entity cards y KPI cards con `shadow oklch(0.623 0.214 259/0.08)` en vez de shadow-lg genérica |
+| **Status dots animados** | `animate-ping` en estados activos (nuevo, en_triaje, en_gestion, solicitado, aprobado, enviado_proveedor) |
+| **Form section headers** | Barra vertical `bg-primary` + `font-semibold text-foreground` + separadores suaves `bg-border/40` |
+| **Header mejorado** | `sticky top-0 z-40` + `backdrop-blur-md` + sombra 1px fina |
+| **Stagger detail pages** | Secciones con fadeInUp escalonado 80ms (0, 80, 160, 240, 320, 400ms) |
+| **Accent strips** | Gradiente `from-primary/60 via-primary/30 to-transparent` en cards principales de detail |
+| **Data table** | Header `bg-muted/30`, row stagger 30ms (max 10 rows), pagination pill, page number primary |
+| **Page transition** | Scale sutil `0.997` → `1` añadido a la transición opacity+translate existente |
+| **Sidebar** | Barra vertical activa `h-5 w-0.5 bg-sidebar-primary` en nav item activo |
+| **Attention widget** | Gradiente sutil rojo/ámbar + items `hover:translate-x-0.5` |
+| **Timeline** | Línea gradiente `from-primary/20`, primer evento `bg-primary`, stagger slideInLeft 60ms |
+| **Charts** | `animationBegin={200} animationDuration={800}` en Area/Bar de Recharts |
+| **KPI values** | `animate-count-up` (opacity + translateY 400ms ease-out-expo) |
+| **Inputs** | Focus easing alineado con `ease-out-expo` de Emil |
+| **Skeleton shimmer** | Gradiente animado para loading states |
+
+---
+
+#### Entregable 3: Sorting por columnas + Preview ojo (`8793f47`)
+
+**10 archivos** | +349/-21 líneas | **2 componentes nuevos**
+
+**Sorting en tablas**:
+- `DataTable` acepta `sortBy`, `sortOrder`, `onSort` — headers con `meta.sortKey` son clickables
+- Indicador visual: `ChevronUp`/`ChevronDown` (activa, color primary) o `ArrowUpDown` (inactiva, muted)
+- Click cicla: desc → asc → desc
+- Orden por defecto cambiado a `stateChangedAt desc` (incidencias más estancadas primero)
+- Columnas sortables incidencias: número, título, estado, prioridad, antigüedad, creado (6/9)
+- Columnas sortables RMAs: número, estado, antigüedad, creado (4/9)
+- Infraestructura existente reutilizada: `setSorting()` de `useTableSearchParams` (existía pero no estaba conectada)
+
+**Preview popover (botón ojo)**:
+- Nueva columna entre Número y Título con icono `Eye` de lucide
+- Hover: animación parpadeo CSS (`eyeBlink` — `scaleY(0.3)` al 50%, 600ms)
+- Click: abre Popover (Radix) con info clave sin abrir detail page
+
+**IncidentPreviewPopover** (`src/components/incidents/incident-preview.tsx`):
+- Header: número + StateBadge + PriorityBadge
+- Body: título, descripción (3 líneas), categoría, cliente, asignado, dispositivo, contacto+teléfono, antigüedad, creado
+- Footer: "Ver detalle completo" → link
+
+**RmaPreviewPopover** (`src/components/rmas/rma-preview.tsx`):
+- Header: número + StateBadge
+- Body: proveedor, cliente, dispositivo+serial, tracking envío/retorno, RMA proveedor, incidencia vinculada, notas (2 líneas), antigüedad
+- Footer: "Ver detalle completo" → link
+
+---
+
+#### Entregable 4: Popover animations Emil (`8fd822d`)
+
+**4 archivos** | +16/-3 líneas
+
+| Antes | Después | Por qué (Emil) |
+|-------|---------|-----------------|
+| `zoom-in-95` / `zoom-out-95` | `zoom-in-97` / `zoom-out-97` | Scale 0.97 más sutil, nada aparece desde 0 |
+| duration-200 / duration-150 | duration-250 / duration-180 | Asimétrico: entrada lenta, salida rápida |
+| Easing genérico tw-animate | `ease-out-expo` (cubic-bezier 0.16,1,0.3,1) | Respuesta inmediata, desaceleración natural |
+| Sin ring/shadow | Ring glow primary/10 + shadow 8px 30px | Profundidad y brand-alignment al abrir |
+| `w-80` (320px) | `w-96` (384px) | Más espacio para info del preview |
+| `rounded-md` | `rounded-lg` | Consistente con cards del sistema |
+
+Ring glow CSS en `globals.css`:
+```css
+[data-slot="popover-content"][data-state="open"] {
+  box-shadow: 0 0 0 1px oklch(0.623 0.214 259 / 0.1), 0 8px 30px oklch(0 0 0 / 0.12);
+}
+```
+
+---
+
+#### Warnings Vercel (no bloqueantes, pendientes de limpiar)
+
+| Archivo | Warning |
+|---------|---------|
+| `src/components/dashboard/quick-actions.tsx` | `MessageSquareText` importado pero no usado |
+| `src/components/incidents/quick-capture-page.tsx` | `useTransition` importado pero no usado |
+
+No afectan al deploy ni al funcionamiento. Limpiar en próximo commit si se desea.
+
+---
+
+#### Archivos principales de esta sesión
+
+```
+# Fix edición
+src/server/actions/incidents.ts          # try/catch, tipado Drizzle, checks !== undefined
+src/server/actions/rmas.ts               # ídem
+src/components/ui/select.tsx             # w-fit → w-full
+
+# UI Polish Emil
+src/app/globals.css                       # keyframes, shimmer, input easing, eyeBlink, popover glow
+src/components/ui/card.tsx                # sombra multicapa, borde fino
+src/components/shared/entity-card.tsx     # hover glow primario
+src/components/shared/state-badge.tsx     # dots animados estados activos
+src/components/shared/data-table.tsx      # header bg, row stagger, pagination, sorting headers
+src/components/shared/page-transition.tsx # scale sutil
+src/components/shared/event-log-timeline.tsx # timeline visual mejorada
+src/components/incidents/incident-detail.tsx  # stagger, accent strips, edit transition
+src/components/incidents/incident-form.tsx    # section headers accent bar
+src/components/rmas/rma-detail.tsx           # stagger, accent strips, edit transition
+src/components/rmas/rma-form.tsx             # section headers accent bar
+src/components/dashboard/kpi-card.tsx        # hover glow, count-up
+src/components/dashboard/expandable-kpi-card.tsx # hover glow, count-up
+src/components/dashboard/attention-widget.tsx    # gradiente, hover translate
+src/components/dashboard/*-chart.tsx         # entry animations
+src/components/layout/app-header.tsx         # sticky glass
+src/components/layout/app-sidebar.tsx        # active indicator bar
+
+# Sorting + Preview
+src/components/incidents/incident-columns.tsx  # meta.sortKey + columna preview
+src/components/incidents/incident-preview.tsx  # NUEVO — popover preview incidencia
+src/components/incidents/incident-list.tsx     # conectar sorting, default stateChangedAt
+src/components/rmas/rma-columns.tsx            # meta.sortKey + columna preview
+src/components/rmas/rma-preview.tsx            # NUEVO — popover preview RMA
+src/components/rmas/rma-list.tsx               # conectar sorting, default stateChangedAt
+src/app/(dashboard)/incidents/page.tsx         # default SSR sort stateChangedAt
+src/app/(dashboard)/rmas/page.tsx              # default SSR sort stateChangedAt
+
+# Popover animation
+src/components/ui/popover.tsx                  # zoom-97, duration 250/180, rounded-lg
+```
+
+---
+
 ## Próximas Fases
 
 ### Fase 4: Importación Manual desde Intercom (Pendiente)
