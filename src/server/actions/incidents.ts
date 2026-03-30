@@ -91,18 +91,20 @@ export async function updateIncident(
 
   const parsed = updateIncidentSchema.safeParse(input);
   if (!parsed.success) {
-    return { success: false, error: "Datos inválidos" };
+    const fieldErrors = parsed.error.flatten().fieldErrors;
+    const fields = Object.keys(fieldErrors).join(", ");
+    return { success: false, error: `Datos inválidos en: ${fields}` };
   }
 
-  const values: Record<string, unknown> = {};
+  const values: Partial<typeof incidents.$inferInsert> = {};
   if (parsed.data.clientId !== undefined) values.clientId = parsed.data.clientId || null;
   if (parsed.data.clientLocationId !== undefined) values.clientLocationId = parsed.data.clientLocationId || null;
   if (parsed.data.clientName !== undefined) values.clientName = parsed.data.clientName || null;
-  if (parsed.data.title) values.title = parsed.data.title;
+  if (parsed.data.title !== undefined) values.title = parsed.data.title;
   if (parsed.data.description !== undefined)
     values.description = parsed.data.description || null;
-  if (parsed.data.category) values.category = parsed.data.category;
-  if (parsed.data.priority) values.priority = parsed.data.priority;
+  if (parsed.data.category !== undefined) values.category = parsed.data.category;
+  if (parsed.data.priority !== undefined) values.priority = parsed.data.priority;
   if (parsed.data.assignedUserId !== undefined)
     values.assignedUserId = parsed.data.assignedUserId || null;
   if (parsed.data.deviceType !== undefined)
@@ -133,38 +135,44 @@ export async function updateIncident(
     const [client] = await db
       .select({ name: clients.name })
       .from(clients)
-      .where(eq(clients.id, values.clientId as string))
+      .where(eq(clients.id, values.clientId))
       .limit(1);
     if (client) values.clientName = client.name;
   }
 
-  const [incident] = await db.transaction(async (tx) => {
-    const [inc] = await tx
-      .update(incidents)
-      .set(values)
-      .where(eq(incidents.id, id))
-      .returning({ id: incidents.id });
+  try {
+    const [incident] = await db.transaction(async (tx) => {
+      const [inc] = await tx
+        .update(incidents)
+        .set(values)
+        .where(eq(incidents.id, id))
+        .returning({ id: incidents.id });
 
-    if (!inc) return [null];
+      if (!inc) return [null];
 
-    await tx.insert(eventLogs).values({
-      entityType: "incident",
-      entityId: inc.id,
-      action: "updated",
-      userId: session.user.id,
-      details: { fields: Object.keys(values) },
+      await tx.insert(eventLogs).values({
+        entityType: "incident",
+        entityId: inc.id,
+        action: "updated",
+        userId: session.user.id,
+        details: { fields: Object.keys(values) },
+      });
+
+      return [inc];
     });
 
-    return [inc];
-  });
+    if (!incident) {
+      return { success: false, error: "Incidencia no encontrada" };
+    }
 
-  if (!incident) {
-    return { success: false, error: "Incidencia no encontrada" };
+    revalidatePath("/incidents");
+    revalidatePath(`/incidents/${id}`);
+    return { success: true, data: { id: incident.id } };
+  } catch (err) {
+    console.error("updateIncident error:", err);
+    const message = err instanceof Error ? err.message : "Error desconocido";
+    return { success: false, error: `Error al actualizar incidencia: ${message}` };
   }
-
-  revalidatePath("/incidents");
-  revalidatePath(`/incidents/${id}`);
-  return { success: true, data: { id: incident.id } };
 }
 
 export async function transitionIncident(

@@ -92,11 +92,13 @@ export async function updateRma(
 
   const parsed = updateRmaSchema.safeParse(input);
   if (!parsed.success) {
-    return { success: false, error: "Datos inválidos" };
+    const fieldErrors = parsed.error.flatten().fieldErrors;
+    const fields = Object.keys(fieldErrors).join(", ");
+    return { success: false, error: `Datos inválidos en: ${fields}` };
   }
 
-  const values: Record<string, unknown> = {};
-  if (parsed.data.providerId) values.providerId = parsed.data.providerId;
+  const values: Partial<typeof rmas.$inferInsert> = {};
+  if (parsed.data.providerId !== undefined) values.providerId = parsed.data.providerId;
   if (parsed.data.incidentId !== undefined)
     values.incidentId = parsed.data.incidentId || null;
   if (parsed.data.clientId !== undefined)
@@ -127,16 +129,6 @@ export async function updateRma(
     values.city = parsed.data.city || null;
   if (parsed.data.phone !== undefined)
     values.phone = parsed.data.phone || null;
-
-  // Auto-fill clientName from client record if clientId changed
-  if (values.clientId) {
-    const [client] = await db
-      .select({ name: clients.name })
-      .from(clients)
-      .where(eq(clients.id, values.clientId as string))
-      .limit(1);
-    if (client) values.clientName = client.name;
-  }
   if (parsed.data.trackingNumberOutgoing !== undefined)
     values.trackingNumberOutgoing = parsed.data.trackingNumberOutgoing || null;
   if (parsed.data.trackingNumberReturn !== undefined)
@@ -146,33 +138,49 @@ export async function updateRma(
   if (parsed.data.notes !== undefined)
     values.notes = parsed.data.notes || null;
 
-  const [rma] = await db.transaction(async (tx) => {
-    const [r] = await tx
-      .update(rmas)
-      .set(values)
-      .where(eq(rmas.id, id))
-      .returning({ id: rmas.id });
-
-    if (!r) return [null];
-
-    await tx.insert(eventLogs).values({
-      entityType: "rma",
-      entityId: r.id,
-      action: "updated",
-      userId: session.user.id,
-      details: { fields: Object.keys(values) },
-    });
-
-    return [r];
-  });
-
-  if (!rma) {
-    return { success: false, error: "RMA no encontrado" };
+  // Auto-fill clientName from client record if clientId changed
+  if (values.clientId) {
+    const [client] = await db
+      .select({ name: clients.name })
+      .from(clients)
+      .where(eq(clients.id, values.clientId))
+      .limit(1);
+    if (client) values.clientName = client.name;
   }
 
-  revalidatePath("/rmas");
-  revalidatePath(`/rmas/${id}`);
-  return { success: true, data: { id: rma.id } };
+  try {
+    const [rma] = await db.transaction(async (tx) => {
+      const [r] = await tx
+        .update(rmas)
+        .set(values)
+        .where(eq(rmas.id, id))
+        .returning({ id: rmas.id });
+
+      if (!r) return [null];
+
+      await tx.insert(eventLogs).values({
+        entityType: "rma",
+        entityId: r.id,
+        action: "updated",
+        userId: session.user.id,
+        details: { fields: Object.keys(values) },
+      });
+
+      return [r];
+    });
+
+    if (!rma) {
+      return { success: false, error: "RMA no encontrado" };
+    }
+
+    revalidatePath("/rmas");
+    revalidatePath(`/rmas/${id}`);
+    return { success: true, data: { id: rma.id } };
+  } catch (err) {
+    console.error("updateRma error:", err);
+    const message = err instanceof Error ? err.message : "Error desconocido";
+    return { success: false, error: `Error al actualizar RMA: ${message}` };
+  }
 }
 
 export async function transitionRma(
