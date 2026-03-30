@@ -6,11 +6,13 @@ import type { RmaRow } from "@/server/queries/rmas";
 import { RmaStateBadge } from "@/components/shared/state-badge";
 import { AgingBadge } from "@/components/shared/aging-badge";
 import { formatDate } from "@/lib/utils/date-format";
+import { RmaPreviewPopover } from "./rma-preview";
 
 export const rmaColumns: ColumnDef<RmaRow, unknown>[] = [
   {
     accessorKey: "rmaNumber",
-    header: "N\u00famero",
+    header: "Número",
+    meta: { sortKey: "rmaNumber" },
     cell: ({ row }) => (
       <Link
         href={`/rmas/${row.original.id}`}
@@ -21,8 +23,14 @@ export const rmaColumns: ColumnDef<RmaRow, unknown>[] = [
     ),
   },
   {
+    id: "preview",
+    header: "",
+    cell: ({ row }) => <RmaPreviewPopover rma={row.original} />,
+  },
+  {
     accessorKey: "status",
     header: "Estado",
+    meta: { sortKey: "status" },
     cell: ({ row }) => <RmaStateBadge status={row.original.status} />,
   },
   {
@@ -64,12 +72,14 @@ export const rmaColumns: ColumnDef<RmaRow, unknown>[] = [
   },
   {
     accessorKey: "stateChangedAt",
-    header: "Antig\u00fcedad",
+    header: "Antigüedad",
+    meta: { sortKey: "stateChangedAt" },
     cell: ({ row }) => <AgingBadge stateChangedAt={row.original.stateChangedAt} />,
   },
   {
     accessorKey: "createdAt",
     header: "Creado",
+    meta: { sortKey: "createdAt" },
     cell: ({ row }) => formatDate(row.original.createdAt),
   },
 ];

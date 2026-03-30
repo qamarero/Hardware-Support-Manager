@@ -17,10 +17,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   ChevronsLeft,
   ChevronsRight,
+  ArrowUpDown,
   Inbox,
 } from "lucide-react";
 import { PageSizeSelector } from "@/components/shared/page-size-selector";
@@ -36,6 +39,9 @@ interface DataTableProps<TData> {
   onPageChange: (page: number) => void;
   onPageSizeChange?: (size: number) => void;
   searchBar?: React.ReactNode;
+  sortBy?: string;
+  sortOrder?: string;
+  onSort?: (sortBy: string, sortOrder: "asc" | "desc") => void;
 }
 
 export function DataTable<TData>({
@@ -49,6 +55,9 @@ export function DataTable<TData>({
   onPageChange,
   onPageSizeChange,
   searchBar,
+  sortBy,
+  sortOrder,
+  onSort,
 }: DataTableProps<TData>) {
   const table = useReactTable({
     data,
@@ -61,6 +70,15 @@ export function DataTable<TData>({
   const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
   const endItem = Math.min(page * pageSize, totalCount);
 
+  function handleSort(sortKey: string) {
+    if (!onSort) return;
+    if (sortBy === sortKey) {
+      onSort(sortKey, sortOrder === "desc" ? "asc" : "desc");
+    } else {
+      onSort(sortKey, "desc");
+    }
+  }
+
   return (
     <div className="space-y-4">
       {searchBar}
@@ -70,16 +88,34 @@ export function DataTable<TData>({
           <TableHeader className="bg-muted/30 dark:bg-muted/10">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                  </TableHead>
-                ))}
+                {headerGroup.headers.map((header) => {
+                  const sortKey = (header.column.columnDef.meta as { sortKey?: string } | undefined)?.sortKey;
+                  const isActive = sortKey != null && sortBy === sortKey;
+                  return (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder ? null : sortKey && onSort ? (
+                        <button
+                          type="button"
+                          className="flex items-center gap-1 hover:text-foreground transition-colors duration-150 -ml-2 px-2 py-1 rounded-md hover:bg-muted/50"
+                          onClick={() => handleSort(sortKey)}
+                        >
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          {isActive ? (
+                            sortOrder === "asc" ? (
+                              <ChevronUp className="h-3.5 w-3.5 text-primary" />
+                            ) : (
+                              <ChevronDown className="h-3.5 w-3.5 text-primary" />
+                            )
+                          ) : (
+                            <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground/50" />
+                          )}
+                        </button>
+                      ) : (
+                        flexRender(header.column.columnDef.header, header.getContext())
+                      )}
+                    </TableHead>
+                  );
+                })}
               </TableRow>
             ))}
           </TableHeader>

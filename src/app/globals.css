@@ -278,6 +278,16 @@
     transition-timing-function: var(--ease-out-expo);
   }
 
+  /* Eye blink animation for preview button */
+  @keyframes eyeBlink {
+    0%, 100% { opacity: 1; transform: scaleY(1); }
+    50% { opacity: 0.2; transform: scaleY(0.3); }
+  }
+
+  .eye-blink:hover {
+    animation: eyeBlink 600ms ease-in-out;
+  }
+
   /* Reduced motion: keep opacity, remove movement */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {

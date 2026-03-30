@@ -8,6 +8,7 @@ import { AgingBadge } from "@/components/shared/aging-badge";
 import { Badge } from "@/components/ui/badge";
 import { INCIDENT_PRIORITY_LABELS, type IncidentPriority } from "@/lib/constants/incidents";
 import { formatDate } from "@/lib/utils/date-format";
+import { IncidentPreviewPopover } from "./incident-preview";
 
 const PRIORITY_COLORS: Record<string, string> = {
   baja: "bg-green-500/15 text-green-700 hover:bg-green-500/15 dark:bg-green-500/25 dark:text-green-300",
@@ -19,7 +20,8 @@ const PRIORITY_COLORS: Record<string, string> = {
 export const incidentColumns: ColumnDef<IncidentRow, unknown>[] = [
   {
     accessorKey: "incidentNumber",
-    header: "N\u00famero",
+    header: "Número",
+    meta: { sortKey: "incidentNumber" },
     cell: ({ row }) => (
       <Link
         href={`/incidents/${row.original.id}`}
@@ -30,8 +32,14 @@ export const incidentColumns: ColumnDef<IncidentRow, unknown>[] = [
     ),
   },
   {
+    id: "preview",
+    header: "",
+    cell: ({ row }) => <IncidentPreviewPopover incident={row.original} />,
+  },
+  {
     accessorKey: "title",
-    header: "T\u00edtulo",
+    header: "Título",
+    meta: { sortKey: "title" },
     cell: ({ row }) => (
       <span className="max-w-[200px] truncate block">{row.original.title}</span>
     ),
@@ -39,11 +47,13 @@ export const incidentColumns: ColumnDef<IncidentRow, unknown>[] = [
   {
     accessorKey: "status",
     header: "Estado",
+    meta: { sortKey: "status" },
     cell: ({ row }) => <IncidentStateBadge status={row.original.status} />,
   },
   {
     accessorKey: "priority",
     header: "Prioridad",
+    meta: { sortKey: "priority" },
     cell: ({ row }) => (
       <Badge variant="outline" className={PRIORITY_COLORS[row.original.priority] ?? ""}>
         {INCIDENT_PRIORITY_LABELS[row.original.priority as IncidentPriority] ?? row.original.priority}
@@ -76,12 +86,14 @@ export const incidentColumns: ColumnDef<IncidentRow, unknown>[] = [
   },
   {
     accessorKey: "stateChangedAt",
-    header: "Antig\u00fcedad",
+    header: "Antigüedad",
+    meta: { sortKey: "stateChangedAt" },
     cell: ({ row }) => <AgingBadge stateChangedAt={row.original.stateChangedAt} />,
   },
   {
     accessorKey: "createdAt",
     header: "Creado",
+    meta: { sortKey: "createdAt" },
     cell: ({ row }) => formatDate(row.original.createdAt),
   },
 ];

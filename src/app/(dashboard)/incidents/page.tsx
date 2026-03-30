@@ -19,7 +19,7 @@ export default async function IncidentsPage({
 
   const page = Number(params.page) || 1;
   const pageSize = Number(params.pageSize) || 10;
-  const sortBy = typeof params.sortBy === "string" ? params.sortBy : "createdAt";
+  const sortBy = typeof params.sortBy === "string" ? params.sortBy : "stateChangedAt";
   const sortOrder = (typeof params.sortOrder === "string" ? params.sortOrder : "desc") as SortOrder;
 
   const initialData = await getIncidents({

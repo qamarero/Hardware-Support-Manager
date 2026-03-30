@@ -19,8 +19,8 @@ interface RmaListProps {
 }
 
 export function RmaList({ initialData }: RmaListProps) {
-  const { page, pageSize, sortBy, sortOrder, setPage, setPageSize } =
-    useTableSearchParams("createdAt");
+  const { page, pageSize, sortBy, sortOrder, setPage, setPageSize, setSorting } =
+    useTableSearchParams("stateChangedAt");
   const { inputValue, setInputValue, debouncedValue: search } = useDebouncedSearch();
   const { params: filterParams, filterValues, setFilter, clearFilters, activeFilterCount } =
     useFilterParams(RMA_FILTERS);
@@ -52,6 +52,9 @@ export function RmaList({ initialData }: RmaListProps) {
       isLoading={isLoading}
       onPageChange={setPage}
       onPageSizeChange={setPageSize}
+      sortBy={sortBy}
+      sortOrder={sortOrder}
+      onSort={setSorting}
       searchBar={
         <div className="space-y-3">
           <SearchBar
