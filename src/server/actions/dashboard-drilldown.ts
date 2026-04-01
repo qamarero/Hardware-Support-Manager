@@ -28,7 +28,8 @@ export interface DrilldownRma {
   createdAt: Date;
 }
 
-const CLOSED_STATUSES = ["resuelto", "cerrado", "cancelado"] as const;
+const CLOSED_INCIDENT_STATUSES = ["resuelto", "cerrado", "cancelado"] as const;
+const CLOSED_RMA_STATUSES = ["recibido_oficina", "cerrado", "cancelado"] as const;
 
 function incidentDateConds(range?: DateRangeParams) {
   const conds = [];
@@ -52,7 +53,7 @@ export async function fetchOpenIncidents(range?: DateRangeParams): Promise<Drill
     .from(incidents)
     .leftJoin(users, eq(incidents.assignedUserId, users.id))
     .where(and(
-      not(inArray(incidents.status, [...CLOSED_STATUSES])),
+      not(inArray(incidents.status, [...CLOSED_INCIDENT_STATUSES])),
       ...incidentDateConds(range)
     ))
     .orderBy(desc(incidents.createdAt))
@@ -78,7 +79,7 @@ export async function fetchActiveRmas(range?: DateRangeParams): Promise<Drilldow
     .from(rmas)
     .leftJoin(providers, eq(rmas.providerId, providers.id))
     .where(and(
-      not(inArray(rmas.status, [...CLOSED_STATUSES])),
+      not(inArray(rmas.status, [...CLOSED_RMA_STATUSES])),
       ...conds
     ))
     .orderBy(desc(rmas.createdAt))
@@ -103,7 +104,7 @@ export async function fetchOverdueIncidents(range?: DateRangeParams): Promise<Dr
     .leftJoin(users, eq(incidents.assignedUserId, users.id))
     .where(
       and(
-        not(inArray(incidents.status, [...CLOSED_STATUSES])),
+        not(inArray(incidents.status, [...CLOSED_INCIDENT_STATUSES])),
         sql`(
           (${incidents.priority} = 'critica' and (extract(epoch from (now() - ${incidents.createdAt})) * 1000 - CAST(${incidents.slaPausedMs} AS bigint)) / 3600000.0 > ${sla.resolution.critica}) or
           (${incidents.priority} = 'alta' and (extract(epoch from (now() - ${incidents.createdAt})) * 1000 - CAST(${incidents.slaPausedMs} AS bigint)) / 3600000.0 > ${sla.resolution.alta}) or
