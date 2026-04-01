@@ -1,5 +1,6 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
-import { Inbox } from "lucide-react";
+import { Inbox, Loader2 } from "lucide-react";
 import { IntercomInbox } from "@/components/intercom/intercom-inbox";
 import { getIntercomInboxItems } from "@/server/queries/intercom-inbox";
 
@@ -9,13 +10,16 @@ export const metadata: Metadata = {
   title: "Bandeja Intercom",
 };
 
-export default async function IntercomInboxPage() {
+async function InboxData() {
   const initialData = await getIntercomInboxItems({
     page: 1,
     pageSize: 20,
     status: "pendiente",
   });
+  return <IntercomInbox initialData={initialData} />;
+}
 
+export default function IntercomInboxPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -29,7 +33,15 @@ export default async function IntercomInboxPage() {
           </p>
         </div>
       </div>
-      <IntercomInbox initialData={initialData} />
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        }
+      >
+        <InboxData />
+      </Suspense>
     </div>
   );
 }
