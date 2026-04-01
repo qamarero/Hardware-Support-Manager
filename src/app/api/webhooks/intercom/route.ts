@@ -228,9 +228,6 @@ export async function POST(request: NextRequest) {
     } catch (err) {
       console.log(`[Intercom Webhook] Enrichment failed: ${err}`);
     }
-    } catch (err) {
-      console.log(`[Intercom Webhook] Enrichment failed: ${err}`);
-    }
   }
 
   return NextResponse.json({ ok: true });
