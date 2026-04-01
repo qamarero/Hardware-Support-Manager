@@ -55,7 +55,13 @@ function extractTicketData(payload: unknown) {
   // Snippet fallback for conversations (non-tickets)
   const snippet = item?.source?.body?.slice?.(0, 500) ?? "";
 
-  return { problemSummary, troubleshootingSteps, urgency, ticketTypeName, ticketTypeDesc, linkedConvId, companyId, description: description || snippet };
+  // Enriched contact data (phone, company) added by webhook enrichment
+  const enriched = p?.enrichedContact ?? {};
+  const contactPhone = enriched.phone ?? null;
+  const companyName = enriched.companyName ?? null;
+  const contactEmail = enriched.email ?? null;
+
+  return { problemSummary, troubleshootingSteps, urgency, ticketTypeName, ticketTypeDesc, linkedConvId, companyId, description: description || snippet, contactPhone, companyName, contactEmail };
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
@@ -80,7 +86,7 @@ export function ConversationDetail({ item, onConvert, onDismiss }: ConversationD
   const ticketData = extractTicketData(item.rawPayload);
   const intercomUrl = `https://app.intercom.com/a/inbox/conversation/${item.intercomConversationId}`;
 
-  // Pre-fill form from ticket data
+  // Pre-fill form from ticket data + enriched contact
   const [title, setTitle] = useState(ticketData.problemSummary || item.subject || "");
   const [description, setDescription] = useState(ticketData.description);
   const [category, setCategory] = useState<IncidentCategory>(
@@ -89,6 +95,9 @@ export function ConversationDetail({ item, onConvert, onDismiss }: ConversationD
   const [priority, setPriority] = useState(
     ticketData.urgency ? mapPriority(ticketData.urgency) : "media"
   );
+  const [clientName, setClientName] = useState(ticketData.companyName ?? item.contactName ?? "");
+  const [contactName, setContactName] = useState(item.contactName ?? "");
+  const [contactPhone, setContactPhone] = useState(ticketData.contactPhone ?? "");
 
   const convertMutation = useMutation({
     mutationFn: () =>
@@ -98,8 +107,9 @@ export function ConversationDetail({ item, onConvert, onDismiss }: ConversationD
         description,
         category,
         priority,
-        clientName: item.contactName ?? "",
-        contactName: item.contactName ?? "",
+        clientName,
+        contactName,
+        contactPhone,
       }),
     onSuccess: (result) => {
       if (result.success) {
@@ -271,6 +281,36 @@ export function ConversationDetail({ item, onConvert, onDismiss }: ConversationD
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Cliente (empresa)</Label>
+                <Input
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                  placeholder="Nombre de la empresa"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Persona de contacto</Label>
+                <Input
+                  value={contactName}
+                  onChange={(e) => setContactName(e.target.value)}
+                  placeholder="Nombre del contacto"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Teléfono</Label>
+                <Input
+                  value={contactPhone}
+                  onChange={(e) => setContactPhone(e.target.value)}
+                  placeholder="Teléfono de contacto"
+                />
+              </div>
+              {(ticketData.contactEmail || item.contactEmail) && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Email</Label>
+                  <p className="text-sm text-muted-foreground">{ticketData.contactEmail ?? item.contactEmail}</p>
+                </div>
+              )}
             </div>
 
             {/* Actions */}

@@ -174,49 +174,60 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  // Enrich: if contact is missing, fetch from Intercom API
+  // Enrich: fetch full contact data from Intercom API (name, email, phone, company)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const itemData = (payload as any)?.data?.item;
-  if (!contactName && !contactEmail && process.env.INTERCOM_ACCESS_TOKEN) {
+  if (process.env.INTERCOM_ACCESS_TOKEN) {
     try {
-      let enrichedName: string | null = null;
-      let enrichedEmail: string | null = null;
-
-      // Strategy 1: ticket has contact ref — could be object, array, or nested
+      // Find the contact reference in the ticket payload
       const contactRef =
         (itemData?.contacts?.type === "contact" ? itemData.contacts : null) ??
-        itemData?.contacts?.[0] ??
-        itemData?.contacts?.contacts?.[0];
+        itemData?.contacts?.contacts?.[0] ??
+        itemData?.contacts?.[0];
+
+      let enrichedContact: { name: string | null; email: string | null; phone: string | null; companyName: string | null } = {
+        name: contactName, email: contactEmail, phone: null, companyName: null,
+      };
+
       if (contactRef?.id && contactRef?.type === "contact") {
-        console.log(`[Intercom Webhook] Fetching contact by ID: ${contactRef.id}`);
+        console.log(`[Intercom Webhook] Fetching contact: ${contactRef.id}`);
         const contact = await getContact(contactRef.id);
-        enrichedName = contact.name ?? (contact.email ? contact.email.split("@")[0] : null);
-        enrichedEmail = contact.email ?? null;
+        enrichedContact = {
+          name: contact.name ?? enrichedContact.name,
+          email: contact.email ?? enrichedContact.email,
+          phone: contact.phone ?? null,
+          companyName: contact.company?.name ?? null,
+        };
       }
 
-      // Strategy 2: try fetching the conversation for more data
-      if (!enrichedName && !enrichedEmail) {
-        console.log(`[Intercom Webhook] Fetching conversation: ${conversationId}`);
-        const conv = await getConversation(conversationId);
-        const convContact = conv.contacts?.contacts?.[0];
-        enrichedName = convContact?.name ?? null;
-        enrichedEmail = convContact?.email ?? null;
+      // Fallback: try conversation if no contact ref
+      if (!enrichedContact.name && !enrichedContact.email) {
+        try {
+          const conv = await getConversation(conversationId);
+          const convContact = conv.contacts?.contacts?.[0];
+          if (convContact) {
+            enrichedContact.name = convContact.name ?? null;
+            enrichedContact.email = convContact.email ?? null;
+          }
+        } catch { /* conversation fetch is best-effort */ }
       }
 
-      if (enrichedName || enrichedEmail) {
-        await db
-          .update(intercomInbox)
-          .set({
-            contactName: enrichedName,
-            contactEmail: enrichedEmail,
-            updatedAt: new Date(),
-          })
-          .where(eq(intercomInbox.intercomConversationId, conversationId));
+      // Update DB with enriched data + store enrichedContact in rawPayload
+      const enrichedPayload = { ...(payload as Record<string, unknown>), enrichedContact };
+      await db
+        .update(intercomInbox)
+        .set({
+          contactName: enrichedContact.name,
+          contactEmail: enrichedContact.email,
+          rawPayload: enrichedPayload,
+          updatedAt: new Date(),
+        })
+        .where(eq(intercomInbox.intercomConversationId, conversationId));
 
-        console.log(`[Intercom Webhook] Enriched ${conversationId}: ${enrichedName} <${enrichedEmail}>`);
-      } else {
-        console.log(`[Intercom Webhook] No contact data found for ${conversationId}`);
-      }
+      console.log(`[Intercom Webhook] Enriched ${conversationId}: ${enrichedContact.name} <${enrichedContact.email}> phone:${enrichedContact.phone} company:${enrichedContact.companyName}`);
+    } catch (err) {
+      console.log(`[Intercom Webhook] Enrichment failed: ${err}`);
+    }
     } catch (err) {
       console.log(`[Intercom Webhook] Enrichment failed: ${err}`);
     }
