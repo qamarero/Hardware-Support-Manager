@@ -91,6 +91,16 @@ export async function POST(request: NextRequest) {
   // Extract data from any topic structure
   const { conversationId, contactName, contactEmail, subject, assigneeName } = extractData(payload);
 
+  // Only accept escalations relevant to our department (Hardware / RMA)
+  const RELEVANT_KEYWORDS = ["hardware", "rma", "escalado a hardware", "escalado para la gestión de un rma"];
+  const payloadText = JSON.stringify(payload).toLowerCase();
+  const isRelevant = RELEVANT_KEYWORDS.some((kw) => payloadText.includes(kw));
+
+  if (!isRelevant) {
+    console.log(`[Intercom Webhook] Not relevant to Hardware/RMA, skipping`);
+    return NextResponse.json({ ok: true, skipped: true });
+  }
+
   if (!conversationId) {
     console.log("[Intercom Webhook] No conversation ID found, skipping");
     return NextResponse.json({ ok: true, skipped: true });
