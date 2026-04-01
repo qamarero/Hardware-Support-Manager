@@ -74,7 +74,7 @@ export async function convertToIncident(
 
     // Create incident + update inbox in transaction
     const result = await db.transaction(async (tx) => {
-      const incidentNumber = await generateSequentialId("INC", tx);
+      const incidentNumber = await generateSequentialId("INC");
 
       const [newIncident] = await tx
         .insert(incidents)
