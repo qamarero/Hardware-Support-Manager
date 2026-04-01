@@ -29,6 +29,7 @@ export default async function SettingsPage() {
         </div>
       </div>
       <SettingsContent
+        key={JSON.stringify({ slaThresholds, defaultPageSize, defaultView, alertThresholds })}
         initialSla={slaThresholds}
         initialPageSize={defaultPageSize}
         initialView={defaultView}
