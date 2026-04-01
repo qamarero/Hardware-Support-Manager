@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { db } from "@/lib/db";
 import { intercomInbox } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
+import { getConversation } from "@/lib/intercom/client";
 
 function verifySignature(body: string, signature: string | null, secret: string): boolean {
   if (!signature) return false;
@@ -30,10 +32,8 @@ function extractData(payload: any): {
   const item = payload?.data?.item;
   if (!item) return { conversationId: null, contactName: null, contactEmail: null, subject: null, assigneeName: null };
 
-  // Conversation ID: try multiple paths
   const conversationId = String(item.conversation_id ?? item.id ?? "");
 
-  // Contact: try every known Intercom structure
   const contact =
     item.contacts?.contacts?.[0] ??
     item.contacts?.[0] ??
@@ -42,7 +42,6 @@ function extractData(payload: any): {
     item.submitted_by ??
     null;
 
-  // Name: try multiple fields
   const contactName =
     contact?.name ??
     contact?.display_as ??
@@ -50,13 +49,11 @@ function extractData(payload: any): {
       ? `${contact.first_name} ${contact.last_name}`
       : contact?.first_name ?? null);
 
-  // Email: try multiple fields
   const contactEmail =
     contact?.email ??
     contact?.email_address ??
     null;
 
-  // Subject: try multiple locations
   const subject =
     item.source?.subject ??
     item.title ??
@@ -64,7 +61,6 @@ function extractData(payload: any): {
     item.source?.body?.substring?.(0, 200) ??
     null;
 
-  // Assignee: conversations vs tickets
   const assignee =
     item.teammates?.admins?.[0] ??
     item.admin_assignee ??
@@ -78,7 +74,6 @@ function isRelevantEscalation(payload: any): boolean {
   const item = payload?.data?.item;
   if (!item) return false;
 
-  // Check specific semantic fields, NOT the entire JSON
   const fieldsToCheck = [
     item.ticket_type?.name,
     item.ticket_type?.description,
@@ -115,7 +110,6 @@ export async function POST(request: NextRequest) {
     try {
       const parsed = JSON.parse(body);
       if (parsed.type !== "notification_event" || !parsed.data?.item) {
-        console.error("Webhook payload no tiene estructura de Intercom");
         return NextResponse.json({ error: "Payload inválido" }, { status: 400 });
       }
     } catch {
@@ -134,31 +128,19 @@ export async function POST(request: NextRequest) {
   const { conversationId, contactName, contactEmail, subject, assigneeName } = extractData(payload);
   const relevant = isRelevantEscalation(payload);
 
-  // Detailed logging for Vercel runtime — includes payload structure for debugging
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const item = (payload as any)?.data?.item;
-  const itemKeys = item ? Object.keys(item).join(",") : "no-item";
-  const contactsDebug = item?.contacts
-    ? JSON.stringify(item.contacts).substring(0, 300)
-    : item?.user
-      ? JSON.stringify(item.user).substring(0, 300)
-      : item?.source?.author
-        ? JSON.stringify(item.source.author).substring(0, 300)
-        : "no-contacts-found";
   console.log(
-    `[Intercom Webhook] Topic: ${topic} | ID: ${conversationId} | Contact: ${contactName ?? "null"} | Email: ${contactEmail ?? "null"} | Subject: ${subject ?? "null"} | Relevant: ${relevant} | Keys: ${itemKeys} | ContactsRaw: ${contactsDebug}`
+    `[Intercom Webhook] Topic: ${topic} | ID: ${conversationId} | Contact: ${contactName ?? "null"} | Subject: ${subject ?? "null"} | Relevant: ${relevant}`
   );
 
   if (!relevant) {
-    console.log(`[Intercom Webhook] Skipped — not Hardware/RMA`);
     return NextResponse.json({ ok: true, skipped: true });
   }
 
   if (!conversationId) {
-    console.log("[Intercom Webhook] Skipped — no conversation ID");
     return NextResponse.json({ ok: true, skipped: true });
   }
 
+  // Save immediately with whatever data we have
   try {
     await db
       .insert(intercomInbox)
@@ -182,10 +164,43 @@ export async function POST(request: NextRequest) {
         },
       });
 
-    console.log(`[Intercom Webhook] Saved conversation ${conversationId}`);
-    return NextResponse.json({ ok: true });
+    console.log(`[Intercom Webhook] Saved ${conversationId}`);
   } catch (err) {
     console.error("[Intercom Webhook] DB error:", err);
     return NextResponse.json({ ok: true });
   }
+
+  // Enrich: if contact is missing, fetch from Intercom API using conversation ID
+  if (!contactName && !contactEmail && process.env.INTERCOM_ACCESS_TOKEN) {
+    try {
+      const conv = await getConversation(conversationId);
+      const enrichedContact = conv.contacts?.contacts?.[0];
+      const enrichedName =
+        enrichedContact?.name ??
+        (enrichedContact?.email ? enrichedContact.email.split("@")[0] : null);
+      const enrichedEmail = enrichedContact?.email ?? null;
+      const enrichedAssignee = conv.teammates?.admins?.[0]?.name ?? assigneeName;
+      const enrichedSubject = conv.source?.subject ?? subject;
+
+      if (enrichedName || enrichedEmail) {
+        await db
+          .update(intercomInbox)
+          .set({
+            contactName: enrichedName,
+            contactEmail: enrichedEmail,
+            assigneeName: enrichedAssignee,
+            subject: enrichedSubject ?? subject ?? `Webhook: ${topic}`,
+            updatedAt: new Date(),
+          })
+          .where(eq(intercomInbox.intercomConversationId, conversationId));
+
+        console.log(`[Intercom Webhook] Enriched ${conversationId}: ${enrichedName} <${enrichedEmail}>`);
+      }
+    } catch (err) {
+      // Enrichment is best-effort — don't fail the webhook
+      console.log(`[Intercom Webhook] Enrichment failed for ${conversationId}: ${err}`);
+    }
+  }
+
+  return NextResponse.json({ ok: true });
 }
