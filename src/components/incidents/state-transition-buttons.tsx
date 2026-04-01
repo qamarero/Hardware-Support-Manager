@@ -8,9 +8,10 @@ import { toast } from "sonner";
 import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TransitionDialog } from "@/components/shared/transition-dialog";
-import { transitionIncident } from "@/server/actions/incidents";
+import { ForceTransitionButton } from "@/components/shared/force-transition-button";
+import { transitionIncident, forceTransitionIncident } from "@/server/actions/incidents";
 import { getAvailableTransitions } from "@/lib/state-machines/incident";
-import type { IncidentStatus } from "@/lib/constants/incidents";
+import { INCIDENT_STATUS_LABELS, type IncidentStatus } from "@/lib/constants/incidents";
 import type { UserRole } from "@/lib/constants/roles";
 import type { StateTransition } from "@/lib/state-machines/incident";
 
@@ -68,11 +69,14 @@ export function StateTransitionButtons({
     },
   });
 
-  if (transitions.length === 0) return null;
+  const isAdmin = userRole === "admin";
+  const incidentStatuses = Object.entries(INCIDENT_STATUS_LABELS).map(([value, label]) => ({ value, label }));
+
+  if (transitions.length === 0 && !isAdmin) return null;
 
   return (
     <>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {transitions.map((t) => {
           const isRma = t.resolutionType === "derivado_rma";
           const isCancelado = t.to === "cancelado";
@@ -89,6 +93,16 @@ export function StateTransitionButtons({
             </Button>
           );
         })}
+        {isAdmin && (
+          <ForceTransitionButton
+            entityId={incidentId}
+            entityType="incident"
+            currentStatus={currentStatus}
+            statuses={incidentStatuses}
+            onForceTransition={forceTransitionIncident}
+            onComplete={onTransitionComplete}
+          />
+        )}
       </div>
 
       <TransitionDialog

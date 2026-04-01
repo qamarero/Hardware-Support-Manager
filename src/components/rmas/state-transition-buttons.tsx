@@ -6,9 +6,10 @@ import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { TransitionDialog } from "@/components/shared/transition-dialog";
-import { transitionRma } from "@/server/actions/rmas";
+import { ForceTransitionButton } from "@/components/shared/force-transition-button";
+import { transitionRma, forceTransitionRma } from "@/server/actions/rmas";
 import { getRmaAvailableTransitions } from "@/lib/state-machines/rma";
-import type { RmaStatus } from "@/lib/constants/rmas";
+import { RMA_STATUS_LABELS, type RmaStatus } from "@/lib/constants/rmas";
 import type { UserRole } from "@/lib/constants/roles";
 import type { RmaStateTransition } from "@/lib/state-machines/rma";
 
@@ -56,11 +57,14 @@ export function RmaTransitionButtons({
     },
   });
 
-  if (transitions.length === 0) return null;
+  const isAdmin = userRole === "admin";
+  const rmaStatuses = Object.entries(RMA_STATUS_LABELS).map(([value, label]) => ({ value, label }));
+
+  if (transitions.length === 0 && !isAdmin) return null;
 
   return (
     <>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {transitions.map((t) => (
           <Button
             key={`${t.from}-${t.to}`}
@@ -71,6 +75,16 @@ export function RmaTransitionButtons({
             {t.label}
           </Button>
         ))}
+        {isAdmin && (
+          <ForceTransitionButton
+            entityId={rmaId}
+            entityType="rma"
+            currentStatus={currentStatus}
+            statuses={rmaStatuses}
+            onForceTransition={forceTransitionRma}
+            onComplete={onTransitionComplete}
+          />
+        )}
       </div>
 
       <TransitionDialog

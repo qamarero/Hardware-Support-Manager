@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { rmas, providers, clients, eventLogs } from "@/lib/db/schema";
 import { eq, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { getRequiredSession } from "@/lib/auth/get-session";
+import { getRequiredSession, requireRole } from "@/lib/auth/get-session";
 import {
   createRmaSchema,
   updateRmaSchema,
@@ -242,6 +242,58 @@ export async function transitionRma(
   revalidatePath("/rmas");
   revalidatePath(`/rmas/${rmaId}`);
   return { success: true, data: { id: rmaId } };
+}
+
+export async function forceTransitionRma(
+  input: unknown
+): Promise<ActionResult<{ id: string }>> {
+  const session = await getRequiredSession();
+  await requireRole("admin");
+
+  const parsed = transitionRmaSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: "Datos inválidos" };
+  }
+
+  const { rmaId, toStatus, comment } = parsed.data;
+
+  try {
+    await db.transaction(async (tx) => {
+      const [current] = await tx
+        .select({ status: rmas.status })
+        .from(rmas)
+        .where(eq(rmas.id, rmaId))
+        .for("update")
+        .limit(1);
+
+      if (!current) throw new Error("RMA no encontrado");
+
+      await tx
+        .update(rmas)
+        .set({ status: toStatus, stateChangedAt: new Date() })
+        .where(eq(rmas.id, rmaId));
+
+      await tx.insert(eventLogs).values({
+        entityType: "rma",
+        entityId: rmaId,
+        action: "transition",
+        fromState: current.status,
+        toState: toStatus,
+        userId: session.user.id,
+        details: {
+          forced: true,
+          ...(comment ? { comment } : {}),
+        },
+      });
+    });
+
+    revalidatePath("/rmas");
+    revalidatePath(`/rmas/${rmaId}`);
+    return { success: true, data: { id: rmaId } };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Error desconocido";
+    return { success: false, error: message };
+  }
 }
 
 export async function fetchRmas(

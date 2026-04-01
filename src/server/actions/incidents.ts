@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { incidents, users, clients, eventLogs } from "@/lib/db/schema";
 import { eq, isNull, notInArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { getRequiredSession } from "@/lib/auth/get-session";
+import { getRequiredSession, requireRole } from "@/lib/auth/get-session";
 import {
   createIncidentSchema,
   updateIncidentSchema,
@@ -263,6 +263,85 @@ export async function transitionIncident(
   revalidatePath("/incidents");
   revalidatePath(`/incidents/${incidentId}`);
   return { success: true, data: { id: incidentId } };
+}
+
+export async function forceTransitionIncident(
+  input: unknown
+): Promise<ActionResult<{ id: string }>> {
+  const session = await getRequiredSession();
+  await requireRole("admin");
+
+  const parsed = transitionIncidentSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: "Datos inválidos" };
+  }
+
+  const { incidentId, toStatus, comment } = parsed.data;
+
+  const PAUSED_STATES: IncidentStatus[] = ["esperando_cliente", "esperando_proveedor"];
+
+  try {
+    await db.transaction(async (tx) => {
+      const [current] = await tx
+        .select({
+          status: incidents.status,
+          stateChangedAt: incidents.stateChangedAt,
+          slaPausedMs: incidents.slaPausedMs,
+        })
+        .from(incidents)
+        .where(eq(incidents.id, incidentId))
+        .for("update")
+        .limit(1);
+
+      if (!current) throw new Error("Incidencia no encontrada");
+
+      const fromStatus = current.status as IncidentStatus;
+      const updateValues: Record<string, unknown> = {
+        status: toStatus,
+        stateChangedAt: new Date(),
+      };
+
+      if (PAUSED_STATES.includes(fromStatus)) {
+        const pausedSince = new Date(current.stateChangedAt).getTime();
+        const pausedDuration = Date.now() - pausedSince;
+        const existingPaused = parseInt(current.slaPausedMs || "0", 10);
+        updateValues.slaPausedMs = String(existingPaused + pausedDuration);
+      }
+
+      if (toStatus === "resuelto") {
+        updateValues.resolvedAt = new Date();
+        updateValues.resolutionType = "standard";
+      } else if (fromStatus === "resuelto") {
+        updateValues.resolvedAt = null;
+        updateValues.resolutionType = null;
+      }
+
+      await tx
+        .update(incidents)
+        .set(updateValues)
+        .where(eq(incidents.id, incidentId));
+
+      await tx.insert(eventLogs).values({
+        entityType: "incident",
+        entityId: incidentId,
+        action: "transition",
+        fromState: fromStatus,
+        toState: toStatus,
+        userId: session.user.id,
+        details: {
+          forced: true,
+          ...(comment ? { comment } : {}),
+        },
+      });
+    });
+
+    revalidatePath("/incidents");
+    revalidatePath(`/incidents/${incidentId}`);
+    return { success: true, data: { id: incidentId } };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Error desconocido";
+    return { success: false, error: message };
+  }
 }
 
 export async function fetchIncidents(
