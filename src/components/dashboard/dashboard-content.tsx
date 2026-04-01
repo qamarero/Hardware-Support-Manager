@@ -153,7 +153,7 @@ export function DashboardContent({
       </div>
 
       {/* Row 1: KPI Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
         <StaggerList staggerMs={60}>
           <ExpandableKpiCard
             title="Incidencias Abiertas"
@@ -218,7 +218,7 @@ export function DashboardContent({
       </div>
 
       {/* Row 3: Aging + Technician Performance */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2">
         <AgingChart data={aging ?? initialAging} />
         <TechnicianChart data={technicians ?? initialTechnicians} />
       </div>

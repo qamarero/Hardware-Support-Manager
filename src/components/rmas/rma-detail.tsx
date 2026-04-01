@@ -127,7 +127,7 @@ export function RmaDetail({ rma }: RmaDetailProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between" style={{ animation: 'fadeInUp 300ms cubic-bezier(0.16, 1, 0.3, 1) 0ms both' }}>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between" style={{ animation: 'fadeInUp 300ms cubic-bezier(0.16, 1, 0.3, 1) 0ms both' }}>
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold">{rma.rmaNumber}</h1>
@@ -186,7 +186,7 @@ export function RmaDetail({ rma }: RmaDetailProps) {
       </div>
 
       {/* Info cards */}
-      <div className="grid gap-6 lg:grid-cols-2" style={{ animation: 'fadeInUp 300ms cubic-bezier(0.16, 1, 0.3, 1) 160ms both' }}>
+      <div className="grid gap-4 md:gap-6 md:grid-cols-2" style={{ animation: 'fadeInUp 300ms cubic-bezier(0.16, 1, 0.3, 1) 160ms both' }}>
         <Card className="relative overflow-hidden">
           <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-primary/60 via-primary/30 to-transparent" />
           <CardHeader>
@@ -404,7 +404,7 @@ export function RmaDetail({ rma }: RmaDetailProps) {
       </Card>
 
       {/* Attachments & Event Log */}
-      <div className="grid gap-6 lg:grid-cols-2" style={{ animation: 'fadeInUp 300ms cubic-bezier(0.16, 1, 0.3, 1) 320ms both' }}>
+      <div className="grid gap-4 md:gap-6 md:grid-cols-2" style={{ animation: 'fadeInUp 300ms cubic-bezier(0.16, 1, 0.3, 1) 320ms both' }}>
         <AttachmentSection entityType="rma" entityId={rma.id} />
         <EventLogTimeline entityType="rma" entityId={rma.id} />
       </div>

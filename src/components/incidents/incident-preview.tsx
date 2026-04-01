@@ -52,7 +52,7 @@ export function IncidentPreviewPopover({ incident }: IncidentPreviewProps) {
           <Eye className="h-4 w-4" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-96 p-0" align="start" side="right" style={{ animationTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)" }}>
+      <PopoverContent className="w-[90vw] max-w-sm sm:w-96 p-0" align="start" side="right" style={{ animationTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)" }}>
         <div className="p-4 space-y-3">
           {/* Header */}
           <div className="flex items-center gap-2 flex-wrap">
@@ -76,7 +76,7 @@ export function IncidentPreviewPopover({ incident }: IncidentPreviewProps) {
           )}
 
           {/* Info grid */}
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-xs">
             {incident.category && (
               <div>
                 <dt className="text-muted-foreground">Categoría</dt>

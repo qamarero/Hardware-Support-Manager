@@ -83,8 +83,8 @@ export function DataTable<TData>({
     <div className="space-y-4">
       {searchBar}
 
-      <div className="rounded-lg border bg-card">
-        <Table>
+      <div className="rounded-lg border bg-card overflow-x-auto">
+        <Table className="min-w-[700px]">
           <TableHeader className="bg-muted/30 dark:bg-muted/10">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
@@ -164,7 +164,7 @@ export function DataTable<TData>({
         </Table>
       </div>
 
-      <div className="flex items-center justify-between gap-4 rounded-lg bg-muted/30 p-2">
+      <div className="flex flex-col gap-2 rounded-lg bg-muted/30 p-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <p className="text-sm text-muted-foreground shrink-0">
           {totalCount > 0
             ? `Mostrando ${startItem}-${endItem} de ${totalCount}`

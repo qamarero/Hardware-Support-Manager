@@ -31,9 +31,9 @@ export default async function IncidentsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
             <AlertTriangle className="h-5 w-5" />
           </div>
           <div>
@@ -43,7 +43,7 @@ export default async function IncidentsPage({
             </p>
           </div>
         </div>
-        <Button asChild>
+        <Button asChild className="w-full sm:w-auto">
           <Link href="/incidents/new">
             <Plus className="h-4 w-4 mr-1" />
             Nueva Incidencia

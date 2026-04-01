@@ -201,7 +201,7 @@ export function RmaForm({
         {/* Seccion 1 — Relaciones */}
         <div>
           <h3 className="flex items-center gap-3 text-sm font-semibold text-foreground uppercase tracking-wide mb-4"><span className="h-4 w-1 rounded-full bg-primary" />Relaciones</h3>
-          <div className="grid gap-6 sm:grid-cols-3">
+          <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
             <FormField
               control={form.control}
               name="providerId"
@@ -278,7 +278,7 @@ export function RmaForm({
             />
           </div>
 
-          <div className="grid gap-6 sm:grid-cols-3 mt-4">
+          <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3 mt-4">
             <FormField
               control={form.control}
               name="clientLocationId"
@@ -508,7 +508,7 @@ export function RmaForm({
             <Separator className="bg-border/40" />
             <div>
               <h3 className="flex items-center gap-3 text-sm font-semibold text-foreground uppercase tracking-wide mb-4"><span className="h-4 w-1 rounded-full bg-primary" />Seguimiento</h3>
-              <div className="grid gap-6 sm:grid-cols-3">
+              <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 <FormField
                   control={form.control}
                   name="trackingNumberOutgoing"
