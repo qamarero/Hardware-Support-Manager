@@ -30,21 +30,33 @@ function extractData(payload: any): {
   const item = payload?.data?.item;
   if (!item) return { conversationId: null, contactName: null, contactEmail: null, subject: null, assigneeName: null };
 
-  // Conversation ID: could be item.id directly, or nested in ticket
-  const conversationId = String(
-    item.conversation_id ?? item.id ?? ""
-  );
+  // Conversation ID: try multiple paths
+  const conversationId = String(item.conversation_id ?? item.id ?? "");
 
-  // Contact: conversations have contacts.contacts[], tickets have contacts[] or user
+  // Contact: try every known Intercom structure
   const contact =
     item.contacts?.contacts?.[0] ??
     item.contacts?.[0] ??
     item.user ??
+    item.source?.author ??
+    item.submitted_by ??
     null;
-  const contactName = contact?.name ?? null;
-  const contactEmail = contact?.email ?? null;
 
-  // Subject: multiple possible locations
+  // Name: try multiple fields
+  const contactName =
+    contact?.name ??
+    contact?.display_as ??
+    (contact?.first_name && contact?.last_name
+      ? `${contact.first_name} ${contact.last_name}`
+      : contact?.first_name ?? null);
+
+  // Email: try multiple fields
+  const contactEmail =
+    contact?.email ??
+    contact?.email_address ??
+    null;
+
+  // Subject: try multiple locations
   const subject =
     item.source?.subject ??
     item.title ??
@@ -52,7 +64,7 @@ function extractData(payload: any): {
     item.source?.body?.substring?.(0, 200) ??
     null;
 
-  // Assignee: conversations have teammates.admins[], tickets have admin_assignee
+  // Assignee: conversations vs tickets
   const assignee =
     item.teammates?.admins?.[0] ??
     item.admin_assignee ??
@@ -60,6 +72,27 @@ function extractData(payload: any): {
   const assigneeName = assignee?.name ?? null;
 
   return { conversationId, contactName, contactEmail, subject, assigneeName };
+}
+
+function isRelevantEscalation(payload: any): boolean {
+  const item = payload?.data?.item;
+  if (!item) return false;
+
+  // Check specific semantic fields, NOT the entire JSON
+  const fieldsToCheck = [
+    item.ticket_type?.name,
+    item.ticket_type?.description,
+    item.source?.subject,
+    item.title,
+    item.source?.body?.substring?.(0, 500),
+    ...(item.tags?.tags?.map?.((t: any) => t.name) ?? []),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  const RELEVANT_KEYWORDS = ["hardware", "rma"];
+  return RELEVANT_KEYWORDS.some((kw) => fieldsToCheck.includes(kw));
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
@@ -73,23 +106,12 @@ export async function POST(request: NextRequest) {
   const body = await request.text();
   const signature = request.headers.get("x-hub-signature-256");
 
-  // Verify HMAC signature if present; if Intercom doesn't send one
-  // (private apps may not), fall back to checking a shared secret header
-  // or accept if the payload structure matches Intercom's format
   if (signature) {
     if (!verifySignature(body, signature, secret)) {
       console.error("Webhook firma HMAC inválida");
       return NextResponse.json({ error: "Firma inválida" }, { status: 401 });
     }
   } else {
-    // No HMAC signature — verify using X-Intercom-Secret custom header
-    // or validate that payload has Intercom's notification_event structure
-    const customSecret = request.headers.get("x-intercom-secret");
-    if (customSecret && customSecret !== secret) {
-      console.error("Webhook custom secret inválido");
-      return NextResponse.json({ error: "Firma inválida" }, { status: 401 });
-    }
-    // If no signature header at all, validate payload structure as basic check
     try {
       const parsed = JSON.parse(body);
       if (parsed.type !== "notification_event" || !parsed.data?.item) {
@@ -109,23 +131,21 @@ export async function POST(request: NextRequest) {
   }
 
   const topic = (payload.topic as string) ?? "";
-  console.log(`[Intercom Webhook] Topic: ${topic}`);
-
-  // Extract data from any topic structure
   const { conversationId, contactName, contactEmail, subject, assigneeName } = extractData(payload);
+  const relevant = isRelevantEscalation(payload);
 
-  // Only accept escalations relevant to our department (Hardware / RMA)
-  const RELEVANT_KEYWORDS = ["hardware", "rma", "escalado a hardware", "escalado para la gestión de un rma"];
-  const payloadText = JSON.stringify(payload).toLowerCase();
-  const isRelevant = RELEVANT_KEYWORDS.some((kw) => payloadText.includes(kw));
+  // Detailed logging for Vercel runtime
+  console.log(
+    `[Intercom Webhook] Topic: ${topic} | ID: ${conversationId} | Contact: ${contactName ?? "null"} | Email: ${contactEmail ?? "null"} | Subject: ${subject ?? "null"} | Relevant: ${relevant}`
+  );
 
-  if (!isRelevant) {
-    console.log(`[Intercom Webhook] Not relevant to Hardware/RMA, skipping`);
+  if (!relevant) {
+    console.log(`[Intercom Webhook] Skipped — not Hardware/RMA`);
     return NextResponse.json({ ok: true, skipped: true });
   }
 
   if (!conversationId) {
-    console.log("[Intercom Webhook] No conversation ID found, skipping");
+    console.log("[Intercom Webhook] Skipped — no conversation ID");
     return NextResponse.json({ ok: true, skipped: true });
   }
 
@@ -156,6 +176,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[Intercom Webhook] DB error:", err);
-    return NextResponse.json({ ok: true }); // 200 to prevent retries
+    return NextResponse.json({ ok: true });
   }
 }
