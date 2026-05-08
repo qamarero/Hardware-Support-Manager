@@ -32,6 +32,9 @@ export interface KanbanCardData {
   status: IncidentStatus;
   priorityLabel?: string;
   stateChangedAt?: Date | string | null;
+  createdAt?: Date | string | null;
+  resolvedAt?: Date | string | null;
+  slaPausedMs?: string | number | null;
   assignedUser?: string | null;
   clientName?: string | null;
   slaStatus?: "ok" | "warning" | "overdue";
@@ -92,7 +95,13 @@ export const KanbanCard = memo(function KanbanCard({ data, isDragOverlay }: Kanb
 
           {/* Bottom row */}
           <div className="flex items-center justify-between gap-2">
-            <AgingBadge stateChangedAt={data.stateChangedAt} />
+            <AgingBadge
+              stateChangedAt={data.stateChangedAt}
+              createdAt={data.createdAt}
+              status={data.status}
+              resolvedAt={data.resolvedAt}
+              slaPausedMs={data.slaPausedMs}
+            />
             {(data.assignedUser || data.clientName) && (
               <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                 <User className="h-3 w-3" />

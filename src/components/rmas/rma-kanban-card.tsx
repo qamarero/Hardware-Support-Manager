@@ -10,6 +10,7 @@ import { RmaStateBadge } from "@/components/shared/state-badge";
 import { Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { RmaStatus } from "@/lib/constants/rmas";
+import { CLOSED_RMA_STATUSES } from "@/lib/constants/statuses";
 
 export interface RmaKanbanCardData {
   id: string;
@@ -19,6 +20,7 @@ export interface RmaKanbanCardData {
   providerName?: string | null;
   deviceInfo?: string | null;
   stateChangedAt?: Date | string | null;
+  createdAt?: Date | string | null;
 }
 
 interface RmaKanbanCardProps {
@@ -67,7 +69,13 @@ export const RmaKanbanCard = memo(function RmaKanbanCard({ data, isDragOverlay }
 
           {/* Bottom row: aging + provider */}
           <div className="flex items-center justify-between gap-2">
-            <AgingBadge stateChangedAt={data.stateChangedAt} />
+            <AgingBadge
+              stateChangedAt={data.stateChangedAt}
+              createdAt={data.createdAt}
+              status={data.status}
+              closedStatuses={CLOSED_RMA_STATUSES}
+              pausedStatuses={[]}
+            />
             {data.providerName && (
               <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                 <Building2 className="h-3 w-3 shrink-0" />

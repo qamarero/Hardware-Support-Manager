@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/popover";
 import { RmaStateBadge } from "@/components/shared/state-badge";
 import { AgingBadge } from "@/components/shared/aging-badge";
+import { CLOSED_RMA_STATUSES } from "@/lib/constants/statuses";
 import { DEVICE_TYPE_LABELS, type DeviceType } from "@/lib/constants/device-types";
 import type { RmaRow } from "@/server/queries/rmas";
 
@@ -99,7 +100,15 @@ export function RmaPreviewPopover({ rma }: RmaPreviewProps) {
             )}
             <div>
               <dt className="text-muted-foreground">Antigüedad</dt>
-              <dd><AgingBadge stateChangedAt={rma.stateChangedAt} /></dd>
+              <dd>
+                <AgingBadge
+                  stateChangedAt={rma.stateChangedAt}
+                  createdAt={rma.createdAt}
+                  status={rma.status}
+                  closedStatuses={CLOSED_RMA_STATUSES}
+                  pausedStatuses={[]}
+                />
+              </dd>
             </div>
           </dl>
 

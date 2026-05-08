@@ -283,7 +283,13 @@ export function IncidentDetail({ incident }: IncidentDetailProps) {
                   Antigüedad
                 </dt>
                 <dd className="mt-1">
-                  <AgingBadge stateChangedAt={incident.stateChangedAt} />
+                  <AgingBadge
+                    stateChangedAt={incident.stateChangedAt}
+                    createdAt={incident.createdAt}
+                    status={incident.status}
+                    resolvedAt={incident.resolvedAt}
+                    slaPausedMs={incident.slaPausedMs}
+                  />
                 </dd>
               </div>
               <div className="sm:col-span-2">

@@ -18,6 +18,7 @@ import { fetchIncidentsForSelect } from "@/server/actions/incidents";
 import { formatDateTime } from "@/lib/utils/date-format";
 import { DEVICE_TYPE_LABELS, type DeviceType } from "@/lib/constants/device-types";
 import type { RmaStatus } from "@/lib/constants/rmas";
+import { CLOSED_RMA_STATUSES } from "@/lib/constants/statuses";
 import { invalidateRmaQueries } from "@/lib/query-keys";
 import type { RmaRow } from "@/server/queries/rmas";
 import type { RmaFormInput } from "@/lib/validators/rma";
@@ -255,7 +256,13 @@ export function RmaDetail({ rma }: RmaDetailProps) {
                   Antigüedad
                 </dt>
                 <dd className="mt-1">
-                  <AgingBadge stateChangedAt={rma.stateChangedAt} />
+                  <AgingBadge
+                    stateChangedAt={rma.stateChangedAt}
+                    createdAt={rma.createdAt}
+                    status={rma.status}
+                    closedStatuses={CLOSED_RMA_STATUSES}
+                    pausedStatuses={[]}
+                  />
                 </dd>
               </div>
               <div>

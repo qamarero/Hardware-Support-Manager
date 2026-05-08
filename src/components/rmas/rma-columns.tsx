@@ -5,6 +5,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import type { RmaRow } from "@/server/queries/rmas";
 import { RmaStateBadge } from "@/components/shared/state-badge";
 import { AgingBadge } from "@/components/shared/aging-badge";
+import { CLOSED_RMA_STATUSES } from "@/lib/constants/statuses";
 import { formatDate } from "@/lib/utils/date-format";
 import { RmaPreviewPopover } from "./rma-preview";
 
@@ -82,7 +83,15 @@ export const rmaColumns: ColumnDef<RmaRow, unknown>[] = [
     accessorKey: "stateChangedAt",
     header: "Antigüedad",
     meta: { sortKey: "stateChangedAt" },
-    cell: ({ row }) => <AgingBadge stateChangedAt={row.original.stateChangedAt} />,
+    cell: ({ row }) => (
+      <AgingBadge
+        stateChangedAt={row.original.stateChangedAt}
+        createdAt={row.original.createdAt}
+        status={row.original.status}
+        closedStatuses={CLOSED_RMA_STATUSES}
+        pausedStatuses={[]}
+      />
+    ),
   },
   {
     accessorKey: "createdAt",

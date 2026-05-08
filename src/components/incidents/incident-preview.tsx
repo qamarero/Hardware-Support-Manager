@@ -119,7 +119,15 @@ export function IncidentPreviewPopover({ incident }: IncidentPreviewProps) {
             )}
             <div>
               <dt className="text-muted-foreground">Antigüedad</dt>
-              <dd><AgingBadge stateChangedAt={incident.stateChangedAt} /></dd>
+              <dd>
+                <AgingBadge
+                  stateChangedAt={incident.stateChangedAt}
+                  createdAt={incident.createdAt}
+                  status={incident.status}
+                  resolvedAt={incident.resolvedAt}
+                  slaPausedMs={incident.slaPausedMs}
+                />
+              </dd>
             </div>
             <div>
               <dt className="text-muted-foreground">Creado</dt>

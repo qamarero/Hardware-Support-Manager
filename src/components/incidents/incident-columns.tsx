@@ -109,7 +109,15 @@ export const incidentColumns: ColumnDef<IncidentRow, unknown>[] = [
     accessorKey: "stateChangedAt",
     header: "Antigüedad",
     meta: { sortKey: "stateChangedAt" },
-    cell: ({ row }) => <AgingBadge stateChangedAt={row.original.stateChangedAt} />,
+    cell: ({ row }) => (
+      <AgingBadge
+        stateChangedAt={row.original.stateChangedAt}
+        createdAt={row.original.createdAt}
+        status={row.original.status}
+        resolvedAt={row.original.resolvedAt}
+        slaPausedMs={row.original.slaPausedMs}
+      />
+    ),
   },
   {
     accessorKey: "createdAt",

@@ -50,6 +50,7 @@ function toCardData(rma: RmaRow): RmaKanbanCardData {
     providerName: rma.providerName,
     deviceInfo,
     stateChangedAt: rma.stateChangedAt,
+    createdAt: rma.createdAt,
   };
 }
 

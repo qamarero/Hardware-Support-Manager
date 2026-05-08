@@ -16,6 +16,13 @@ interface EntityCardProps {
   relatedEntity?: string | null;
   relatedEntityIcon?: "user" | "building";
   slaStatus?: "ok" | "warning" | "overdue";
+  // Props opcionales que activan la lógica freeze/pause del aging badge.
+  createdAt?: Date | string | null;
+  status?: string | null;
+  resolvedAt?: Date | string | null;
+  slaPausedMs?: string | number | null;
+  closedStatuses?: readonly string[];
+  pausedStatuses?: readonly string[];
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -43,6 +50,12 @@ export function EntityCard({
   relatedEntity,
   relatedEntityIcon = "user",
   slaStatus,
+  createdAt,
+  status,
+  resolvedAt,
+  slaPausedMs,
+  closedStatuses,
+  pausedStatuses,
 }: EntityCardProps) {
   const RelatedIcon = relatedEntityIcon === "building" ? Building2 : User;
 
@@ -76,7 +89,15 @@ export function EntityCard({
 
           {/* Bottom row: Aging + Assigned/Related */}
           <div className="flex items-center justify-between gap-2">
-            <AgingBadge stateChangedAt={stateChangedAt} />
+            <AgingBadge
+              stateChangedAt={stateChangedAt}
+              createdAt={createdAt}
+              status={status}
+              resolvedAt={resolvedAt}
+              slaPausedMs={slaPausedMs}
+              closedStatuses={closedStatuses}
+              pausedStatuses={pausedStatuses}
+            />
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               {(assignedUser || relatedEntity) && (
                 <>
