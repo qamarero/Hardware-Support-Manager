@@ -8,8 +8,13 @@ export function getDb() {
   if (!_db) {
     const client = postgres(process.env.DATABASE_URL!, {
       prepare: false,       // Required for Supabase Supavisor (transaction mode)
-      max: 6,               // Allow concurrent queries — Supavisor handles upstream pooling
-      idle_timeout: 30,     // Release idle connections after 30s
+      // 20 concurrent client-side connections. The dashboard SSR fires up to 4
+      // queries in parallel, and /api/external/metrics fires 11. Con max:6 una
+      // sola request consumía todo el pool y los siguientes esperaban hasta
+      // que liberaran, generando >30s percibidos. Supavisor multiplexa por
+      // detrás, así que subir aquí es seguro.
+      max: 20,
+      idle_timeout: 60,     // Release idle connections after 60s
       connect_timeout: 10,  // Fail fast on connection issues
       connection: {
         statement_timeout: 15000,  // 15s max per statement — prevents queries from hanging
