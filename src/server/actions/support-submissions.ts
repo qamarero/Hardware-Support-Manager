@@ -21,7 +21,6 @@ import {
   getSupportSubmissions,
   getPendingSubmissionsCount,
   findClientByName,
-  type SupportSubmissionRow,
 } from "@/server/queries/support-submissions";
 import type { ActionResult, PaginationParams } from "@/types";
 import type { SupportSubmissionStatus } from "@/lib/constants/support-submissions";
@@ -284,5 +283,3 @@ export async function dismissSubmission(
     return { success: false, error: "Error al descartar sumisión" };
   }
 }
-
-export type { SupportSubmissionRow };
