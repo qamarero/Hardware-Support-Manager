@@ -12,4 +12,5 @@ export * from "./settings";
 export * from "./message-templates";
 export * from "./articles";
 export * from "./intercom-inbox";
+export * from "./support-submissions";
 export * from "./relations";
