@@ -1,10 +1,7 @@
 import { timingSafeEqual } from "crypto";
 
 /**
- * Valida el header `X-API-Key` contra `process.env.MAIN_PORTAL_API_KEY`.
- *
- * Mismo patrón que el endpoint equivalente de MainOps (`hw-SellGear-platform`).
- * Pensado para endpoints `/api/external/*` consumidos por el HW Main Portal.
+ * Genérico: valida el header `X-API-Key` contra una env var arbitraria.
  *
  * Devuelve:
  *   - `null` si la auth es válida (el handler puede continuar).
@@ -13,17 +10,16 @@ import { timingSafeEqual } from "crypto";
  *     - 401 si el header `X-API-Key` está ausente.
  *     - 403 si el header está presente pero no coincide.
  *
- * Uso `crypto.timingSafeEqual` para mitigar timing attacks. La comparación
+ * Usa `crypto.timingSafeEqual` para mitigar timing attacks. La comparación
  * requiere buffers del mismo length, así que comparamos length primero.
  */
-export function requireMainPortalAuth(req: Request): Response | null {
-  const expected = process.env.MAIN_PORTAL_API_KEY;
+function checkApiKey(req: Request, envVarName: string): Response | null {
+  const expected = process.env[envVarName];
   if (!expected) {
     return Response.json(
       {
-        error: "MAIN_PORTAL_API_KEY no configurada",
-        detail:
-          "Set MAIN_PORTAL_API_KEY env var in Vercel (Production + Preview) and redeploy.",
+        error: `${envVarName} no configurada`,
+        detail: `Set ${envVarName} env var in Vercel (Production + Preview) and redeploy.`,
       },
       { status: 503 },
     );
@@ -44,4 +40,26 @@ export function requireMainPortalAuth(req: Request): Response | null {
   }
 
   return null;
+}
+
+/**
+ * Valida el header `X-API-Key` contra `process.env.MAIN_PORTAL_API_KEY`.
+ *
+ * Pensado para endpoints `/api/external/metrics` consumidos por el HW Main Portal.
+ * Mismo patrón que el endpoint equivalente de MainOps (`hw-SellGear-platform`).
+ */
+export function requireMainPortalAuth(req: Request): Response | null {
+  return checkApiKey(req, "MAIN_PORTAL_API_KEY");
+}
+
+/**
+ * Valida el header `X-API-Key` contra `process.env.HSM_PUBLIC_API_KEY`.
+ *
+ * Pensado para endpoints `/api/external/incidents` consumidos por
+ * herramientas externas que necesitan acceso detallado a los datos
+ * (incluyendo PII de cliente/contacto). El secret es DIFERENTE al de
+ * Main Portal para que cada consumidor pueda rotarse de forma aislada.
+ */
+export function requirePublicApiAuth(req: Request): Response | null {
+  return checkApiKey(req, "HSM_PUBLIC_API_KEY");
 }

@@ -190,3 +190,119 @@ function getSortColumn(sortBy: string): AnyColumn {
   };
   return columns[sortBy] ?? incidents.createdAt;
 }
+
+// ─── Aggregates (for external API summary) ──────────────────────────────────
+//
+// Returns 4 GROUP BY breakdowns + totals for a filter set. Used by
+// /api/external/incidents to populate the "summary" block alongside the
+// paginated list. Runs all 4 queries in parallel.
+
+export interface IncidentAggregatesFilters {
+  status?: readonly string[];
+  priority?: readonly string[];
+  category?: readonly string[];
+  hardwareOrigin?: readonly string[];
+  assignedUserId?: readonly string[];
+  dateRangeFrom?: string;
+  dateRangeTo?: string;
+  search?: string;
+}
+
+export interface IncidentAggregates {
+  totalCount: number;
+  byStatus: { status: string; count: number }[];
+  byPriority: { priority: string; count: number }[];
+  byCategory: { category: string; count: number }[];
+  byHardwareOrigin: { hardwareOrigin: string | null; count: number }[];
+}
+
+function buildIncidentFilterConditions(filters: IncidentAggregatesFilters) {
+  const conds = [];
+
+  if (filters.search) {
+    conds.push(
+      or(
+        sql`${incidents.incidentNumber} ILIKE ${`%${filters.search}%`}`,
+        sql`${incidents.title} ILIKE ${`%${filters.search}%`}`,
+        sql`${incidents.clientName} ILIKE ${`%${filters.search}%`}`,
+        sql`${clients.name} ILIKE ${`%${filters.search}%`}`,
+        sql`${incidents.deviceSerialNumber} ILIKE ${`%${filters.search}%`}`,
+        sql`${incidents.intercomEscalationId} ILIKE ${`%${filters.search}%`}`
+      )
+    );
+  }
+  if (filters.status && filters.status.length > 0) {
+    conds.push(inArray(incidents.status, filters.status as typeof incidents.status.enumValues));
+  }
+  if (filters.priority && filters.priority.length > 0) {
+    conds.push(inArray(incidents.priority, filters.priority as typeof incidents.priority.enumValues));
+  }
+  if (filters.category && filters.category.length > 0) {
+    conds.push(inArray(incidents.category, filters.category as typeof incidents.category.enumValues));
+  }
+  if (filters.hardwareOrigin && filters.hardwareOrigin.length > 0) {
+    conds.push(inArray(incidents.hardwareOrigin, filters.hardwareOrigin as typeof incidents.hardwareOrigin.enumValues));
+  }
+  if (filters.assignedUserId && filters.assignedUserId.length > 0) {
+    conds.push(inArray(incidents.assignedUserId, filters.assignedUserId as string[]));
+  }
+  if (filters.dateRangeFrom) {
+    conds.push(gte(incidents.createdAt, new Date(filters.dateRangeFrom + "T00:00:00Z")));
+  }
+  if (filters.dateRangeTo) {
+    conds.push(lte(incidents.createdAt, new Date(filters.dateRangeTo + "T23:59:59Z")));
+  }
+  return conds.length > 0 ? and(...conds) : undefined;
+}
+
+export async function getIncidentsAggregates(
+  filters: IncidentAggregatesFilters
+): Promise<IncidentAggregates> {
+  const whereCond = buildIncidentFilterConditions(filters);
+
+  // Only join clients when search references clients.name. We always include
+  // the leftJoin for simplicity — Postgres optimizes the join away when not
+  // referenced in WHERE/SELECT.
+  const baseFrom = (qb: typeof db.$with extends never ? never : never) => qb;
+  void baseFrom; // silence unused
+
+  const [totalRes, byStatusRes, byPriorityRes, byCategoryRes, byOriginRes] = await Promise.all([
+    db
+      .select({ count: count() })
+      .from(incidents)
+      .leftJoin(clients, eq(incidents.clientId, clients.id))
+      .where(whereCond),
+    db
+      .select({ status: incidents.status, count: count() })
+      .from(incidents)
+      .leftJoin(clients, eq(incidents.clientId, clients.id))
+      .where(whereCond)
+      .groupBy(incidents.status),
+    db
+      .select({ priority: incidents.priority, count: count() })
+      .from(incidents)
+      .leftJoin(clients, eq(incidents.clientId, clients.id))
+      .where(whereCond)
+      .groupBy(incidents.priority),
+    db
+      .select({ category: incidents.category, count: count() })
+      .from(incidents)
+      .leftJoin(clients, eq(incidents.clientId, clients.id))
+      .where(whereCond)
+      .groupBy(incidents.category),
+    db
+      .select({ hardwareOrigin: incidents.hardwareOrigin, count: count() })
+      .from(incidents)
+      .leftJoin(clients, eq(incidents.clientId, clients.id))
+      .where(whereCond)
+      .groupBy(incidents.hardwareOrigin),
+  ]);
+
+  return {
+    totalCount: totalRes[0]?.count ?? 0,
+    byStatus: byStatusRes.map((r) => ({ status: r.status, count: r.count })),
+    byPriority: byPriorityRes.map((r) => ({ priority: r.priority, count: r.count })),
+    byCategory: byCategoryRes.map((r) => ({ category: r.category, count: r.count })),
+    byHardwareOrigin: byOriginRes.map((r) => ({ hardwareOrigin: r.hardwareOrigin, count: r.count })),
+  };
+}
