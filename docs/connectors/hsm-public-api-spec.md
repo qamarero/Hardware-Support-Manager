@@ -1,14 +1,17 @@
-# HSM Incidents API — Spec
+# HSM Public API — Spec
 
 ## Overview
 
-`GET /api/external/incidents` — endpoint público que devuelve incidencias de HSM con detalle completo (incluyendo PII) + agregados estadísticos. Pensado para herramientas externas autorizadas (CRMs, análisis, integraciones).
+Dos endpoints públicos para herramientas externas autorizadas (CRMs, análisis, integraciones). Devuelven datos detallados (incluyendo PII) + agregados estadísticos:
 
-**Endpoint:** `https://<your-hsm-domain>/api/external/incidents`
+- **`GET /api/external/incidents`** — incidencias con todos los campos + breakdowns por estado/prioridad/categoría/origen + métricas SLA
+- **`GET /api/external/rmas`** — RMAs con todos los campos + breakdowns por estado/proveedor
+
+**Base URL:** `https://<your-hsm-domain>`
 
 ## Authentication
 
-Header obligatorio:
+**Mismo secret para ambos endpoints.** Header obligatorio:
 
 ```
 X-API-Key: <shared-secret>
@@ -17,6 +20,10 @@ X-API-Key: <shared-secret>
 Validado server-side con `crypto.timingSafeEqual` contra `HSM_PUBLIC_API_KEY` (env var en Vercel).
 
 **Secret independiente** de `MAIN_PORTAL_API_KEY` — rotar uno NO afecta al otro.
+
+---
+
+# Endpoint 1: `GET /api/external/incidents`
 
 ## Query parameters
 
@@ -272,13 +279,176 @@ curl -s "https://<hsm-domain>/api/external/incidents?page=2&page_size=20" \
   -H "X-API-Key: $HSM_PUBLIC_API_KEY"
 ```
 
+---
+
+# Endpoint 2: `GET /api/external/rmas`
+
+## Query parameters
+
+Todos opcionales.
+
+| Param | Tipo | Default | Valores aceptados |
+|-------|------|---------|-------------------|
+| `from` | YYYY-MM-DD | hoy - 30 días | Rango de creación |
+| `to` | YYYY-MM-DD | hoy | Rango de creación |
+| `status` | CSV | — | `open` (todos los activos), `closed` (cerrado/cancelado), o estados específicos: `borrador`, `solicitado`, `aprobado`, `enviado_proveedor`, `en_proveedor`, `devuelto`, `recibido_oficina`, `cerrado`, `cancelado` |
+| `provider_id` | CSV UUIDs | — | Filtrar por proveedor |
+| `search` | string | — | Busca en número RMA, proveedor, cliente, marca, modelo, serial, nº incidencia |
+| `page` | int | 1 | Paginación |
+| `page_size` | int | 50 | 1-200 |
+
+### Status aliases (RMA)
+
+- `open` → `borrador,solicitado,aprobado,enviado_proveedor,en_proveedor,devuelto,recibido_oficina`
+- `closed` → `cerrado,cancelado`
+
+## Response
+
+```json
+{
+  "generated_at": "2026-05-13T13:30:00.000Z",
+  "schema_version": "1.0.0",
+
+  "filters": {
+    "from": "2026-04-13",
+    "to": "2026-05-13",
+    "status": null,
+    "provider_id": null,
+    "search": null
+  },
+
+  "summary": {
+    "total_count": 87,
+    "open_count": 23,
+    "closed_count": 64,
+
+    "by_status": [
+      { "status": "borrador", "label": "Borrador", "count": 2 },
+      { "status": "en_proveedor", "label": "En Proveedor", "count": 12 },
+      ...
+    ],
+
+    "by_provider": [
+      { "provider_id": "uuid", "provider_name": "Jassway", "count": 45 },
+      { "provider_id": "uuid", "provider_name": "Sunmi", "count": 30 },
+      ...
+    ]
+  },
+
+  "data": [
+    {
+      "id": "uuid",
+      "rma_number": "RMA-2026-00045",
+      "status": "en_proveedor",
+      "status_label": "En Proveedor",
+
+      "incident": {
+        "id": "uuid",
+        "number": "INC-2026-00123"
+      },
+
+      "provider": {
+        "id": "uuid",
+        "name": "Jassway",
+        "rma_number": "JW-RMA-987"
+      },
+
+      "client": {
+        "id": "uuid",
+        "name": "Berraco SL",
+        "company_name": "Restaurante Berraco",
+        "external_id": "rest_123",
+        "intercom_url": "https://app.intercom.com/..."
+      },
+
+      "device": {
+        "type": "tpv",
+        "brand": "Jassway",
+        "model": "JWS-360",
+        "serial_number": "ABC123",
+        "value_cents": 45000
+      },
+
+      "contact": {
+        "name": "Juan García",
+        "phone": "+34 612 345 678"
+      },
+
+      "pickup": {
+        "address": "C/ Mayor 12",
+        "city": "Madrid",
+        "postal_code": "28001"
+      },
+
+      "tracking": {
+        "outgoing": "1Z999AA10123456784",
+        "return": null
+      },
+
+      "costs": {
+        "repair_cents": null,
+        "shipping_cents": 2500,
+        "replacement_cents": null
+      },
+
+      "notes": "Cliente reporta fallo intermitente al imprimir...",
+
+      "created_at": "2026-05-08T10:00:00.000Z",
+      "updated_at": "2026-05-12T14:20:00.000Z",
+      "state_changed_at": "2026-05-10T09:00:00.000Z",
+      "age_hours_in_state": 76.5,
+      "age_hours_total": 124.2
+    }
+  ],
+
+  "pagination": {
+    "page": 1,
+    "page_size": 50,
+    "total_pages": 2,
+    "total_count": 87
+  }
+}
+```
+
+### RMA status reference
+
+| Status | Significado |
+|--------|-------------|
+| `borrador` | RMA creado pero aún no enviado al proveedor |
+| `solicitado` | Solicitud enviada al proveedor, pendiente respuesta |
+| `aprobado` | Proveedor aprobó el RMA |
+| `enviado_proveedor` | Dispositivo enviado físicamente al proveedor |
+| `en_proveedor` | Proveedor está reparando/sustituyendo |
+| `devuelto` | Proveedor devolvió el dispositivo (en tránsito de vuelta) |
+| `recibido_oficina` | Recibido en oficina HSM, pendiente de devolver al cliente |
+| `cerrado` | Cerrado (resuelto exitosamente) |
+| `cancelado` | RMA cancelado (no procede) |
+
+## RMA Examples
+
+```bash
+# Todos los RMAs activos
+curl -s "https://<hsm-domain>/api/external/rmas?status=open" \
+  -H "X-API-Key: $HSM_PUBLIC_API_KEY" | jq .summary
+
+# Solo en proveedor (esperando reparación)
+curl -s "https://<hsm-domain>/api/external/rmas?status=en_proveedor,enviado_proveedor" \
+  -H "X-API-Key: $HSM_PUBLIC_API_KEY" | jq '.data[].rma_number'
+
+# RMAs de Jassway este mes
+curl -s "https://<hsm-domain>/api/external/rmas?provider_id=<uuid-jassway>&from=2026-05-01" \
+  -H "X-API-Key: $HSM_PUBLIC_API_KEY"
+```
+
+---
+
 ## Operational notes
 
 - **Rate limits**: ninguno por ahora. Si el consumidor abusa, considerar añadir uno (ver patrón en `src/lib/utils/rate-limit.ts`).
-- **Rotación de secret**: cambiar `HSM_PUBLIC_API_KEY` en Vercel y redeploy. El consumidor recibe 403 hasta actualizar su key.
-- **PII**: el endpoint expone datos personales (nombres, teléfonos, direcciones, URLs Intercom). El consumidor es responsable de almacenarlos según normativa aplicable (GDPR).
+- **Rotación de secret**: cambiar `HSM_PUBLIC_API_KEY` en Vercel y redeploy. El consumidor recibe 403 hasta actualizar su key. Afecta a AMBOS endpoints simultáneamente.
+- **PII**: ambos endpoints exponen datos personales (nombres, teléfonos, direcciones, URLs Intercom). El consumidor es responsable de almacenarlos según normativa aplicable (GDPR).
 - **Schema version**: ante cualquier breaking change (renombre/eliminación de campos), incrementar `schema_version`. Los campos nuevos no rompen la spec — solo añadir.
 
 ## Changelog
 
-- **1.0.0** (2026-05-13): versión inicial
+- **1.0.0** (2026-05-13): versión inicial — endpoints `/incidents` y `/rmas`

@@ -167,3 +167,97 @@ function getSortColumn(sortBy: string): AnyColumn {
   };
   return columns[sortBy] ?? rmas.createdAt;
 }
+
+// ─── Aggregates (for external API summary) ──────────────────────────────────
+
+export interface RmaAggregatesFilters {
+  status?: readonly string[];
+  providerId?: readonly string[];
+  dateRangeFrom?: string;
+  dateRangeTo?: string;
+  search?: string;
+}
+
+export interface RmaAggregates {
+  totalCount: number;
+  byStatus: { status: string; count: number }[];
+  byProvider: { providerId: string | null; providerName: string | null; count: number }[];
+}
+
+function buildRmaFilterConditions(filters: RmaAggregatesFilters) {
+  const conds = [];
+
+  if (filters.search) {
+    conds.push(
+      or(
+        sql`${rmas.rmaNumber} ILIKE ${`%${filters.search}%`}`,
+        sql`${providers.name} ILIKE ${`%${filters.search}%`}`,
+        sql`${rmas.clientName} ILIKE ${`%${filters.search}%`}`,
+        sql`${clients.name} ILIKE ${`%${filters.search}%`}`,
+        sql`${rmas.deviceBrand} ILIKE ${`%${filters.search}%`}`,
+        sql`${rmas.deviceModel} ILIKE ${`%${filters.search}%`}`,
+        sql`${rmas.deviceSerialNumber} ILIKE ${`%${filters.search}%`}`,
+        sql`${incidents.incidentNumber} ILIKE ${`%${filters.search}%`}`
+      )
+    );
+  }
+  if (filters.status && filters.status.length > 0) {
+    conds.push(inArray(rmas.status, filters.status as typeof rmas.status.enumValues));
+  }
+  if (filters.providerId && filters.providerId.length > 0) {
+    conds.push(inArray(rmas.providerId, filters.providerId as string[]));
+  }
+  if (filters.dateRangeFrom) {
+    conds.push(gte(rmas.createdAt, new Date(filters.dateRangeFrom + "T00:00:00Z")));
+  }
+  if (filters.dateRangeTo) {
+    conds.push(lte(rmas.createdAt, new Date(filters.dateRangeTo + "T23:59:59Z")));
+  }
+  return conds.length > 0 ? and(...conds) : undefined;
+}
+
+export async function getRmasAggregates(
+  filters: RmaAggregatesFilters
+): Promise<RmaAggregates> {
+  const whereCond = buildRmaFilterConditions(filters);
+
+  const [totalRes, byStatusRes, byProviderRes] = await Promise.all([
+    db
+      .select({ count: count() })
+      .from(rmas)
+      .leftJoin(providers, eq(rmas.providerId, providers.id))
+      .leftJoin(incidents, eq(rmas.incidentId, incidents.id))
+      .leftJoin(clients, eq(rmas.clientId, clients.id))
+      .where(whereCond),
+    db
+      .select({ status: rmas.status, count: count() })
+      .from(rmas)
+      .leftJoin(providers, eq(rmas.providerId, providers.id))
+      .leftJoin(incidents, eq(rmas.incidentId, incidents.id))
+      .leftJoin(clients, eq(rmas.clientId, clients.id))
+      .where(whereCond)
+      .groupBy(rmas.status),
+    db
+      .select({
+        providerId: rmas.providerId,
+        providerName: providers.name,
+        count: count(),
+      })
+      .from(rmas)
+      .leftJoin(providers, eq(rmas.providerId, providers.id))
+      .leftJoin(incidents, eq(rmas.incidentId, incidents.id))
+      .leftJoin(clients, eq(rmas.clientId, clients.id))
+      .where(whereCond)
+      .groupBy(rmas.providerId, providers.name),
+  ]);
+
+  return {
+    totalCount: totalRes[0]?.count ?? 0,
+    byStatus: byStatusRes.map((r) => ({ status: r.status, count: r.count })),
+    byProvider: byProviderRes.map((r) => ({
+      providerId: r.providerId,
+      providerName: r.providerName,
+      count: r.count,
+    })),
+  };
+}
