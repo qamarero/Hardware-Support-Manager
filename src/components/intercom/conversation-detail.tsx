@@ -31,6 +31,7 @@ import {
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { formatRelativeTime } from "@/lib/utils/date-format";
 import { detectDevice, extractSerialNumber } from "@/lib/intercom/device-detector";
+import { buildAttrsMap, getAttr } from "@/lib/intercom/ticket-attrs";
 import type { IntercomInboxRow } from "@/server/queries/intercom-inbox";
 import type { IntercomInboxStatus } from "@/lib/constants/intercom";
 
@@ -44,25 +45,42 @@ interface ConversationDetailProps {
 function extractTicketData(payload: unknown) {
   const p = payload as any;
   const item = p?.data?.item;
-  const ticketAttrs = item?.ticket_attributes ?? {};
-  const convAttrs = item?.custom_attributes ?? {};
+
+  // Build normalized maps once — tolerates BOM, trailing colons, case
+  // variations and other quirks of Intercom-defined attribute keys.
+  const ticketAttrs = buildAttrsMap(item?.ticket_attributes);
+  const convAttrs = buildAttrsMap(item?.custom_attributes);
 
   // Extract ticket-specific fields (from ticket_attributes)
-  const problemSummary = ticketAttrs["﻿Resumen del problema del cliente:"] ?? ticketAttrs["Resumen del problema del cliente:"] ?? "";
-  const troubleshootingSteps = ticketAttrs["Pasos realizados de troubleshooting:"] ?? "";
+  const problemSummary = getAttr(
+    ticketAttrs,
+    "Resumen del problema del cliente",
+    "Resumen del problema",
+    "Problema del cliente",
+    "Descripcion del problema",
+  ) ?? "";
+  const troubleshootingSteps = getAttr(
+    ticketAttrs,
+    "Pasos realizados de troubleshooting",
+    "Pasos de troubleshooting",
+    "Troubleshooting realizado",
+    "Troubleshooting",
+  ) ?? "";
   const ticketTypeName = item?.ticket_type?.name ?? "";
   const ticketTypeDesc = item?.ticket_type?.description ?? "";
   const linkedConvId = item?.linked_objects?.data?.[0]?.id ?? null;
 
   // Extract conversation custom_attributes (set by CX team)
-  const categoria = convAttrs["Categoría"] ?? null;
-  const categoria2 = convAttrs["Categoría - 2"] ?? null;
-  const categoria3 = convAttrs["Categoría - 3"] ?? null;
-  const tipo = convAttrs["Tipo"] ?? null;
-  const urgencia = (convAttrs["Urgencia"] ?? ticketAttrs["Urgencia:"] ?? "").toLowerCase();
-  const resumenIncidencia = convAttrs["Resumen de la incidencia"] ?? null;
-  const atendidoEnLlamada = convAttrs["Atendido en llamada"] ?? null;
-  const aiIssueSummary = convAttrs["AI Issue summary"] ?? null;
+  const categoria = getAttr(convAttrs, "Categoría", "Categoria");
+  const categoria2 = getAttr(convAttrs, "Categoría - 2", "Categoria - 2", "Categoría-2");
+  const categoria3 = getAttr(convAttrs, "Categoría - 3", "Categoria - 3", "Categoría-3");
+  const tipo = getAttr(convAttrs, "Tipo");
+  const urgencia = (
+    getAttr(convAttrs, "Urgencia") ?? getAttr(ticketAttrs, "Urgencia") ?? ""
+  ).toLowerCase();
+  const resumenIncidencia = getAttr(convAttrs, "Resumen de la incidencia", "Resumen incidencia");
+  const atendidoEnLlamada = getAttr(convAttrs, "Atendido en llamada");
+  const aiIssueSummary = getAttr(convAttrs, "AI Issue summary", "AI Issue Summary");
 
   // Also check pre-extracted attributes from webhook enrichment
   const extracted = p?.extractedAttributes ?? {};
@@ -75,9 +93,20 @@ function extractTicketData(payload: unknown) {
   const accountManager = enrichedCompany.accountManager ?? item?.company?.custom_attributes?.account_manager ?? null;
   const companyIntercomName = enrichedCompany.companyIntercomName ?? item?.company?.name ?? null;
 
+  // Snippet from the conversation source — the customer's first message.
+  // Used as fallback when no ticket_attributes summary was provided by CX.
+  const snippet = item?.source?.body?.slice?.(0, 500) ?? "";
+
+  // "Problema reportado" must ALWAYS appear if there's any information
+  // about what the customer reported. Order of preference:
+  //   1. Resumen del problema del cliente (ticket_attribute filled by CX)
+  //   2. Resumen de la incidencia (conversation custom_attribute)
+  //   3. Snippet of the original source.body (customer's first message)
+  const reportedProblem = problemSummary || resumenIncidencia || snippet || "";
+
   // Build description with clear sections
   const descParts: string[] = [];
-  if (problemSummary) descParts.push(`PROBLEMA REPORTADO:\n${problemSummary}`);
+  if (reportedProblem) descParts.push(`PROBLEMA REPORTADO:\n${reportedProblem}`);
   if (troubleshootingSteps) descParts.push(`TROUBLESHOOTING REALIZADO:\n${troubleshootingSteps}`);
   const extraParts: string[] = [];
   if (categoria2) extraParts.push(`Categoría IC: ${categoria2}`);
@@ -86,9 +115,6 @@ function extractTicketData(payload: unknown) {
   if (aiIssueSummary) extraParts.push(`Resumen AI: ${aiIssueSummary}`);
   if (extraParts.length > 0) descParts.push(`DATOS ADICIONALES:\n${extraParts.map(p => `- ${p}`).join("\n")}`);
   const description = descParts.join("\n\n");
-
-  // Snippet fallback for conversations (non-tickets)
-  const snippet = item?.source?.body?.slice?.(0, 500) ?? "";
 
   // Enriched contact data (phone, company) added by webhook enrichment
   const enriched = p?.enrichedContact ?? {};

@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { intercomInbox } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getConversation, getContact } from "@/lib/intercom/client";
+import { buildAttrsMap, getAttr } from "@/lib/intercom/ticket-attrs";
 
 function verifySignature(body: string, signature: string | null, secret: string): boolean {
   if (!signature) return false;
@@ -57,11 +58,18 @@ function extractData(payload: any): {
     contact?.email_address ??
     null;
 
-  // Build subject: prefer conversation custom_attributes, then ticket_attributes, then fallbacks
-  const ticketAttrs = item.ticket_attributes ?? {};
-  const convAttrs = item.custom_attributes ?? {};
-  const problemSummary = ticketAttrs["﻿Resumen del problema del cliente:"] ?? ticketAttrs["Resumen del problema del cliente:"] ?? null;
-  const incidentSummary = convAttrs["Resumen de la incidencia"] ?? null;
+  // Build subject: prefer conversation custom_attributes, then ticket_attributes, then fallbacks.
+  // Uses normalized lookups (BOM-tolerant, case-insensitive, colon-agnostic) so subtle
+  // variations in the key name don't silently break the extraction.
+  const ticketAttrs = buildAttrsMap(item.ticket_attributes);
+  const convAttrs = buildAttrsMap(item.custom_attributes);
+  const problemSummary = getAttr(
+    ticketAttrs,
+    "Resumen del problema del cliente",
+    "Resumen del problema",
+    "Problema del cliente",
+  );
+  const incidentSummary = getAttr(convAttrs, "Resumen de la incidencia", "Resumen incidencia");
   const ticketTypeName = item.ticket_type?.name ?? null;
   const subject = incidentSummary
     ?? (problemSummary ? `${ticketTypeName ?? "Ticket"}: ${problemSummary}` : null)
