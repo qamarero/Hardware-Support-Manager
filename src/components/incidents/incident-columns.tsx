@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { INCIDENT_PRIORITY_LABELS, type IncidentPriority } from "@/lib/constants/incidents";
 import { formatDate } from "@/lib/utils/date-format";
 import { IncidentPreviewPopover } from "./incident-preview";
+import { AssigneeQuickPicker } from "./assignee-quick-picker";
 
 const PRIORITY_COLORS: Record<string, string> = {
   baja: "bg-green-500/15 text-green-700 hover:bg-green-500/15 dark:bg-green-500/25 dark:text-green-300",
@@ -103,7 +104,15 @@ export const incidentColumns: ColumnDef<IncidentRow, unknown>[] = [
   {
     accessorKey: "assignedUserName",
     header: "Asignado",
-    cell: ({ row }) => row.original.assignedUserName ?? "-",
+    cell: ({ row }) => (
+      <AssigneeQuickPicker
+        incidentId={row.original.id}
+        currentUserId={row.original.assignedUserId}
+        currentUserName={row.original.assignedUserName}
+        variant="compact"
+        stopPropagation
+      />
+    ),
   },
   {
     accessorKey: "stateChangedAt",

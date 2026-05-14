@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { incidents, users, clients, eventLogs } from "@/lib/db/schema";
-import { eq, isNull, notInArray } from "drizzle-orm";
+import { eq, and, isNull, notInArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { getRequiredSession, requireRole } from "@/lib/auth/get-session";
@@ -425,6 +425,87 @@ export async function fetchUsersForSelect(): Promise<
     .from(users)
     .where(isNull(users.deletedAt))
     .orderBy(users.name);
+}
+
+/**
+ * Quick-assign action: update only `assignedUserId` on an incident.
+ *
+ * Lightweight alternative to `updateIncident()` — no need to send the full
+ * form payload. Used by the AssigneeQuickPicker in both list and detail
+ * views to change/clear the assigned technician in a single click.
+ *
+ * Logs an `updated` event for the audit trail. Pass `userId = null` to
+ * unassign.
+ */
+export async function quickAssignIncident(
+  incidentId: string,
+  userId: string | null
+): Promise<ActionResult<{ id: string }>> {
+  const session = await getRequiredSession();
+
+  try {
+    // Verify the target user exists (if not null)
+    if (userId) {
+      const [target] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(and(eq(users.id, userId), isNull(users.deletedAt)))
+        .limit(1);
+      if (!target) {
+        return { success: false, error: "Usuario no encontrado" };
+      }
+    }
+
+    const result = await db.transaction(async (tx) => {
+      const [current] = await tx
+        .select({ assignedUserId: incidents.assignedUserId })
+        .from(incidents)
+        .where(eq(incidents.id, incidentId))
+        .limit(1);
+
+      if (!current) {
+        return { ok: false as const, error: "Incidencia no encontrada" };
+      }
+
+      // No-op if already assigned to the same user
+      if (current.assignedUserId === userId) {
+        return { ok: true as const, changed: false };
+      }
+
+      await tx
+        .update(incidents)
+        .set({ assignedUserId: userId })
+        .where(eq(incidents.id, incidentId));
+
+      await tx.insert(eventLogs).values({
+        entityType: "incident",
+        entityId: incidentId,
+        action: "updated",
+        userId: session.user.id,
+        details: {
+          quickAssign: true,
+          previousAssignedUserId: current.assignedUserId,
+          newAssignedUserId: userId,
+        },
+      });
+
+      return { ok: true as const, changed: true };
+    });
+
+    if (!result.ok) {
+      return { success: false, error: result.error };
+    }
+
+    if (result.changed) {
+      revalidatePath("/incidents");
+      revalidatePath(`/incidents/${incidentId}`);
+    }
+    return { success: true, data: { id: incidentId } };
+  } catch (err) {
+    console.error("quickAssignIncident error:", err);
+    const message = err instanceof Error ? err.message : "Error desconocido";
+    return { success: false, error: `Error al asignar: ${message}` };
+  }
 }
 
 export async function fetchIncidentsForSelect(): Promise<

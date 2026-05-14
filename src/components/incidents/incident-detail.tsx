@@ -15,6 +15,7 @@ import { SlaIndicator } from "@/components/shared/sla-indicator";
 import { StateTransitionButtons } from "@/components/incidents/state-transition-buttons";
 import { IncidentForm } from "@/components/incidents/incident-form";
 import { InlineRmaSheet } from "@/components/incidents/inline-rma-sheet";
+import { AssigneeQuickPicker } from "@/components/incidents/assignee-quick-picker";
 import { ConversationThread } from "@/components/intercom/conversation-thread";
 import {
   updateIncident,
@@ -269,8 +270,12 @@ export function IncidentDetail({ incident }: IncidentDetailProps) {
                 <dt className="text-sm font-medium text-muted-foreground">
                   Asignado a
                 </dt>
-                <dd className="mt-1 text-sm">
-                  {incident.assignedUserName ?? "Sin asignar"}
+                <dd className="mt-1">
+                  <AssigneeQuickPicker
+                    incidentId={incident.id}
+                    currentUserId={incident.assignedUserId}
+                    currentUserName={incident.assignedUserName}
+                  />
                 </dd>
               </div>
               <div>
