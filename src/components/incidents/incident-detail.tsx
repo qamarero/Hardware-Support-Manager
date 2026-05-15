@@ -16,12 +16,13 @@ import { StateTransitionButtons } from "@/components/incidents/state-transition-
 import { IncidentForm } from "@/components/incidents/incident-form";
 import { InlineRmaSheet } from "@/components/incidents/inline-rma-sheet";
 import { ConversationThread } from "@/components/intercom/conversation-thread";
+import { ManualNoteForm } from "@/components/shared/manual-note-form";
+import { extractConversationId } from "@/lib/intercom/sync";
 import {
   updateIncident,
   fetchUsersForSelect,
   fetchLinkedRmas,
 } from "@/server/actions/incidents";
-import { formatDateTime } from "@/lib/utils/date-format";
 import { Badge } from "@/components/ui/badge";
 import {
   INCIDENT_PRIORITY_LABELS,
@@ -343,114 +344,66 @@ export function IncidentDetail({ incident }: IncidentDetailProps) {
       )}
 
       {/* Intercom + Contacto */}
-      {(incident.intercomUrl || incident.intercomEscalationId || incident.contactName || incident.pickupAddress) && (
-        <div className="grid gap-4 md:gap-6 md:grid-cols-2">
-          {(incident.intercomUrl || incident.intercomEscalationId) && (
+      <div className="grid gap-4 md:gap-6 md:grid-cols-2" style={{ animation: 'fadeInUp 300ms cubic-bezier(0.16, 1, 0.3, 1) 240ms both' }}>
+        {(() => {
+          const conversationId = extractConversationId(incident.intercomUrl ?? "") ?? incident.intercomEscalationId;
+          return (
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
                 <CardTitle className="text-lg">Referencia Intercom</CardTitle>
+                {incident.intercomUrl && (
+                  <a
+                    href={incident.intercomUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Abrir conversación ↗
+                  </a>
+                )}
               </CardHeader>
-              <CardContent>
-                <dl className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <dt className="text-sm font-medium text-muted-foreground">URL Intercom</dt>
-                    <dd className="mt-1 text-sm">
-                      {incident.intercomUrl ? (
-                        <a
-                          href={incident.intercomUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary hover:underline break-all"
-                        >
-                          Abrir conversación
-                        </a>
-                      ) : "-"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-muted-foreground">ID Escalación</dt>
-                    <dd className="mt-1 text-sm">{incident.intercomEscalationId || "-"}</dd>
-                  </div>
-                </dl>
-
-                {/* Conversación Intercom inline */}
-                {incident.intercomEscalationId && (
-                  <div className="mt-4">
-                    <ConversationThread conversationId={incident.intercomEscalationId} />
-                  </div>
+              <CardContent className="space-y-4">
+                <ManualNoteForm
+                  entityType="incident"
+                  entityId={incident.id}
+                  intercomConversationId={conversationId}
+                />
+                {conversationId && (
+                  <ConversationThread conversationId={conversationId} />
                 )}
               </CardContent>
             </Card>
-          )}
+          );
+        })()}
 
-          {(incident.contactName || incident.pickupAddress) && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Contacto y Recogida</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <dl className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <dt className="text-sm font-medium text-muted-foreground">Persona de contacto</dt>
-                    <dd className="mt-1 text-sm">{incident.contactName || "-"}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-muted-foreground">Teléfono</dt>
-                    <dd className="mt-1 text-sm">{incident.contactPhone || "-"}</dd>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <dt className="text-sm font-medium text-muted-foreground">Dirección de recogida</dt>
-                    <dd className="mt-1 text-sm">
-                      {[incident.pickupAddress, incident.pickupCity, incident.pickupPostalCode]
-                        .filter(Boolean)
-                        .join(", ") || "-"}
-                    </dd>
-                  </div>
-                </dl>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      )}
-
-      {/* Dates */}
-      <Card style={{ animation: 'fadeInUp 300ms cubic-bezier(0.16, 1, 0.3, 1) 320ms both' }}>
-        <CardHeader>
-          <CardTitle className="text-lg">Fechas</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <dl className="grid gap-4 sm:grid-cols-4">
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">
-                Creada
-              </dt>
-              <dd className="mt-1 text-sm">{formatDateTime(incident.createdAt)}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">
-                Actualizada
-              </dt>
-              <dd className="mt-1 text-sm">{formatDateTime(incident.updatedAt)}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">
-                Cambio de estado
-              </dt>
-              <dd className="mt-1 text-sm">
-                {formatDateTime(incident.stateChangedAt)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">
-                Resuelta
-              </dt>
-              <dd className="mt-1 text-sm">
-                {incident.resolvedAt ? formatDateTime(incident.resolvedAt) : "-"}
-              </dd>
-            </div>
-          </dl>
-        </CardContent>
-      </Card>
+        {(incident.contactName || incident.pickupAddress) ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Contacto y Recogida</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <dl className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <dt className="text-sm font-medium text-muted-foreground">Persona de contacto</dt>
+                  <dd className="mt-1 text-sm">{incident.contactName || "-"}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-muted-foreground">Teléfono</dt>
+                  <dd className="mt-1 text-sm">{incident.contactPhone || "-"}</dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="text-sm font-medium text-muted-foreground">Dirección de recogida</dt>
+                  <dd className="mt-1 text-sm">
+                    {[incident.pickupAddress, incident.pickupCity, incident.pickupPostalCode]
+                      .filter(Boolean)
+                      .join(", ") || "-"}
+                  </dd>
+                </div>
+              </dl>
+            </CardContent>
+          </Card>
+        ) : null}
+      </div>
 
       {/* Attachments & Event Log */}
       <div className="grid gap-4 md:gap-6 md:grid-cols-2" style={{ animation: 'fadeInUp 300ms cubic-bezier(0.16, 1, 0.3, 1) 400ms both' }}>

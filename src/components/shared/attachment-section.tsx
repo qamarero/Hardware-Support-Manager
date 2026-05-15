@@ -12,6 +12,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { upload } from "@vercel/blob/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -20,7 +21,11 @@ import {
   deleteAttachment,
 } from "@/server/actions/attachments";
 import { formatRelativeTime } from "@/lib/utils/date-format";
-import type { EntityType } from "@/lib/constants/attachments";
+import {
+  MAX_FILE_SIZE,
+  ALLOWED_FILE_TYPES,
+  type EntityType,
+} from "@/lib/constants/attachments";
 
 interface AttachmentSectionProps {
   entityType: EntityType;
@@ -75,31 +80,36 @@ export function AttachmentSection({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validación cliente antes de subir — feedback inmediato sin round-trip.
+    if (file.size > MAX_FILE_SIZE) {
+      const limitMb = Math.round(MAX_FILE_SIZE / (1024 * 1024));
+      toast.error(`El archivo excede el tamaño máximo permitido (${limitMb} MB)`);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+    if (!(ALLOWED_FILE_TYPES as readonly string[]).includes(file.type)) {
+      toast.error(`Tipo de archivo no permitido (${file.type || "desconocido"})`);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
     setIsUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const uploadRes = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
+      // Upload directo navegador → Vercel Blob (bypass del límite 4.5 MB de
+      // serverless functions). El endpoint /api/upload/sign firma el token.
+      const blob = await upload(`attachments/${file.name}`, file, {
+        access: "public",
+        handleUploadUrl: "/api/upload/sign",
+        contentType: file.type || undefined,
       });
-
-      if (!uploadRes.ok) {
-        const err = await uploadRes.json();
-        toast.error(err.error || "Error al subir el archivo");
-        return;
-      }
-
-      const uploadData = await uploadRes.json();
 
       const result = await createAttachment({
         entityType,
         entityId,
-        fileName: uploadData.fileName,
-        fileUrl: uploadData.url,
-        fileSize: uploadData.fileSize,
-        fileType: uploadData.fileType,
+        fileName: file.name,
+        fileUrl: blob.url,
+        fileSize: file.size,
+        fileType: file.type,
       });
 
       if (result.success) {
@@ -113,8 +123,10 @@ export function AttachmentSection({
       } else {
         toast.error(result.error);
       }
-    } catch {
-      toast.error("Error al subir el archivo");
+    } catch (err) {
+      console.error("[attachment-section] Error al subir:", err);
+      const message = err instanceof Error ? err.message : "Error al subir el archivo";
+      toast.error(message);
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";

@@ -29,7 +29,9 @@ export async function POST(request: NextRequest) {
     const path = `attachments/${timestamp}-${file.name}`;
     const result = await vercelBlobStorage.upload(file, path);
     return NextResponse.json({ url: result.url, fileName: file.name, fileSize: file.size, fileType: file.type });
-  } catch {
-    return NextResponse.json({ error: "Error al subir el archivo" }, { status: 500 });
+  } catch (err) {
+    console.error("[upload] Error al subir el archivo:", err);
+    const message = err instanceof Error ? err.message : "Error al subir el archivo";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

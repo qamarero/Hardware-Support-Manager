@@ -7,13 +7,16 @@ export const ENTITY_TYPES = {
 
 export type EntityType = (typeof ENTITY_TYPES)[keyof typeof ENTITY_TYPES];
 
-export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+export const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB — PDFs de fabricante de RMA suelen ser grandes.
 
 export const ALLOWED_FILE_TYPES = [
   "image/jpeg",
   "image/png",
   "image/gif",
   "image/webp",
+  "image/heic",
+  "image/heif",
+  "image/svg+xml",
   "application/pdf",
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

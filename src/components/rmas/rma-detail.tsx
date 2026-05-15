@@ -11,11 +11,13 @@ import { RmaStateBadge } from "@/components/shared/state-badge";
 import { AgingBadge } from "@/components/shared/aging-badge";
 import { EventLogTimeline } from "@/components/shared/event-log-timeline";
 import { AttachmentSection } from "@/components/shared/attachment-section";
+import { ManualNoteForm } from "@/components/shared/manual-note-form";
+import { ConversationThread } from "@/components/intercom/conversation-thread";
+import { extractConversationId } from "@/lib/intercom/sync";
 import { RmaTransitionButtons } from "@/components/rmas/state-transition-buttons";
 import { RmaForm } from "@/components/rmas/rma-form";
 import { updateRma, fetchProvidersForSelect } from "@/server/actions/rmas";
 import { fetchIncidentsForSelect } from "@/server/actions/incidents";
-import { formatDateTime } from "@/lib/utils/date-format";
 import { DEVICE_TYPE_LABELS, type DeviceType } from "@/lib/constants/device-types";
 import type { RmaStatus } from "@/lib/constants/rmas";
 import type { RmaRow } from "@/server/queries/rmas";
@@ -220,25 +222,6 @@ export function RmaDetail({ rma }: RmaDetailProps) {
               </div>
               <div>
                 <dt className="text-sm font-medium text-muted-foreground">
-                  URL Intercom
-                </dt>
-                <dd className="mt-1 text-sm">
-                  {rma.clientIntercomUrl ? (
-                    <a
-                      href={rma.clientIntercomUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline"
-                    >
-                      {rma.clientIntercomUrl}
-                    </a>
-                  ) : (
-                    "-"
-                  )}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-muted-foreground">
                   Nº RMA Proveedor
                 </dt>
                 <dd className="mt-1 text-sm">
@@ -364,36 +347,39 @@ export function RmaDetail({ rma }: RmaDetailProps) {
         </div>
       </div>
 
-      {/* Dates */}
-      <Card style={{ animation: 'fadeInUp 300ms cubic-bezier(0.16, 1, 0.3, 1) 240ms both' }}>
-        <CardHeader>
-          <CardTitle className="text-lg">Fechas</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <dl className="grid gap-4 sm:grid-cols-3">
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">
-                Creado
-              </dt>
-              <dd className="mt-1 text-sm">{formatDateTime(rma.createdAt)}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">
-                Actualizado
-              </dt>
-              <dd className="mt-1 text-sm">{formatDateTime(rma.updatedAt)}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">
-                Cambio de estado
-              </dt>
-              <dd className="mt-1 text-sm">
-                {formatDateTime(rma.stateChangedAt)}
-              </dd>
-            </div>
-          </dl>
-        </CardContent>
-      </Card>
+      {/* Intercom */}
+      <div style={{ animation: 'fadeInUp 300ms cubic-bezier(0.16, 1, 0.3, 1) 240ms both' }}>
+        {(() => {
+          const conversationId = extractConversationId(rma.clientIntercomUrl ?? "");
+          return (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
+                <CardTitle className="text-lg">Referencia Intercom</CardTitle>
+                {rma.clientIntercomUrl && (
+                  <a
+                    href={rma.clientIntercomUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Abrir conversación ↗
+                  </a>
+                )}
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <ManualNoteForm
+                  entityType="rma"
+                  entityId={rma.id}
+                  intercomConversationId={conversationId}
+                />
+                {conversationId && (
+                  <ConversationThread conversationId={conversationId} />
+                )}
+              </CardContent>
+            </Card>
+          );
+        })()}
+      </div>
 
       {/* Attachments & Event Log */}
       <div className="grid gap-4 md:gap-6 md:grid-cols-2" style={{ animation: 'fadeInUp 300ms cubic-bezier(0.16, 1, 0.3, 1) 320ms both' }}>

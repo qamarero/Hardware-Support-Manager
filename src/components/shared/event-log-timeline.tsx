@@ -8,6 +8,7 @@ import {
   Paperclip,
   Trash2,
   Loader2,
+  StickyNote,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +29,7 @@ const ACTION_LABELS: Record<string, string> = {
   transition: "Transición de estado",
   attachment_added: "Adjunto añadido",
   attachment_removed: "Adjunto eliminado",
+  note: "Nota",
 };
 
 const ACTION_ICONS: Record<string, typeof Plus> = {
@@ -36,6 +38,7 @@ const ACTION_ICONS: Record<string, typeof Plus> = {
   transition: ArrowRight,
   attachment_added: Paperclip,
   attachment_removed: Trash2,
+  note: StickyNote,
 };
 
 function getStatusLabel(status: string | null, entityType: EntityType): string {
@@ -109,6 +112,11 @@ export function EventLogTimeline({
                     {details?.comment && (
                       <p className="mt-1 text-sm text-muted-foreground">
                         {details.comment}
+                      </p>
+                    )}
+                    {log.action === "note" && details?.body && (
+                      <p className="mt-1 text-sm text-foreground whitespace-pre-wrap">
+                        {details.body}
                       </p>
                     )}
                     {details?.fileName && (

@@ -69,6 +69,37 @@ export async function syncIncidentTransition(opts: {
 }
 
 /**
+ * Post a manual note from a technician to Intercom.
+ * Fire-and-forget: logs errors but never throws.
+ *
+ * Plantilla con el nombre del técnico humano porque la API postea siempre con
+ * el mismo admin_id genérico — el prefijo es la única forma de identificar al
+ * autor real desde Intercom.
+ */
+export async function syncManualNote(opts: {
+  intercomUrl: string | null;
+  intercomEscalationId: string | null;
+  entityType: "incident" | "rma";
+  entityNumber: string;
+  authorName: string;
+  body: string;
+}): Promise<void> {
+  const conversationId = opts.intercomEscalationId
+    ?? extractConversationId(opts.intercomUrl ?? "");
+  if (!conversationId) return;
+
+  const entityLabel = opts.entityType === "incident" ? "Incidencia" : "RMA";
+  const header = `📝 [HSM] Nota de ${opts.authorName} en ${entityLabel} ${opts.entityNumber}`;
+  const messageBody = `${header}\n\n${opts.body}`;
+
+  try {
+    await addNote(conversationId, messageBody, INTERCOM_ADMIN_ID);
+  } catch (err) {
+    console.error("[Intercom sync] Error posting manual note:", err);
+  }
+}
+
+/**
  * Post a note to Intercom when an RMA state changes.
  * Fire-and-forget: logs errors but never throws.
  */
