@@ -29,6 +29,9 @@ export const intercomInbox = hsmSchema.table(
     dismissedByUserId: uuid("dismissed_by_user_id")
       .references(() => users.id, { onDelete: "set null" }),
     dismissedAt: timestamp("dismissed_at", { withTimezone: true }),
+    // Motivo del descarte automático del webhook (null si fue descarte manual del técnico).
+    // Valores p.ej.: "webhook_no_keyword_match", "webhook_no_conversation_id".
+    discardReason: varchar("discard_reason", { length: 100 }),
     receivedAt: timestamp("received_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .defaultNow()

@@ -5,7 +5,8 @@ import { intercomInbox, incidents, eventLogs, clients } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getRequiredSession } from "@/lib/auth/get-session";
-import { getConversation } from "@/lib/intercom/client";
+import { getConversation, getContact } from "@/lib/intercom/client";
+import { extractConversationId } from "@/lib/intercom/sync";
 import type { IntercomConversationPart } from "@/lib/intercom/types";
 import {
   convertToIncidentSchema,
@@ -29,6 +30,130 @@ export async function fetchIntercomInbox(
 export async function fetchPendingIntercomCount(): Promise<number> {
   await getRequiredSession();
   return getPendingInboxCount();
+}
+
+/**
+ * G3 — Importación bajo demanda de una conversación de Intercom a la bandeja.
+ *
+ * Acepta una URL de Intercom o un ID raw. Útil para el caso "no llegó por webhook"
+ * (filtros silenciaron la conversación, fue creada antes del webhook, etc.).
+ * Salta el filtro de keywords del webhook porque es importación explícita.
+ */
+export async function importIntercomConversation(
+  urlOrId: string
+): Promise<ActionResult<{ inboxItemId: string; alreadyExisted: boolean; intercomConversationId: string }>> {
+  await getRequiredSession();
+
+  const trimmed = (urlOrId ?? "").trim();
+  if (!trimmed) {
+    return { success: false, error: "Indica una URL de Intercom o un ID de conversación" };
+  }
+
+  const conversationId = extractConversationId(trimmed);
+  if (!conversationId) {
+    return { success: false, error: "No se pudo extraer el ID. Usa una URL de conversación de Intercom o el ID numérico." };
+  }
+
+  // Dedup: si ya está en la bandeja, devolverla con flag para que la UI navegue a ella.
+  const [existing] = await db
+    .select({ id: intercomInbox.id, status: intercomInbox.status })
+    .from(intercomInbox)
+    .where(eq(intercomInbox.intercomConversationId, conversationId))
+    .limit(1);
+
+  if (existing) {
+    return {
+      success: true,
+      data: { inboxItemId: existing.id, alreadyExisted: true, intercomConversationId: conversationId },
+    };
+  }
+
+  // Traer la conversación de Intercom.
+  let conversation;
+  try {
+    conversation = await getConversation(conversationId);
+  } catch (err) {
+    console.error("[importIntercomConversation] Error fetching conversation:", err);
+    const message = err instanceof Error ? err.message : "Error al consultar Intercom";
+    return { success: false, error: `No se pudo obtener la conversación de Intercom: ${message}` };
+  }
+
+  // Extraer contacto principal.
+  const primaryContact = conversation.contacts?.contacts?.[0] ?? null;
+  let contactName: string | null = primaryContact?.name ?? null;
+  let contactEmail: string | null = primaryContact?.email ?? null;
+  let contactPhone: string | null = null;
+  let companyName: string | null = null;
+
+  // Enriquecer con getContact si tenemos token y un ID de contacto.
+  if (primaryContact?.id && process.env.INTERCOM_ACCESS_TOKEN) {
+    try {
+      const fullContact = await getContact(primaryContact.id);
+      contactName = fullContact.name ?? contactName;
+      contactEmail = fullContact.email ?? contactEmail;
+      contactPhone = fullContact.phone ?? null;
+      companyName = fullContact.company?.name ?? null;
+    } catch (err) {
+      console.warn("[importIntercomConversation] Enrichment de contacto falló:", err);
+    }
+  }
+
+  const subject =
+    conversation.source?.subject ??
+    conversation.title ??
+    `Conversación Intercom ${conversationId}`;
+
+  const enrichedPayload = {
+    _importedAt: new Date().toISOString(),
+    _importedFrom: trimmed,
+    conversation,
+    enrichedContact: { name: contactName, email: contactEmail, phone: contactPhone, companyName },
+  };
+
+  const [inserted] = await db
+    .insert(intercomInbox)
+    .values({
+      intercomConversationId: conversationId,
+      contactName,
+      contactEmail,
+      subject,
+      assigneeName: null,
+      rawPayload: enrichedPayload,
+      status: "pendiente",
+    })
+    .returning({ id: intercomInbox.id });
+
+  revalidatePath("/intercom");
+
+  return {
+    success: true,
+    data: { inboxItemId: inserted.id, alreadyExisted: false, intercomConversationId: conversationId },
+  };
+}
+
+/**
+ * Recupera una conversación descartada a "pendiente" para procesarla.
+ * Útil tras la pestaña "Descartadas" llena por filtros del webhook.
+ */
+export async function recoverDiscardedInboxItem(
+  inboxItemId: string
+): Promise<ActionResult<void>> {
+  await getRequiredSession();
+
+  try {
+    await db
+      .update(intercomInbox)
+      .set({
+        status: "pendiente",
+        discardReason: null,
+      })
+      .where(eq(intercomInbox.id, inboxItemId));
+
+    revalidatePath("/intercom");
+    return { success: true, data: undefined };
+  } catch {
+    return { success: false, error: "Error al recuperar elemento descartado" };
+  }
 }
 
 export async function convertToIncident(
@@ -100,6 +225,9 @@ export async function convertToIncident(
           hardwareOrigin,
           priority,
           status: "nuevo",
+          // G5: auto-asignar al técnico que convierte. Resuelve un campo crítico que
+          // siempre quedaba vacío al venir desde la bandeja. Reasignable después.
+          assignedUserId: session.user.id,
           clientId: resolvedClientId,
           clientName: resolvedClientName,
           deviceType: rest.deviceType || null,

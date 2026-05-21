@@ -84,6 +84,28 @@ function extractData(payload: any): {
   return { conversationId, contactName, contactEmail, subject, assigneeName };
 }
 
+function flattenAttributes(attrs: unknown): string {
+  // Convierte un objeto de custom_attributes/ticket_attributes a un único string
+  // para que la búsqueda de keywords incluya también esos campos.
+  if (!attrs || typeof attrs !== "object") return "";
+  try {
+    const parts: string[] = [];
+    for (const value of Object.values(attrs as Record<string, unknown>)) {
+      if (value == null) continue;
+      if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+        parts.push(String(value));
+      } else if (typeof value === "object") {
+        // Algunas attrs vienen como { value: "..." }
+        const inner = (value as { value?: unknown }).value;
+        if (inner != null) parts.push(String(inner));
+      }
+    }
+    return parts.join(" ");
+  } catch {
+    return "";
+  }
+}
+
 function isRelevantEscalation(payload: any): boolean {
   const item = payload?.data?.item;
   if (!item) return false;
@@ -95,6 +117,10 @@ function isRelevantEscalation(payload: any): boolean {
     item.title,
     item.source?.body?.substring?.(0, 500),
     ...(item.tags?.tags?.map?.((t: any) => t.name) ?? []),
+    // G2: ampliar match a custom_attributes y ticket_attributes — antes se perdían
+    // conversaciones donde CX marca el caso en un custom field sin ponerlo en subject/body.
+    flattenAttributes(item.custom_attributes),
+    flattenAttributes(item.ticket_attributes),
   ]
     .filter(Boolean)
     .join(" ")
@@ -146,12 +172,33 @@ export async function POST(request: NextRequest) {
     `[Intercom Webhook] Topic: ${topic} | ID: ${conversationId} | Contact: ${contactName ?? "null"} | Subject: ${subject ?? "null"} | Relevant: ${relevant}`
   );
 
-  if (!relevant) {
-    return NextResponse.json({ ok: true, skipped: true });
+  // G1: en lugar de descartar silenciosamente, guardar en la bandeja con status="descartada"
+  // y un motivo. Así la pestaña "Descartadas" se vuelve útil para auditar el filtro.
+  if (!conversationId) {
+    console.log(`[Intercom Webhook] Skipped — no conversation ID extractable`);
+    return NextResponse.json({ ok: true, skipped: "no-conversation-id" });
   }
 
-  if (!conversationId) {
-    return NextResponse.json({ ok: true, skipped: true });
+  if (!relevant) {
+    try {
+      await db
+        .insert(intercomInbox)
+        .values({
+          intercomConversationId: conversationId,
+          contactName,
+          contactEmail,
+          subject: subject ?? `Webhook: ${topic}`,
+          assigneeName,
+          rawPayload: payload,
+          status: "descartada",
+          discardReason: "webhook_no_keyword_match",
+        })
+        .onConflictDoNothing({ target: intercomInbox.intercomConversationId });
+      console.log(`[Intercom Webhook] Descartada (sin keywords) ${conversationId}`);
+    } catch (err) {
+      console.error("[Intercom Webhook] DB error guardando descartada:", err);
+    }
+    return NextResponse.json({ ok: true, skipped: "no-keyword-match" });
   }
 
   // Save immediately with whatever data we have

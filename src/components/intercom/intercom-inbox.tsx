@@ -10,6 +10,7 @@ import { SearchBar } from "@/components/shared/search-bar";
 import { useDebouncedSearch } from "@/hooks/use-debounced-search";
 import { ConversationList } from "./conversation-list";
 import { ConversationDetail } from "./conversation-detail";
+import { ImportConversationDialog } from "./import-conversation-dialog";
 import { fetchIntercomInbox } from "@/server/actions/intercom-inbox";
 import type { IntercomInboxRow } from "@/server/queries/intercom-inbox";
 import type { PaginatedResult } from "@/types";
@@ -56,6 +57,21 @@ export function IntercomInbox({ initialData }: IntercomInboxProps) {
     setSelectedId(null);
   };
 
+  const handleImported = async (inboxItemId: string, alreadyExisted: boolean) => {
+    // Tras importar, refrescar la lista. Si ya existía, además mover a su tab.
+    if (alreadyExisted) {
+      // No sabemos en qué tab está — refresh y dejamos que el técnico lo localice.
+      // Como mejora futura podríamos hacer una query para saber su status y cambiar de tab.
+    } else {
+      // Asegurar que estamos en la tab Pendientes (donde acaba de entrar).
+      if (params.status !== "pendiente") {
+        await setParams({ status: "pendiente", page: 1 });
+      }
+    }
+    await refetch();
+    setSelectedId(inboxItemId);
+  };
+
   return (
     <div className="space-y-4">
       {/* Filters */}
@@ -70,11 +86,14 @@ export function IntercomInbox({ initialData }: IntercomInboxProps) {
             <TabsTrigger value="descartada">Descartadas</TabsTrigger>
           </TabsList>
         </Tabs>
-        <SearchBar
-          value={inputValue}
-          onChange={setInputValue}
-          placeholder="Buscar conversación..."
-        />
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <SearchBar
+            value={inputValue}
+            onChange={setInputValue}
+            placeholder="Buscar conversación..."
+          />
+          <ImportConversationDialog onImported={handleImported} />
+        </div>
       </div>
 
       {/* Split pane */}

@@ -226,6 +226,38 @@ export function IncidentDetail({ incident }: IncidentDetailProps) {
         </div>
       </div>
 
+      {/* G6: Banner "Información parcial" — solo si viene de Intercom (escalado) y faltan campos críticos.
+          Evita que la ficha parezca abandonada por huecos de la importación. */}
+      {(() => {
+        if (incident.category !== "escalado") return null;
+        const missing: string[] = [];
+        if (!incident.deviceType) missing.push("dispositivo");
+        if (!incident.contactName) missing.push("contacto");
+        if (!incident.pickupAddress) missing.push("dirección");
+        if (missing.length === 0) return null;
+        return (
+          <div
+            className="flex items-center justify-between gap-3 rounded-md border border-amber-200/60 bg-amber-50 px-4 py-2.5 text-sm dark:border-amber-500/30 dark:bg-amber-500/10"
+            style={{ animation: 'fadeInUp 300ms cubic-bezier(0.16, 1, 0.3, 1) 40ms both' }}
+          >
+            <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200">
+              <span className="font-medium">Información parcial</span>
+              <span className="text-amber-800/80 dark:text-amber-200/80">
+                Faltan {missing.join(", ")} — completa los campos pendientes.
+              </span>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="shrink-0 border-amber-300 bg-white hover:bg-amber-100 dark:bg-amber-500/20 dark:hover:bg-amber-500/30"
+              onClick={() => setIsEditing(true)}
+            >
+              Completar
+            </Button>
+          </div>
+        );
+      })()}
+
       {/* Transition buttons + SLA */}
       <div className="grid gap-4 md:grid-cols-[1fr_300px]" style={{ animation: 'fadeInUp 300ms cubic-bezier(0.16, 1, 0.3, 1) 80ms both' }}>
         <StateTransitionButtons

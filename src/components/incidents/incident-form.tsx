@@ -235,7 +235,13 @@ export function IncidentForm({
             />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          {/*
+           * G7: el campo "ID Escalación IC" se rellena automáticamente al convertir desde
+           * la Bandeja Intercom (se deriva de la URL). Solo lo mostramos si ya tiene valor
+           * (modo edición de algo que ya viene de Intercom). En modo creación nuevo lo
+           * ocultamos para no añadir ruido. La URL Intercom sigue siendo editable a mano.
+           */}
+          <div className={`grid gap-4 ${form.watch("intercomEscalationId") ? "sm:grid-cols-2" : "sm:grid-cols-1"}`}>
             <FormField
               control={form.control}
               name="intercomUrl"
@@ -250,19 +256,21 @@ export function IncidentForm({
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="intercomEscalationId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>ID Escalación IC</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Folio o ID de la escalación" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {form.watch("intercomEscalationId") && (
+              <FormField
+                control={form.control}
+                name="intercomEscalationId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>ID Escalación IC</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Folio o ID de la escalación" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
           </div>
         </div>
 
