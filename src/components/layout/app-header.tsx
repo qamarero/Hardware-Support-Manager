@@ -12,9 +12,9 @@ import { useQuickConsultation } from "@/components/incidents/quick-consultation-
 export function AppHeader() {
   const { setOpen } = useQuickConsultation();
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-border/60 bg-card/80 px-4 sm:px-6 shadow-[0_1px_0_0_oklch(0_0_0/0.05)] backdrop-blur-md">
+    <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-card px-4 sm:px-6">
       <SidebarTrigger />
-      <Separator orientation="vertical" className="h-6" />
+      <Separator orientation="vertical" className="h-5" />
       <Breadcrumbs />
       <div className="ml-auto flex items-center gap-2">
         <Button
@@ -24,9 +24,9 @@ export function AppHeader() {
           onClick={() => setOpen(true)}
           title="Registrar consulta rápida (Ctrl+Q)"
         >
-          <Zap className="h-3.5 w-3.5 text-amber-500" />
+          <Zap className="h-3.5 w-3.5 text-warning" />
           <span className="hidden sm:inline">Consulta rápida</span>
-          <kbd className="hidden rounded border bg-muted/50 px-1 font-mono text-[10px] sm:inline">
+          <kbd className="hidden rounded-sm border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] tracking-wider text-muted-foreground sm:inline">
             Ctrl+Q
           </kbd>
         </Button>

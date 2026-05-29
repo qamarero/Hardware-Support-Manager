@@ -1,0 +1,33 @@
+/**
+ * Logo de marca Qamarero (handoff design system).
+ * El círculo naranja se mantiene fiel; el path principal usa currentColor
+ * para adaptarse al contexto (claro u oscuro).
+ */
+interface QamareroLogoProps {
+  className?: string;
+  size?: number;
+}
+
+export function QamareroLogo({ className, size = 32 }: QamareroLogoProps) {
+  // Aspect ratio original 42:48
+  const height = Math.round((size * 48) / 42);
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={height}
+      viewBox="0 0 42 48"
+      fill="none"
+      aria-label="Qamarero"
+      className={className}
+    >
+      <circle cx="33" cy="15" r="15" fill="#F4532B" />
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M36.4541 10.4241C37.688 10.4241 38.6528 11.4903 38.5293 12.718L35.167 46.1243C35.0596 47.1893 34.1632 48.0003 33.0927 48.0003H5.65719C4.59162 48.0003 3.69731 47.1965 3.58395 46.137L0.0126591 12.7307C-0.11906 11.4988 0.846 10.4243 2.08492 10.4241H36.4541ZM7.67965 35.4153L8.46774 42.7884H30.2646L31.0068 35.4153H7.67965ZM7.12203 30.2034H31.5312L32.997 15.636H5.56442L7.12203 30.2034Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}

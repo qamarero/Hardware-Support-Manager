@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useAlertBadges } from "./sidebar-badges";
 import { GlobalSearchBar } from "./global-search-bar";
+import { QamareroLogo } from "./qamarero-logo";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -92,15 +93,15 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
-            <span className="text-xs font-bold tracking-tight">HSM</span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-bold tracking-tight leading-tight text-sidebar-foreground">
-              Hardware Support
+          {/* Logo Qamarero — el círculo naranja se mantiene; el cuerpo hereda
+              el color del sidebar (claro sobre fondo oscuro). */}
+          <QamareroLogo className="shrink-0 text-sidebar-foreground" size={26} />
+          <div className="flex flex-col leading-tight">
+            <span className="text-sm font-bold tracking-tight text-sidebar-foreground">
+              Qamarero
             </span>
-            <span className="text-xs text-sidebar-foreground/60">
-              Manager
+            <span className="font-mono text-[10px] uppercase tracking-wider text-sidebar-foreground/55">
+              Hardware · Soporte
             </span>
           </div>
         </div>
@@ -126,7 +127,9 @@ export function AppSidebar() {
           <GlobalSearchBar />
         </div>
         <SidebarGroup>
-          <SidebarGroupLabel>Navegación</SidebarGroupLabel>
+          <SidebarGroupLabel className="font-mono text-[10px] uppercase tracking-[0.06em] text-sidebar-foreground/55">
+            Navegación
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navigation.map((item) => {
@@ -164,7 +167,9 @@ export function AppSidebar() {
         </SidebarGroup>
         {isAdmin && (
           <SidebarGroup>
-            <SidebarGroupLabel>Administración</SidebarGroupLabel>
+            <SidebarGroupLabel className="font-mono text-[10px] uppercase tracking-[0.06em] text-sidebar-foreground/55">
+              Administración
+            </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {adminNavigation.map((item) => (
@@ -186,31 +191,34 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
       </SidebarContent>
-      <SidebarFooter className="border-t border-sidebar-border">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton className="h-auto py-2">
-                  <UserAvatar name={userName} />
-                  <div className="flex flex-col items-start">
-                    <span className="text-sm font-medium leading-tight">{userName}</span>
-                    <span className="text-xs text-sidebar-foreground/60">
-                      {roleLabels[userRole] ?? userRole}
-                    </span>
-                  </div>
-                  <ChevronUp className="ml-auto h-4 w-4" />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent side="top" className="w-56">
-                <DropdownMenuItem onClick={() => signOut({ callbackUrl: "/login" })}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Cerrar Sesión
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarMenuItem>
-        </SidebarMenu>
+      <SidebarFooter className="border-t border-sidebar-border p-3">
+        {/* Bloque de usuario al estilo Qamarero handoff: tarjeta con fondo
+            sidebar-accent que destaca al usuario activo y agrupa la acción. */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full items-center gap-2.5 rounded-xl bg-sidebar-accent px-3 py-2.5 text-left transition-colors hover:bg-sidebar-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/40"
+            >
+              <UserAvatar name={userName} />
+              <div className="flex min-w-0 flex-1 flex-col leading-tight">
+                <span className="truncate text-sm font-semibold text-sidebar-accent-foreground">
+                  {userName}
+                </span>
+                <span className="truncate font-mono text-[10px] uppercase tracking-wider text-sidebar-foreground/55">
+                  {roleLabels[userRole] ?? userRole}
+                </span>
+              </div>
+              <ChevronUp className="h-4 w-4 shrink-0 text-sidebar-foreground/60" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align="start" className="w-56">
+            <DropdownMenuItem onClick={() => signOut({ callbackUrl: "/login" })}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Cerrar Sesión
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </SidebarFooter>
     </Sidebar>
   );
