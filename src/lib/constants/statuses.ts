@@ -17,6 +17,7 @@ export const OPEN_INCIDENT_STATUSES = [
   "en_gestion",
   "esperando_cliente",
   "esperando_proveedor",
+  "esperando_pieza",
 ] as const;
 
 /** RMA statuses that represent a closed/finished lifecycle.
@@ -35,7 +36,11 @@ export const OPEN_RMA_STATUSES = [
 ] as const;
 
 /** Incident statuses where the SLA clock is paused (waiting on external party). */
-export const PAUSED_INCIDENT_STATES = ["esperando_cliente", "esperando_proveedor"] as const;
+export const PAUSED_INCIDENT_STATES = ["esperando_cliente", "esperando_proveedor", "esperando_pieza"] as const;
+
+/** RMA statuses where the SLA/aging clock is paused — el equipo está fuera de
+ *  nuestras manos (enviado al proveedor o en su poder). */
+export const PAUSED_RMA_STATES = ["enviado_proveedor", "en_proveedor"] as const;
 
 /** RMA statuses where the device is in the warehouse/office (not with provider). */
 export const WAREHOUSE_RMA_STATUSES = ["borrador", "aprobado", "recibido_oficina"] as const;

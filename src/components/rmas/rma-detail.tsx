@@ -20,7 +20,7 @@ import { updateRma, fetchProvidersForSelect } from "@/server/actions/rmas";
 import { fetchIncidentsForSelect, fetchIncidentById } from "@/server/actions/incidents";
 import { DEVICE_TYPE_LABELS, type DeviceType } from "@/lib/constants/device-types";
 import type { RmaStatus } from "@/lib/constants/rmas";
-import { CLOSED_RMA_STATUSES } from "@/lib/constants/statuses";
+import { CLOSED_RMA_STATUSES, PAUSED_RMA_STATES } from "@/lib/constants/statuses";
 import { invalidateRmaQueries } from "@/lib/query-keys";
 import type { RmaRow } from "@/server/queries/rmas";
 import type { RmaFormInput } from "@/lib/validators/rma";
@@ -169,8 +169,9 @@ export function RmaDetail({ rma }: RmaDetailProps) {
               stateChangedAt={rma.stateChangedAt}
               createdAt={rma.createdAt}
               status={rma.status}
+              slaPausedMs={rma.slaPausedMs}
               closedStatuses={CLOSED_RMA_STATUSES}
-              pausedStatuses={[]}
+              pausedStatuses={PAUSED_RMA_STATES}
             />
           </div>
           {rma.incidentNumber && (
@@ -291,8 +292,9 @@ export function RmaDetail({ rma }: RmaDetailProps) {
                     stateChangedAt={rma.stateChangedAt}
                     createdAt={rma.createdAt}
                     status={rma.status}
+                    slaPausedMs={rma.slaPausedMs}
                     closedStatuses={CLOSED_RMA_STATUSES}
-                    pausedStatuses={[]}
+                    pausedStatuses={PAUSED_RMA_STATES}
                   />
                 </dd>
               </div>

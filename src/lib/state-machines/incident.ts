@@ -17,9 +17,10 @@ export const INCIDENT_TRANSITIONS: StateTransition[] = [
   { from: "en_triaje", to: "en_gestion", label: "Iniciar Gestión", requiredRole: ["admin", "technician"] },
   { from: "en_triaje", to: "esperando_cliente", label: "Esperar Cliente", requiredRole: ["admin", "technician"] },
   { from: "en_triaje", to: "cancelado", label: "Cancelar", requiredRole: ["admin"] },
-  // From en_gestion
+  // From en_gestion (mostrado como "En curso")
   { from: "en_gestion", to: "esperando_cliente", label: "Esperar Cliente", requiredRole: ["admin", "technician"] },
   { from: "en_gestion", to: "esperando_proveedor", label: "Esperar Proveedor", requiredRole: ["admin", "technician"] },
+  { from: "en_gestion", to: "esperando_pieza", label: "Esperar Pieza", requiredRole: ["admin", "technician"] },
   { from: "en_gestion", to: "resuelto", label: "Marcar Resuelto", requiredRole: ["admin", "technician"] },
   { from: "en_gestion", to: "resuelto", label: "Derivar a RMA", requiredRole: ["admin", "technician"], resolutionType: "derivado_rma" },
   { from: "en_gestion", to: "cancelado", label: "Cancelar", requiredRole: ["admin"] },
@@ -31,6 +32,10 @@ export const INCIDENT_TRANSITIONS: StateTransition[] = [
   { from: "esperando_proveedor", to: "en_gestion", label: "Reanudar Gestión", requiredRole: ["admin", "technician"] },
   { from: "esperando_proveedor", to: "resuelto", label: "Marcar Resuelto", requiredRole: ["admin", "technician"] },
   { from: "esperando_proveedor", to: "cancelado", label: "Cancelar", requiredRole: ["admin"] },
+  // From esperando_pieza (incidencia derivada a RMA, esperando el repuesto/sustituto)
+  { from: "esperando_pieza", to: "en_gestion", label: "Reanudar Gestión", requiredRole: ["admin", "technician"] },
+  { from: "esperando_pieza", to: "resuelto", label: "Marcar Resuelto", requiredRole: ["admin", "technician"] },
+  { from: "esperando_pieza", to: "cancelado", label: "Cancelar", requiredRole: ["admin"] },
   // From resuelto
   { from: "resuelto", to: "cerrado", label: "Cerrar", requiredRole: ["admin", "technician"] },
   { from: "resuelto", to: "en_gestion", label: "Reabrir", requiredRole: ["admin"] },

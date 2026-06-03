@@ -13,6 +13,7 @@ import {
   transitionRmaSchema,
 } from "@/lib/validators/rma";
 import { isValidRmaTransition } from "@/lib/state-machines/rma";
+import { PAUSED_RMA_STATES } from "@/lib/constants/statuses";
 import { generateSequentialId } from "@/lib/utils/id-generator";
 import { getRmas } from "@/server/queries/rmas";
 import type { ActionResult, PaginationParams, PaginatedResult } from "@/types";
@@ -198,7 +199,11 @@ export async function transitionRma(
 
   const result = await db.transaction(async (tx) => {
     const [current] = await tx
-      .select({ status: rmas.status })
+      .select({
+        status: rmas.status,
+        stateChangedAt: rmas.stateChangedAt,
+        slaPausedMs: rmas.slaPausedMs,
+      })
       .from(rmas)
       .where(eq(rmas.id, rmaId))
       .for("update")
@@ -214,12 +219,23 @@ export async function transitionRma(
       return { success: false as const, error: "Transición de estado no permitida" };
     }
 
+    const updateValues: Record<string, unknown> = {
+      status: toStatus,
+      stateChangedAt: new Date(),
+    };
+
+    // Pausa de SLA: al salir de un estado pausado (equipo en el proveedor),
+    // acumular el tiempo pausado en slaPausedMs. Mismo patrón que incidencias.
+    if ((PAUSED_RMA_STATES as readonly string[]).includes(fromStatus)) {
+      const pausedSince = new Date(current.stateChangedAt).getTime();
+      const pausedDuration = Math.max(0, Date.now() - pausedSince);
+      const existingPaused = Number(current.slaPausedMs) || 0;
+      updateValues.slaPausedMs = String(existingPaused + pausedDuration);
+    }
+
     await tx
       .update(rmas)
-      .set({
-        status: toStatus,
-        stateChangedAt: new Date(),
-      })
+      .set(updateValues)
       .where(eq(rmas.id, rmaId));
 
     await tx.insert(eventLogs).values({

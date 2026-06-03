@@ -6,7 +6,7 @@ import { articles } from "./articles";
 
 export const incidentStatusEnum = hsmSchema.enum("incident_status", [
   "nuevo", "en_triaje", "en_gestion", "esperando_cliente",
-  "esperando_proveedor", "resuelto", "cerrado", "cancelado",
+  "esperando_proveedor", "esperando_pieza", "resuelto", "cerrado", "cancelado",
 ]);
 
 export const incidentPriorityEnum = hsmSchema.enum("incident_priority", [

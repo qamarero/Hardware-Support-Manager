@@ -4,6 +4,7 @@ export const INCIDENT_STATUSES = {
   EN_GESTION: "en_gestion",
   ESPERANDO_CLIENTE: "esperando_cliente",
   ESPERANDO_PROVEEDOR: "esperando_proveedor",
+  ESPERANDO_PIEZA: "esperando_pieza",
   RESUELTO: "resuelto",
   CERRADO: "cerrado",
   CANCELADO: "cancelado",
@@ -11,15 +12,19 @@ export const INCIDENT_STATUSES = {
 
 export type IncidentStatus = (typeof INCIDENT_STATUSES)[keyof typeof INCIDENT_STATUSES];
 
+// Vocabulario del prototipo Qamarero (femenino, concuerda con "incidencia").
+// Los identificadores internos del enum se conservan; lo que ve el técnico y
+// CX (en las notas de Intercom) sale de estas etiquetas.
 export const INCIDENT_STATUS_LABELS: Record<IncidentStatus, string> = {
-  nuevo: "Nuevo",
-  en_triaje: "En Triaje",
-  en_gestion: "En Gestión",
-  esperando_cliente: "Esperando Cliente",
-  esperando_proveedor: "Esperando Proveedor",
-  resuelto: "Resuelto",
-  cerrado: "Cerrado",
-  cancelado: "Cancelado",
+  nuevo: "Abierta",
+  en_triaje: "En triaje",
+  en_gestion: "En curso",
+  esperando_cliente: "Esperando cliente",
+  esperando_proveedor: "Esperando proveedor",
+  esperando_pieza: "Esperando pieza",
+  resuelto: "Resuelta",
+  cerrado: "Cerrada",
+  cancelado: "Cancelada",
 };
 
 export const INCIDENT_PRIORITIES = {

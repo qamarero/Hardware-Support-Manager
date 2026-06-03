@@ -37,6 +37,9 @@ export const rmas = hsmSchema.table("rmas", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull().$onUpdate(() => new Date()),
   stateChangedAt: timestamp("state_changed_at", { withTimezone: true }).defaultNow().notNull(),
+  // Tiempo acumulado en pausa (ms, como string — mismo patrón que incidencias).
+  // El contador de antigüedad se congela mientras el equipo está en el proveedor.
+  slaPausedMs: varchar("sla_paused_ms", { length: 50 }).default("0").notNull(),
   articleId: uuid("article_id").references(() => articles.id, { onDelete: "set null" }),
   deviceValueCents: bigint("device_value_cents", { mode: "number" }),
   repairCostCents: bigint("repair_cost_cents", { mode: "number" }),
