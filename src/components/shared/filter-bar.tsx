@@ -7,6 +7,7 @@ import { SlidersHorizontal, X } from "lucide-react";
 import type { FilterConfig } from "@/lib/constants/filter-options";
 import { FilterMultiSelect } from "./filter-multi-select";
 import { FilterDateRange } from "./filter-date-range";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface FilterBarProps {
   filters: FilterConfig[];
@@ -23,7 +24,13 @@ export function FilterBar({
   onClearFilters,
   activeFilterCount,
 }: FilterBarProps) {
-  const [isOpen, setIsOpen] = useState(activeFilterCount > 0);
+  // A5/C2: en desktop los filtros se muestran abiertos por defecto (el técnico
+  // está en desktop ~95% del tiempo y así no necesita un click extra para ver
+  // qué filtros existen). En mobile, cerrados salvo que haya filtros activos.
+  // `manualOpen` recoge el toggle explícito del usuario y prevalece.
+  const isMobile = useIsMobile();
+  const [manualOpen, setManualOpen] = useState<boolean | null>(null);
+  const isOpen = manualOpen ?? (!isMobile || activeFilterCount > 0);
 
   // Build active filter chips for visual feedback
   const activeChips: { key: string; filterKey: string; label: string }[] = [];
@@ -55,7 +62,7 @@ export function FilterBar({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={() => setManualOpen(!isOpen)}
           className="gap-1.5"
         >
           <SlidersHorizontal className="size-3.5" />

@@ -42,7 +42,7 @@ import { RmaStateBadge } from "@/components/shared/state-badge";
 import type { RmaStatus } from "@/lib/constants/rmas";
 import type { CreateIncidentInput } from "@/lib/validators/incident";
 import { TemplatePicker } from "@/components/message-templates/template-picker";
-import { Loader2, RotateCcw } from "lucide-react";
+import { Loader2, RotateCcw, Store } from "lucide-react";
 
 const PRIORITY_COLORS: Record<string, string> = {
   baja: "bg-green-500/15 text-green-700 hover:bg-green-500/15 dark:bg-green-500/25 dark:text-green-300",
@@ -189,6 +189,26 @@ export function IncidentDetail({ incident }: IncidentDetailProps) {
             )}
           </div>
           <p className="mt-1 text-lg text-muted-foreground">{incident.title}</p>
+          {/* U3: resumen humano — cliente + antigüedad de un vistazo, lo
+              primero que necesita ver el técnico al entrar en la ficha. */}
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+            {(incident.clientCompanyName || incident.clientName) && (
+              <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
+                <Store className="h-3.5 w-3.5 text-muted-foreground" />
+                {incident.clientCompanyName ?? incident.clientName}
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1.5">
+              <span className="text-muted-foreground/40">·</span>
+              <AgingBadge
+                stateChangedAt={incident.stateChangedAt}
+                createdAt={incident.createdAt}
+                status={incident.status}
+                resolvedAt={incident.resolvedAt}
+                slaPausedMs={incident.slaPausedMs}
+              />
+            </span>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <TemplatePicker

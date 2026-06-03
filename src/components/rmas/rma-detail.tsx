@@ -25,7 +25,7 @@ import { invalidateRmaQueries } from "@/lib/query-keys";
 import type { RmaRow } from "@/server/queries/rmas";
 import type { RmaFormInput } from "@/lib/validators/rma";
 import { TemplatePicker } from "@/components/message-templates/template-picker";
-import { Loader2 } from "lucide-react";
+import { Loader2, Building2 } from "lucide-react";
 
 interface RmaDetailProps {
   rma: RmaRow;
@@ -150,12 +150,35 @@ export function RmaDetail({ rma }: RmaDetailProps) {
             <h1 className="text-2xl font-bold">{rma.rmaNumber}</h1>
             <RmaStateBadge status={rma.status as RmaStatus} />
           </div>
+          {/* U3: resumen humano — proveedor + cliente + antigüedad de un vistazo. */}
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+            {rma.providerName && (
+              <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
+                <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                {rma.providerName}
+              </span>
+            )}
+            {(rma.clientCompanyName || rma.clientName) && (
+              <>
+                <span className="text-muted-foreground/40">·</span>
+                <span>{rma.clientCompanyName ?? rma.clientName}</span>
+              </>
+            )}
+            <span className="text-muted-foreground/40">·</span>
+            <AgingBadge
+              stateChangedAt={rma.stateChangedAt}
+              createdAt={rma.createdAt}
+              status={rma.status}
+              closedStatuses={CLOSED_RMA_STATUSES}
+              pausedStatuses={[]}
+            />
+          </div>
           {rma.incidentNumber && (
             <p className="mt-1 text-sm text-muted-foreground">
               Vinculado a{" "}
               <Link
                 href={`/incidents/${rma.incidentId}`}
-                className="text-primary hover:underline"
+                className="text-primary hover:underline font-medium"
               >
                 {rma.incidentNumber}
               </Link>

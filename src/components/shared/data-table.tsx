@@ -99,9 +99,9 @@ export function DataTable<TData>({
     <div className="space-y-4">
       {searchBar}
 
-      <div className="rounded-lg border bg-card overflow-x-auto">
+      <div className="rounded-xl border border-border/70 bg-card overflow-x-auto shadow-[0_2px_4px_0_rgba(13,13,18,0.04)]">
         <Table>
-          <TableHeader className="bg-muted/30 dark:bg-muted/10">
+          <TableHeader className="bg-muted/50 dark:bg-muted/20">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
