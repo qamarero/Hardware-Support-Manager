@@ -54,7 +54,7 @@ export function ProviderVolumeChart({ data }: Props) {
                 dataKey="open"
                 name="Abiertos"
                 stackId="a"
-                fill="oklch(0.623 0.214 259)"
+                fill="#ff592f"
                 animationBegin={200}
                 animationDuration={800}
               />
@@ -62,7 +62,7 @@ export function ProviderVolumeChart({ data }: Props) {
                 dataKey="closed"
                 name="Cerrados"
                 stackId="a"
-                fill="oklch(0.75 0.15 85)"
+                fill="#02995d"
                 animationBegin={300}
                 animationDuration={800}
                 radius={[4, 4, 0, 0]}
@@ -71,7 +71,7 @@ export function ProviderVolumeChart({ data }: Props) {
                 dataKey="cancelled"
                 name="Cancelados"
                 stackId="a"
-                fill="oklch(0.577 0.245 27.325)"
+                fill="#f50a48"
                 animationBegin={400}
                 animationDuration={800}
               />

@@ -6,14 +6,16 @@ import { MonitorSmartphone } from "lucide-react";
 import type { DeviceTypeBreakdown } from "@/server/queries/analytics";
 import { DEVICE_TYPE_LABELS } from "@/lib/constants/device-types";
 
+// Paleta Qamarero: brand naranja primero, luego semánticos + acentos.
 const COLORS = [
-  "oklch(0.623 0.214 259)",
-  "oklch(0.6 0.15 160)",
-  "oklch(0.75 0.15 85)",
-  "oklch(0.577 0.245 27.325)",
-  "oklch(0.4 0.12 265)",
-  "#8b5cf6", "#f59e0b", "#06b6d4", "#ec4899", "#84cc16",
-  "#64748b", "#a855f7",
+  "#ff592f", // orange-500 (brand)
+  "#02995d", // green-500
+  "#ffaa00", // amber-500
+  "#0370dd", // blue-500
+  "#b56cf5", // purple-500
+  "#f50a48", // red-500
+  "#ff8b6c", "#2bd58f", "#4ea3ff", "#d49aff",
+  "#757575", "#ffc94d",
 ];
 
 interface Props {

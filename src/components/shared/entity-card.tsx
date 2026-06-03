@@ -61,7 +61,7 @@ export function EntityCard({
 
   return (
     <Link href={href} className="block group">
-      <Card className="relative overflow-hidden transition-all duration-200 hover:shadow-[0_8px_30px_oklch(0.623_0.214_259/0.08)] hover:-translate-y-1 border-border/50 hover:border-primary/30 dark:hover:shadow-[0_8px_30px_oklch(0.623_0.214_259/0.15)]">
+      <Card className="relative overflow-hidden transition-all duration-200 hover:shadow-[0_8px_30px_rgba(13,13,18,0.10)] hover:-translate-y-1 border-border/50 hover:border-primary/30 dark:hover:shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
         {/* SLA indicator bar */}
         {slaStatus && (
           <div className={`absolute left-0 top-0 h-full w-1 ${SLA_BAR_COLORS[slaStatus]}`} />
