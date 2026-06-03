@@ -99,7 +99,7 @@ export function IntercomInbox({ initialData }: IntercomInboxProps) {
       {/* Split pane */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_5fr]">
         {/* Left: Conversation list */}
-        <div className="rounded-lg border bg-card overflow-hidden">
+        <div className="rounded-xl border border-border/70 bg-card overflow-hidden shadow-[0_2px_4px_0_rgba(13,13,18,0.04)]">
           <ScrollArea className="h-[calc(100vh-280px)]">
             {isLoading && !queryData ? (
               <div className="flex items-center justify-center py-12">
@@ -149,7 +149,7 @@ export function IntercomInbox({ initialData }: IntercomInboxProps) {
         </div>
 
         {/* Right: Detail pane */}
-        <div className="rounded-lg border bg-card overflow-hidden">
+        <div className="rounded-xl border border-border/70 bg-card overflow-hidden shadow-[0_2px_4px_0_rgba(13,13,18,0.04)]">
           {selectedItem ? (
             <ConversationDetail
               key={selectedItem.id}

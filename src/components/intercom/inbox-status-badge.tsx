@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { INTERCOM_INBOX_STATUS_LABELS, type IntercomInboxStatus } from "@/lib/constants/intercom";
 
 const STATUS_COLORS: Record<IntercomInboxStatus, string> = {
-  pendiente: "bg-yellow-500/15 text-yellow-700 hover:bg-yellow-500/15 dark:bg-yellow-500/25 dark:text-yellow-300",
+  pendiente: "bg-amber-500/15 text-amber-700 hover:bg-amber-500/15 dark:bg-amber-500/25 dark:text-amber-300",
   convertida: "bg-green-500/15 text-green-700 hover:bg-green-500/15 dark:bg-green-500/25 dark:text-green-300",
   descartada: "bg-gray-500/15 text-gray-700 hover:bg-gray-500/15 dark:bg-gray-500/25 dark:text-gray-300",
 };
