@@ -49,6 +49,11 @@ export const incidents = hsmSchema.table("incidents", {
   resolvedAt: timestamp("resolved_at", { withTimezone: true }),
   stateChangedAt: timestamp("state_changed_at", { withTimezone: true }).defaultNow().notNull(),
   slaPausedMs: varchar("sla_paused_ms", { length: 50 }).default("0").notNull(),
+  // SLA objetivo por incidencia (horas). Si null, se usa el umbral por prioridad.
+  slaHours: integer("sla_hours"),
+  // Diagnóstico y solución (prototipo). Texto libre editable en la ficha.
+  diagnosis: text("diagnosis"),
+  resolution: text("resolution"),
   resolutionType: varchar("resolution_type", { length: 50 }),
   articleId: uuid("article_id").references(() => articles.id, { onDelete: "set null" }),
   deviceValueCents: bigint("device_value_cents", { mode: "number" }),

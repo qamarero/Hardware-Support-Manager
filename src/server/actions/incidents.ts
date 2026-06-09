@@ -58,6 +58,7 @@ export async function createIncident(
         category: parsed.data.category,
         hardwareOrigin: parsed.data.hardwareOrigin,
         priority: parsed.data.priority,
+        slaHours: parsed.data.slaHours ?? null,
         assignedUserId: parsed.data.assignedUserId || null,
         articleId: parsed.data.articleId || null,
         deviceType: parsed.data.deviceType || null,
@@ -135,6 +136,9 @@ export async function updateIncident(
     values.pickupPostalCode = parsed.data.pickupPostalCode || null;
   if (parsed.data.pickupCity !== undefined)
     values.pickupCity = parsed.data.pickupCity || null;
+  if (parsed.data.slaHours !== undefined) values.slaHours = parsed.data.slaHours ?? null;
+  if (parsed.data.diagnosis !== undefined) values.diagnosis = parsed.data.diagnosis || null;
+  if (parsed.data.resolution !== undefined) values.resolution = parsed.data.resolution || null;
 
   // Auto-fill clientName from client record if clientId changed
   if (values.clientId) {

@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Plus, Loader2, Ticket, RotateCcw } from "lucide-react";
+import { Search, Plus, Loader2, Ticket } from "lucide-react";
 import { fetchIncidents, fetchUsersForSelect } from "@/server/actions/incidents";
 import { IncidentStatusBadge, PriorityPill, SlaBar, Avatar } from "@/components/proto/badges";
+import { IncidentDetailDrawer } from "./incident-detail-drawer";
+import { IncidentFormDrawer } from "./incident-form-drawer";
+import { RmaWizard } from "@/components/incidents/rma-wizard";
 import { INCIDENT_STATUS_LABELS, type IncidentStatus } from "@/lib/constants/incidents";
 import { formatRelativeTime } from "@/lib/utils/date-format";
 import type { IncidentRow } from "@/server/queries/incidents";
@@ -15,7 +17,9 @@ const STATUS_ORDER: IncidentStatus[] = [
 ];
 
 export function IncidentsScreen() {
-  const router = useRouter();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [rmaFor, setRmaFor] = useState<IncidentRow | null>(null);
   const [status, setStatus] = useState<string>("all");
   const [priority, setPriority] = useState<string>("all");
   const [assignee, setAssignee] = useState<string>("all");
@@ -92,7 +96,7 @@ export function IncidentsScreen() {
           <option value="priority">Ord: prioridad</option>
         </select>
         <div style={{ flex: 1 }} />
-        <button className="btn btn--primary btn--sm" onClick={() => router.push("/incidents/new")}>
+        <button className="btn btn--primary btn--sm" onClick={() => setFormOpen(true)}>
           <Plus size={14} /> Nueva
         </button>
       </div>
@@ -136,7 +140,7 @@ export function IncidentsScreen() {
             </thead>
             <tbody>
               {filtered.map((i) => (
-                <tr key={i.id} onClick={() => router.push(`/incidents/${i.id}`)}>
+                <tr key={i.id} onClick={() => setSelectedId(i.id)}>
                   <td className="id-cell">{i.incidentNumber}</td>
                   <td>
                     <div className="fw-600">{i.title}</div>
@@ -167,6 +171,25 @@ export function IncidentsScreen() {
             </tbody>
           </table>
         </div>
+      )}
+
+      <IncidentDetailDrawer
+        incidentId={selectedId}
+        onClose={() => setSelectedId(null)}
+        onDeriveRma={(id) => {
+          const row = all.find((x) => x.id === id) ?? null;
+          setSelectedId(null);
+          setRmaFor(row);
+        }}
+      />
+      <IncidentFormDrawer
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        onCreated={(id) => setSelectedId(id)}
+        users={users}
+      />
+      {rmaFor && (
+        <RmaWizard open={!!rmaFor} onOpenChange={(o) => !o && setRmaFor(null)} incident={rmaFor} />
       )}
     </div>
   );
