@@ -26,10 +26,12 @@ export const INCIDENT_TRANSITIONS: StateTransition[] = [
   { from: "en_gestion", to: "cancelado", label: "Cancelar", requiredRole: ["admin"] },
   // From esperando_cliente
   { from: "esperando_cliente", to: "en_gestion", label: "Reanudar Gestión", requiredRole: ["admin", "technician"] },
+  { from: "esperando_cliente", to: "esperando_pieza", label: "Esperar Pieza", requiredRole: ["admin", "technician"] },
   { from: "esperando_cliente", to: "resuelto", label: "Marcar Resuelto", requiredRole: ["admin", "technician"] },
   { from: "esperando_cliente", to: "cancelado", label: "Cancelar", requiredRole: ["admin"] },
   // From esperando_proveedor
   { from: "esperando_proveedor", to: "en_gestion", label: "Reanudar Gestión", requiredRole: ["admin", "technician"] },
+  { from: "esperando_proveedor", to: "esperando_pieza", label: "Esperar Pieza", requiredRole: ["admin", "technician"] },
   { from: "esperando_proveedor", to: "resuelto", label: "Marcar Resuelto", requiredRole: ["admin", "technician"] },
   { from: "esperando_proveedor", to: "cancelado", label: "Cancelar", requiredRole: ["admin"] },
   // From esperando_pieza (incidencia derivada a RMA, esperando el repuesto/sustituto)

@@ -14,7 +14,7 @@ import { AttachmentSection } from "@/components/shared/attachment-section";
 import { SlaIndicator } from "@/components/shared/sla-indicator";
 import { StateTransitionButtons } from "@/components/incidents/state-transition-buttons";
 import { IncidentForm } from "@/components/incidents/incident-form";
-import { InlineRmaSheet } from "@/components/incidents/inline-rma-sheet";
+import { RmaWizard } from "@/components/incidents/rma-wizard";
 import { AssigneeQuickPicker } from "@/components/incidents/assignee-quick-picker";
 import { ConversationThread } from "@/components/intercom/conversation-thread";
 import { ManualNoteForm } from "@/components/shared/manual-note-form";
@@ -511,8 +511,8 @@ export function IncidentDetail({ incident }: IncidentDetailProps) {
         <EventLogTimeline entityType="incident" entityId={incident.id} />
       </div>
 
-      {/* Inline RMA creation sheet */}
-      <InlineRmaSheet
+      {/* Wizard de derivación a RMA (3 pasos + pausa de SLA) */}
+      <RmaWizard
         open={rmaSheetOpen}
         onOpenChange={setRmaSheetOpen}
         incident={incident}
