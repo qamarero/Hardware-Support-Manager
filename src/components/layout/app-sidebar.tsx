@@ -41,6 +41,7 @@ import {
   Plus,
   ClipboardList,
   Layers,
+  LayoutGrid,
 } from "lucide-react";
 
 const navigation = [
@@ -49,6 +50,7 @@ const navigation = [
   { name: "Incidencias", href: "/incidents", icon: AlertTriangle, exact: false },
   { name: "RMAs", href: "/rmas", icon: RotateCcw, exact: false },
   { name: "Casos", href: "/casos", icon: Layers, exact: false },
+  { name: "Tablero", href: "/tablero", icon: LayoutGrid, exact: false },
   { name: "Bandeja Intercom", href: "/intercom", icon: Inbox, exact: false },
   { name: "Bandeja Soporte", href: "/submissions", icon: ClipboardList, exact: false },
   { name: "Clientes", href: "/clients", icon: Store, exact: false },
