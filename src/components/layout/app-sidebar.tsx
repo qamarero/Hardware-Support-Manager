@@ -40,6 +40,7 @@ import {
   BarChart3,
   Plus,
   ClipboardList,
+  Layers,
 } from "lucide-react";
 
 const navigation = [
@@ -47,6 +48,7 @@ const navigation = [
   { name: "Analítica", href: "/analytics", icon: BarChart3, exact: false },
   { name: "Incidencias", href: "/incidents", icon: AlertTriangle, exact: false },
   { name: "RMAs", href: "/rmas", icon: RotateCcw, exact: false },
+  { name: "Casos", href: "/casos", icon: Layers, exact: false },
   { name: "Bandeja Intercom", href: "/intercom", icon: Inbox, exact: false },
   { name: "Bandeja Soporte", href: "/submissions", icon: ClipboardList, exact: false },
   { name: "Clientes", href: "/clients", icon: Store, exact: false },
