@@ -1,0 +1,177 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Qamarero Design System — Colors & Type
+   Extracted from styles/tokens.css (production) + Figma DS.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* @import primero (requisito CSS); @font-face apunta a /fonts (public/). */
+@import url("https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap");
+@font-face {
+  font-family: "DM Sans";
+  src: url("/fonts/DMSans-VariableFont_opsz_wght.ttf") format("truetype-variations"),
+       url("/fonts/DMSans-VariableFont_opsz_wght.ttf") format("truetype");
+  font-weight: 100 1000;
+  font-stretch: 75% 125%;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* ── Brand / Orange ──────────────────────────────────────────── */
+  --orange-50:  #fae9e8;
+  --orange-100: #feccbf;
+  --orange-200: #feac96;
+  --orange-300: #fe8b6c;
+  --orange-400: #ff714c;
+  --orange-500: #ff592f; /* brand */
+  --orange-600: #f4532b;
+  --orange-700: #e64c26;
+  --orange-800: #d84522;
+  --orange-900: #be391a;
+
+  /* ── Gray / Neutral ──────────────────────────────────────────── */
+  --gray-50:  #fafafa;
+  --gray-100: #f5f5f5;
+  --gray-200: #eeeeee;
+  --gray-300: #e0e0e0;
+  --gray-400: #bdbdbd;
+  --gray-500: #9e9e9e;
+  --gray-600: #757575;
+  --gray-700: #616161;
+  --gray-800: #424242;
+  --gray-900: #212121;
+
+  /* ── Semantic scales (full range defined in ui_kits/web/tokens.css) ── */
+  --purple-500: #b56cf5;  --purple-50: #f5ebff;  --purple-900: #360066;
+  --red-500:    #f50a48;  --red-50:    #ffecf1;  --red-900:    #700025;
+  --green-500:  #02995d;  --green-50:  #ebf7f2;  --green-900:  #023d2e;
+  --blue-500:   #0370dd;  --blue-50:   #ebf4fd;  --blue-900:   #023466;
+  --amber-500:  #ffaa00;  --amber-50:  #fff9eb;  --amber-900:  #a34c00;
+
+  /* ── Semantic roles ─────────────────────────────────────────── */
+  --background:     #ffffff;
+  --foreground:     #0d0d12;
+  --surface:        #ffffff;
+  --surface-muted:  var(--gray-50);
+
+  --fg-primary:     var(--gray-900);      /* 21/21/21 — body/heading */
+  --fg-secondary:   var(--gray-600);      /* 75/75/75 — muted */
+  --fg-tertiary:    var(--gray-500);      /* placeholders, helper */
+  --fg-on-dark:     #ffffff;
+
+  --primary:        #ff592f;              /* orange-500 — brand CTA */
+  --primary-hover:  #c03818;              /* orange-900-ish */
+  --primary-fg:     #ffffff;
+  --accent-coral:   #fe8b6c;              /* orange-300 — overlines */
+  --accent-accent:  #f4532b;              /* orange-600 — hover bg */
+
+  --border:         var(--gray-300);
+  --border-light:   var(--gray-200);
+  --ring:           #d44020;              /* focus ring */
+
+  --success: var(--green-500);
+  --danger:  var(--red-500);
+  --warning: var(--amber-500);
+  --info:    var(--blue-500);
+
+  /* ── Font stacks ────────────────────────────────────────────── */
+  --font-sans:
+    "DM Sans", system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono:
+    "Space Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* ── Type scale (desktop — matches Figma tokens @ ≥1024px) ─── */
+  --text-display:    72px;   --text-display-lh:  80px;
+  --text-h1:         64px;   --text-h1-lh:       72px;
+  --text-h2:         56px;   --text-h2-lh:       64px;
+  --text-h3:         48px;   --text-h3-lh:       56px;
+  --text-h4:         40px;   --text-h4-lh:       48px;
+  --text-h5:         32px;   --text-h5-lh:       40px;
+  --text-h6:         20px;   --text-h6-lh:       28px;
+  --text-body-xl:    24px;   --text-body-xl-lh:  32px;
+  --text-body-l:     20px;   --text-body-l-lh:   28px;
+  --text-body-m:     18px;   --text-body-m-lh:   26px;
+  --text-body:       16px;   --text-body-lh:     24px;
+  --text-caption:    14px;   --text-caption-lh:  22px;
+  --text-micro:      12px;   --text-micro-lh:    16px;
+  --text-overline:   14px;   --text-overline-lh: 22px;
+
+  /* ── Radii (Figma ascending xs→4xl) ─────────────────────────── */
+  --radius-xs:  4px;
+  --radius-s:   8px;
+  --radius-m:   12px;
+  --radius-l:   16px;
+  --radius-xl:  24px;
+  --radius-2xl: 32px;
+  --radius-3xl: 48px;
+  --radius-4xl: 64px;
+
+  /* ── Spacing (desktop — mobile values in tokens.css) ────────── */
+  --spacing-3xs: 4px;
+  --spacing-2xs: 8px;
+  --spacing-xs:  12px;
+  --spacing-s:   16px;
+  --spacing-m:   24px;
+  --spacing-l:   36px;
+  --spacing-xl:  48px;
+  --spacing-2xl: 72px;
+  --spacing-3xl: 120px;
+  --spacing-4xl: 192px;
+
+  /* ── Section & grid ─────────────────────────────────────────── */
+  --section-py:    120px;
+  --grid-max:      1440px;
+  --grid-offset:   36px;
+  --grid-gap:      24px;
+  --card-pad:      44px;
+  --card-gap:      44px;
+
+  /* ── Shadows ────────────────────────────────────────────────── */
+  --shadow-soft:
+    inset 0 1px 1px rgba(255,255,255,0.15),
+    0px 8px 12px -4px rgba(16,12,12,0.08),
+    0px 4px 6px -2px rgba(16,12,12,0.03);
+  --shadow-light: 0 2px 4px 0 rgba(13,13,18,0.04);
+  --shadow-elev:  0 25px 50px -12px rgba(0,0,0,0.25);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Semantic text classes (optional — mirror Figma DS/Text catalogue)
+   H1 Bold, H2 Bold … Caption, Link, Italic — all DM Sans.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.ds-display { font: 700 var(--text-display)/var(--text-display-lh) var(--font-sans); color: var(--fg-primary); letter-spacing: -0.02em; }
+.ds-h1      { font: 700 var(--text-h1)/var(--text-h1-lh) var(--font-sans); color: var(--fg-primary); letter-spacing: -0.02em; }
+.ds-h2      { font: 700 var(--text-h2)/var(--text-h2-lh) var(--font-sans); color: var(--fg-primary); letter-spacing: -0.01em; }
+.ds-h3      { font: 700 var(--text-h3)/var(--text-h3-lh) var(--font-sans); color: var(--fg-primary); letter-spacing: -0.01em; }
+.ds-h4      { font: 700 var(--text-h4)/var(--text-h4-lh) var(--font-sans); color: var(--fg-primary); }
+.ds-h5      { font: 700 var(--text-h5)/var(--text-h5-lh) var(--font-sans); color: var(--fg-primary); }
+.ds-h6      { font: 700 var(--text-h6)/var(--text-h6-lh) var(--font-sans); color: var(--fg-primary); text-transform: uppercase; letter-spacing: 0.04em; }
+
+.ds-body-xl { font: 400 var(--text-body-xl)/var(--text-body-xl-lh) var(--font-sans); color: var(--fg-primary); }
+.ds-body-l  { font: 400 var(--text-body-l)/var(--text-body-l-lh)  var(--font-sans); color: var(--fg-primary); }
+.ds-body-m  { font: 400 var(--text-body-m)/var(--text-body-m-lh)  var(--font-sans); color: var(--fg-primary); }
+.ds-body    { font: 400 var(--text-body)/var(--text-body-lh)      var(--font-sans); color: var(--fg-primary); }
+.ds-caption { font: 400 var(--text-caption)/var(--text-caption-lh) var(--font-sans); color: var(--fg-secondary); }
+.ds-micro   { font: 400 var(--text-micro)/var(--text-micro-lh)     var(--font-sans); color: var(--fg-secondary); }
+
+.ds-overline {
+  font: 700 var(--text-overline)/var(--text-overline-lh) var(--font-sans);
+  color: var(--accent-coral);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.ds-num { font-family: var(--font-mono); font-weight: 400; }
+.ds-num--it { font-style: italic; }
+.ds-link { color: var(--primary); text-decoration: underline; font-weight: 500; }
+.ds-link:hover { color: var(--primary-hover); }
+
+/* Base body reset */
+html, body {
+  font-family: var(--font-sans);
+  color: var(--fg-primary);
+  background: var(--background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

@@ -1,28 +1,15 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
-import { Space_Mono } from "next/font/google";
 import { SessionProvider } from "next-auth/react";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/components/shared/query-provider";
 import { ThemeProvider } from "@/components/shared/theme-provider";
 import "./globals.css";
-
-// DM Sans (Qamarero) — fuente variable self-hosted desde el handoff.
-const dmSans = localFont({
-  src: "../../public/fonts/DMSans-VariableFont_opsz_wght.ttf",
-  variable: "--font-sans",
-  display: "swap",
-  weight: "100 1000",
-});
-
-// Space Mono (Qamarero) — para IDs, números y datos.
-const spaceMono = Space_Mono({
-  variable: "--font-mono",
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  display: "swap",
-});
+// Sistema de diseño Qamarero portado 1:1 del prototipo. Se carga DESPUÉS de
+// globals para que prevalezca en las pantallas nuevas (clases .btn/.card/...).
+// Las fuentes (DM Sans self-hosted + Space Mono) las gestiona proto-tokens.css.
+import "./proto-tokens.css";
+import "./proto-app.css";
 
 export const metadata: Metadata = {
   title: {
@@ -39,7 +26,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" suppressHydrationWarning>
-      <body className={`${dmSans.variable} ${spaceMono.variable} antialiased`}>
+      <body className="antialiased">
         <ThemeProvider>
           <SessionProvider>
             <QueryProvider>
