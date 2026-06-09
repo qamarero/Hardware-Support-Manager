@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const createIncidentSchema = z.object({
   clientId: z.string().uuid("Cliente inválido").optional().or(z.literal("")),
+  clientLocationId: z.string().uuid("Local inválido").optional().or(z.literal("")),
   clientName: z.string().max(500).optional().or(z.literal("")),
   title: z.string().min(1, "El título es obligatorio").max(500),
   description: z.string().optional().or(z.literal("")),

@@ -2,6 +2,7 @@ import { uuid, varchar, text, timestamp, bigint, integer } from "drizzle-orm/pg-
 import { hsmSchema } from "./hsm-schema";
 import { users } from "./users";
 import { clients } from "./clients";
+import { clientLocations } from "./client-locations";
 import { articles } from "./articles";
 
 export const incidentStatusEnum = hsmSchema.enum("incident_status", [
@@ -25,6 +26,7 @@ export const incidents = hsmSchema.table("incidents", {
   id: uuid("id").defaultRandom().primaryKey(),
   incidentNumber: varchar("incident_number", { length: 20 }).notNull().unique(),
   clientId: uuid("client_id").references(() => clients.id, { onDelete: "set null" }),
+  clientLocationId: uuid("client_location_id").references(() => clientLocations.id, { onDelete: "set null" }),
   clientName: varchar("client_name", { length: 500 }),
   assignedUserId: uuid("assigned_user_id").references(() => users.id, { onDelete: "set null" }),
   category: incidentCategoryEnum("category").notNull(),

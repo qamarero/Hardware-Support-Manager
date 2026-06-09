@@ -1,11 +1,12 @@
 import { db } from "@/lib/db";
-import { incidents, users, clients, rmas } from "@/lib/db/schema";
+import { incidents, users, clients, clientLocations, rmas } from "@/lib/db/schema";
 import { eq, or, and, asc, desc, count, sql, gte, lte, inArray, type AnyColumn } from "drizzle-orm";
 import type { PaginationParams, PaginatedResult } from "@/types";
 
 export type IncidentRow = typeof incidents.$inferSelect & {
   assignedUserName: string | null;
   clientCompanyName: string | null;
+  clientLocationName?: string | null;
 };
 
 export async function getIncidents(
@@ -85,6 +86,7 @@ export async function getIncidents(
         stateChangedAt: incidents.stateChangedAt,
         slaPausedMs: incidents.slaPausedMs,
         slaHours: incidents.slaHours,
+        clientLocationId: incidents.clientLocationId,
         diagnosis: incidents.diagnosis,
         resolution: incidents.resolution,
         resolutionType: incidents.resolutionType,
@@ -150,6 +152,7 @@ export async function getIncidentById(id: string): Promise<IncidentRow | null> {
       stateChangedAt: incidents.stateChangedAt,
       slaPausedMs: incidents.slaPausedMs,
       slaHours: incidents.slaHours,
+      clientLocationId: incidents.clientLocationId,
       diagnosis: incidents.diagnosis,
       resolution: incidents.resolution,
       resolutionType: incidents.resolutionType,
@@ -158,10 +161,12 @@ export async function getIncidentById(id: string): Promise<IncidentRow | null> {
       quickDurationMinutes: incidents.quickDurationMinutes,
       assignedUserName: users.name,
       clientCompanyName: clients.name,
+      clientLocationName: clientLocations.name,
     })
     .from(incidents)
     .leftJoin(users, eq(incidents.assignedUserId, users.id))
     .leftJoin(clients, eq(incidents.clientId, clients.id))
+    .leftJoin(clientLocations, eq(incidents.clientLocationId, clientLocations.id))
     .where(eq(incidents.id, id))
     .limit(1);
 

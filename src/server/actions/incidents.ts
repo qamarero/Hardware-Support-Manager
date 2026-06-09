@@ -52,6 +52,7 @@ export async function createIncident(
       .values({
         incidentNumber,
         clientId: parsed.data.clientId || null,
+        clientLocationId: parsed.data.clientLocationId || null,
         clientName,
         title: parsed.data.title,
         description: parsed.data.description || null,
@@ -105,6 +106,7 @@ export async function updateIncident(
 
   const values: Partial<typeof incidents.$inferInsert> = {};
   if (parsed.data.clientId !== undefined) values.clientId = parsed.data.clientId || null;
+  if (parsed.data.clientLocationId !== undefined) values.clientLocationId = parsed.data.clientLocationId || null;
   if (parsed.data.clientName !== undefined) values.clientName = parsed.data.clientName || null;
   if (parsed.data.title !== undefined) values.title = parsed.data.title;
   if (parsed.data.description !== undefined)
