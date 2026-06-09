@@ -184,7 +184,6 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
 
               <dl className="dl">
                 <dt>Cliente</dt><dd>{inc.clientCompanyName ?? inc.clientName ?? "—"}</dd>
-                <dt>Local</dt><dd>{inc.clientLocationName ?? "—"}</dd>
                 <dt>Intercom</dt>
                 <dd>
                   {inc.intercomUrl ? (
@@ -193,7 +192,7 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
                     </a>
                   ) : "—"}
                 </dd>
-                <dt>Reportador</dt><dd>{inc.contactName ?? "—"}</dd>
+                <dt>Persona de contacto</dt><dd>{inc.contactName ?? "—"}</dd>
                 <dt>Abierta</dt><dd>{formatDateTime(inc.createdAt)}</dd>
                 <dt>Última actualización</dt><dd>{formatDateTime(inc.updatedAt)}</dd>
                 <dt>SLA</dt><dd>{inc.slaHours ? `${inc.slaHours}h` : "Según prioridad"} · {slaProgress(inc).label}</dd>

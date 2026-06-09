@@ -130,7 +130,7 @@ export function IncidentsScreen() {
                 <th>ID</th>
                 <th>Incidencia</th>
                 <th>Equipo</th>
-                <th>Reportador</th>
+                <th>Contacto</th>
                 <th>Asignado</th>
                 <th>Prioridad</th>
                 <th>SLA</th>

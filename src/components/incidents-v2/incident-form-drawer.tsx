@@ -5,8 +5,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Save, Loader2 } from "lucide-react";
 import { Drawer, Field } from "@/components/proto/drawer";
+import { Combobox } from "@/components/proto/combobox";
 import { createIncident } from "@/server/actions/incidents";
-import { fetchClientsForSelect, fetchClientLocationsForSelect } from "@/server/actions/clients";
+import { fetchClientsForSelect } from "@/server/actions/clients";
 
 interface Props {
   open: boolean;
@@ -35,7 +36,6 @@ export function IncidentFormDrawer({ open, onClose, onCreated, users }: Props) {
   const [hardwareOrigin, setHardwareOrigin] = useState("qamarero");
   const [slaHours, setSlaHours] = useState(72);
   const [clientId, setClientId] = useState("");
-  const [clientLocationId, setClientLocationId] = useState("");
   const [intercomUrl, setIntercomUrl] = useState("");
 
   const { data: clients = [] } = useQuery({
@@ -43,17 +43,12 @@ export function IncidentFormDrawer({ open, onClose, onCreated, users }: Props) {
     queryFn: () => fetchClientsForSelect(),
     enabled: open,
   });
-  const { data: locations = [] } = useQuery({
-    queryKey: ["client-locations", clientId],
-    queryFn: () => fetchClientLocationsForSelect(clientId),
-    enabled: open && !!clientId,
-  });
 
   function reset() {
     setTitle(""); setDescription(""); setDeviceBrand(""); setDeviceModel("");
     setDeviceSerial(""); setReporter(""); setPriority("media"); setAssignedUserId("");
     setHardwareOrigin("qamarero"); setSlaHours(72);
-    setClientId(""); setClientLocationId(""); setIntercomUrl("");
+    setClientId(""); setIntercomUrl("");
   }
 
   const mutation = useMutation({
@@ -67,7 +62,6 @@ export function IncidentFormDrawer({ open, onClose, onCreated, users }: Props) {
         slaHours,
         assignedUserId,
         clientId,
-        clientLocationId,
         intercomUrl,
         deviceBrand,
         deviceModel,
@@ -111,26 +105,17 @@ export function IncidentFormDrawer({ open, onClose, onCreated, users }: Props) {
         </Field>
         <div className="row row--2">
           <Field label="Cliente">
-            <select className="select" value={clientId} onChange={(e) => { setClientId(e.target.value); setClientLocationId(""); }}>
-              <option value="">Sin cliente</option>
-              {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <Combobox options={clients} value={clientId} onChange={setClientId} placeholder="Buscar cliente…" emptyLabel="Ningún cliente coincide" />
           </Field>
-          <Field label="Local / ubicación">
-            <select className="select" value={clientLocationId} onChange={(e) => setClientLocationId(e.target.value)} disabled={!clientId}>
-              <option value="">{clientId ? "Selecciona local" : "Elige cliente primero"}</option>
-              {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
+          <Field label="URL Intercom" hint="Enlace a la conversación abierta">
+            <input className="input" placeholder="https://app.intercom.com/…/conversation/…" value={intercomUrl} onChange={(e) => setIntercomUrl(e.target.value)} />
           </Field>
         </div>
-        <Field label="URL Intercom" hint="Enlace a la conversación abierta">
-          <input className="input" placeholder="https://app.intercom.com/…/conversation/…" value={intercomUrl} onChange={(e) => setIntercomUrl(e.target.value)} />
-        </Field>
         <div className="row row--2">
           <Field label="Equipo afectado — marca/modelo">
             <input className="input" placeholder="Ej. Dell Latitude 7440" value={deviceModel} onChange={(e) => setDeviceModel(e.target.value)} />
           </Field>
-          <Field label="Reportador" hint="Nombre del usuario afectado">
+          <Field label="Persona de contacto" hint="Nombre del usuario afectado">
             <input className="input" placeholder="Ej. Carlos Vega" value={reporter} onChange={(e) => setReporter(e.target.value)} />
           </Field>
         </div>
