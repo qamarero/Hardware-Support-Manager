@@ -57,3 +57,6 @@ __pycache__/
 *.py[cod]
 venv/
 .mcp.json
+
+# Worktrees de Claude Code (no versionar)
+.claude/worktrees/
