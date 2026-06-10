@@ -58,6 +58,7 @@ export function UserDetail({ user }: UserDetailProps) {
               email: user.email,
               role: user.role as "admin" | "technician" | "viewer",
               active: user.active,
+              avatarUrl: user.avatarUrl ?? "",
             }}
             onSubmit={(data) => {
               const updateData = { ...data } as UpdateUserInput;

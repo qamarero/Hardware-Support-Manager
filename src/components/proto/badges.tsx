@@ -55,14 +55,19 @@ export function PriorityPill({ priority }: { priority: string }) {
   );
 }
 
-export function Avatar({ name, size }: { name: string; size?: "sm" | "lg" }) {
+export function Avatar({ name, size, src }: { name: string; size?: "sm" | "lg"; src?: string | null }) {
   const initials = name
     .split(" ")
     .map((w) => w[0])
     .slice(0, 2)
     .join("")
     .toUpperCase();
-  return <div className={`avatar ${size === "sm" ? "avatar--sm" : size === "lg" ? "avatar--lg" : ""}`}>{initials}</div>;
+  const cls = `avatar ${size === "sm" ? "avatar--sm" : size === "lg" ? "avatar--lg" : ""}`;
+  if (src) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img className={cls} src={src} alt={name} style={{ objectFit: "cover" }} />;
+  }
+  return <div className={cls}>{initials}</div>;
 }
 
 /** Progreso de SLA respetando la pausa. Devuelve pct + nivel. */

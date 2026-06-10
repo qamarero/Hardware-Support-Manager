@@ -41,6 +41,7 @@ export async function createUser(
       email: parsed.data.email,
       passwordHash,
       role: parsed.data.role,
+      avatarUrl: parsed.data.avatarUrl || null,
     })
     .returning({ id: users.id });
 
@@ -71,6 +72,9 @@ export async function updateUser(
     updateData.passwordHash = await bcrypt.hash(parsed.data.password, 10);
   }
   delete updateData.password;
+
+  // Normaliza avatar vacío a null (quitar foto).
+  if (updateData.avatarUrl === "") updateData.avatarUrl = null;
 
   const [user] = await db
     .update(users)

@@ -423,11 +423,11 @@ export async function fetchIncidents(
 }
 
 export async function fetchUsersForSelect(): Promise<
-  { id: string; name: string }[]
+  { id: string; name: string; avatarUrl: string | null }[]
 > {
   await getRequiredSession();
   return db
-    .select({ id: users.id, name: users.name })
+    .select({ id: users.id, name: users.name, avatarUrl: users.avatarUrl })
     .from(users)
     .where(isNull(users.deletedAt))
     .orderBy(users.name);

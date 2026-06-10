@@ -1,8 +1,12 @@
 "use client";
 
+import { useState, useRef } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { upload } from "@vercel/blob/client";
+import { toast } from "sonner";
+import { Loader2, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -58,13 +62,74 @@ export function UserForm({
       email: defaultValues?.email ?? "",
       password: defaultValues?.password ?? "",
       role: defaultValues?.role ?? "technician",
+      avatarUrl: defaultValues?.avatarUrl ?? "",
       ...(isEdit ? { active: defaultValues?.active ?? true } : {}),
     },
   });
 
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const avatarUrl = form.watch("avatarUrl");
+  const nameVal = form.watch("name");
+  const initials = (nameVal || "?").split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+
+  async function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("El avatar debe ser una imagen");
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      toast.error("La imagen no puede superar 4 MB");
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
+    setUploading(true);
+    try {
+      const blob = await upload(`avatars/${Date.now()}-${file.name}`, file, {
+        access: "public",
+        handleUploadUrl: "/api/upload/sign",
+        contentType: file.type || undefined,
+      });
+      form.setValue("avatarUrl", blob.url, { shouldDirty: true });
+      toast.success("Imagen subida");
+    } catch {
+      toast.error("Error al subir la imagen");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {/* Avatar */}
+        <div className="flex items-center gap-4">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-lg font-semibold text-muted-foreground">
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+            ) : (
+              initials
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onPickFile} />
+            <Button type="button" variant="outline" size="sm" disabled={uploading} onClick={() => fileRef.current?.click()}>
+              {uploading ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Upload className="mr-1 h-4 w-4" />}
+              {avatarUrl ? "Cambiar imagen" : "Subir imagen"}
+            </Button>
+            {avatarUrl && (
+              <Button type="button" variant="ghost" size="sm" onClick={() => form.setValue("avatarUrl", "", { shouldDirty: true })}>
+                <X className="mr-1 h-4 w-4" /> Quitar
+              </Button>
+            )}
+          </div>
+        </div>
+
         <FormField
           control={form.control}
           name="name"

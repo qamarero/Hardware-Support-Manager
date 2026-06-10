@@ -10,6 +10,7 @@ export const createUserSchema = z.object({
   email: z.string().email("Email inválido").max(255),
   password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
   role: z.enum(["admin", "technician", "viewer"]),
+  avatarUrl: z.string().url("URL inválida").max(500).optional().or(z.literal("")),
 });
 
 export const updateUserSchema = z.object({
@@ -18,6 +19,7 @@ export const updateUserSchema = z.object({
   password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres").optional(),
   role: z.enum(["admin", "technician", "viewer"]).optional(),
   active: z.boolean().optional(),
+  avatarUrl: z.string().url("URL inválida").max(500).optional().or(z.literal("")),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;

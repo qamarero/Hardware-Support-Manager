@@ -62,7 +62,9 @@ export function DashboardScreen() {
     queryFn: () => fetchUsersForSelect(),
   });
 
-  const userName = session?.user?.name ?? "";
+  const sessionUserId = (session?.user as { id?: string } | undefined)?.id;
+  const me = users.find((u) => u.id === sessionUserId);
+  const userName = me?.name ?? session?.user?.name ?? "";
   const firstName = userName.split(" ")[0] || "equipo";
   const fecha = now ? capitalize(now.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })) : "";
   const hora = now ? now.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }) : "";
@@ -141,24 +143,13 @@ export function DashboardScreen() {
             </div>
           </div>
 
-          {/* Clúster de avatars del equipo (técnicos conectados) */}
-          {users.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
-              <div className="ds-overline" style={{ color: "rgba(255,255,255,0.55)", fontFamily: "var(--font-mono)", fontSize: 10, textTransform: "uppercase" }}>Equipo</div>
-              <div style={{ display: "flex" }}>
-                {users.slice(0, 6).map((u, idx) => {
-                  const isMe = !!session?.user?.id && u.id === (session.user as { id?: string }).id;
-                  return (
-                    <div
-                      key={u.id}
-                      title={u.name + (isMe ? " (tú)" : "")}
-                      style={{ marginLeft: idx === 0 ? 0 : -8, borderRadius: "50%", boxShadow: isMe ? "0 0 0 2px var(--primary)" : "0 0 0 2px var(--gray-900)", position: "relative", zIndex: users.length - idx }}
-                    >
-                      <Avatar name={u.name} />
-                    </div>
-                  );
-                })}
+          {/* Avatar grande del técnico conectado */}
+          {userName && (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+              <div style={{ width: 72, height: 72, borderRadius: "50%", boxShadow: "0 0 0 3px rgba(255,255,255,0.25)", overflow: "hidden", display: "grid", placeItems: "center" }}>
+                <Avatar name={userName} size="lg" src={me?.avatarUrl ?? undefined} />
               </div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.9)" }}>{firstName}</div>
             </div>
           )}
         </div>
