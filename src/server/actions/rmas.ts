@@ -15,7 +15,7 @@ import {
 import { isValidRmaTransition } from "@/lib/state-machines/rma";
 import { PAUSED_RMA_STATES } from "@/lib/constants/statuses";
 import { generateSequentialId } from "@/lib/utils/id-generator";
-import { getRmas } from "@/server/queries/rmas";
+import { getRmas, getRmaById } from "@/server/queries/rmas";
 import type { ActionResult, PaginationParams, PaginatedResult } from "@/types";
 import type { RmaRow } from "@/server/queries/rmas";
 import type { RmaStatus } from "@/lib/constants/rmas";
@@ -382,6 +382,11 @@ export async function fetchRmas(
 ): Promise<PaginatedResult<RmaRow>> {
   await getRequiredSession();
   return getRmas(params);
+}
+
+export async function fetchRmaById(id: string): Promise<RmaRow | null> {
+  await getRequiredSession();
+  return getRmaById(id);
 }
 
 export async function fetchProvidersForSelect(): Promise<
