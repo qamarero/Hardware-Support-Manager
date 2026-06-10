@@ -13,6 +13,7 @@ import { EventLogTimeline } from "@/components/shared/event-log-timeline";
 import { fetchIncidentById, updateIncident, transitionIncident, fetchUsersForSelect } from "@/server/actions/incidents";
 import { getAvailableTransitions } from "@/lib/state-machines/incident";
 import { extractConversationId } from "@/lib/intercom/sync";
+import { intercomConversationUrl } from "@/lib/utils/intercom-url";
 import { INCIDENT_STATUS_LABELS, type IncidentStatus } from "@/lib/constants/incidents";
 import { PAUSED_INCIDENT_STATES } from "@/lib/constants/statuses";
 import { formatDateTime } from "@/lib/utils/date-format";
@@ -186,8 +187,8 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
                 <dt>Cliente</dt><dd>{inc.clientCompanyName ?? inc.clientName ?? "—"}</dd>
                 <dt>Intercom</dt>
                 <dd>
-                  {inc.intercomUrl ? (
-                    <a href={inc.intercomUrl} target="_blank" rel="noopener noreferrer" className="ds-link">
+                  {intercomConversationUrl(conversationId) ? (
+                    <a href={intercomConversationUrl(conversationId)!} target="_blank" rel="noopener noreferrer" className="ds-link">
                       Abrir conversación ↗
                     </a>
                   ) : "—"}

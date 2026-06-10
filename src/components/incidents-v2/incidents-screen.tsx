@@ -11,6 +11,7 @@ import { IncidentFormDrawer } from "./incident-form-drawer";
 import { RmaWizard } from "@/components/incidents/rma-wizard";
 import { INCIDENT_STATUS_LABELS, type IncidentStatus } from "@/lib/constants/incidents";
 import { extractConversationId } from "@/lib/intercom/sync";
+import { intercomConversationUrl } from "@/lib/utils/intercom-url";
 import { formatRelativeTime } from "@/lib/utils/date-format";
 import type { IncidentRow } from "@/server/queries/incidents";
 
@@ -210,7 +211,7 @@ export function IncidentsScreen() {
           conversationId={conversationIdOf(chatFor)}
           title={chatFor.incidentNumber}
           subtitle={chatFor.clientCompanyName ?? chatFor.clientName ?? chatFor.title}
-          intercomUrl={chatFor.intercomUrl}
+          intercomUrl={intercomConversationUrl(conversationIdOf(chatFor))}
           onClose={() => setChatFor(null)}
         />
       )}
