@@ -1,15 +1,27 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
 import { Loader2, Plus, ArrowRight, AlertTriangle, Package, Check, Laptop } from "lucide-react";
-import { fetchIncidents } from "@/server/actions/incidents";
+import { fetchIncidents, fetchUsersForSelect } from "@/server/actions/incidents";
 import { fetchRmas } from "@/server/actions/rmas";
-import { IncidentStatusBadge, PriorityPill, slaProgress } from "@/components/proto/badges";
+import { IncidentStatusBadge, PriorityPill, Avatar, slaProgress } from "@/components/proto/badges";
 import { IncidentDetailDrawer } from "@/components/incidents-v2/incident-detail-drawer";
 import { formatRelativeTime } from "@/lib/utils/date-format";
 import type { IncidentRow } from "@/server/queries/incidents";
+
+function greeting(hour: number): string {
+  if (hour < 6) return "Buenas noches";
+  if (hour < 13) return "Buenos días";
+  if (hour < 21) return "Buenas tardes";
+  return "Buenas noches";
+}
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
 const CLOSED = ["resuelto", "cerrado", "cancelado"];
 const RESOLVED = ["resuelto", "cerrado"];
@@ -26,7 +38,16 @@ const DONUT: { key: string; label: string; match: (s: string) => boolean; color:
 
 export function DashboardScreen() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [incidentId, setIncidentId] = useState<string | null>(null);
+
+  // Reloj: se monta en cliente para evitar mismatch de hidratación; refresca cada minuto.
+  const [now, setNow] = useState<Date | null>(null);
+  useEffect(() => {
+    setNow(new Date());
+    const t = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(t);
+  }, []);
 
   const { data: incData, isLoading } = useQuery({
     queryKey: ["incidents-v2"],
@@ -36,6 +57,15 @@ export function DashboardScreen() {
     queryKey: ["rmas-v2"],
     queryFn: () => fetchRmas({ page: 1, pageSize: 500, sortBy: "createdAt", sortOrder: "desc" }),
   });
+  const { data: users = [] } = useQuery({
+    queryKey: ["users", "select"],
+    queryFn: () => fetchUsersForSelect(),
+  });
+
+  const userName = session?.user?.name ?? "";
+  const firstName = userName.split(" ")[0] || "equipo";
+  const fecha = now ? capitalize(now.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })) : "";
+  const hora = now ? now.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }) : "";
 
   const incidents: IncidentRow[] = useMemo(() => incData?.data ?? [], [incData]);
   const rmas = useMemo(() => rmaData?.data ?? [], [rmaData]);
@@ -94,18 +124,43 @@ export function DashboardScreen() {
     <div className="stack">
       {/* Hero */}
       <div className="hero">
-        <div style={{ position: "relative", zIndex: 1 }}>
-          <div className="ds-overline" style={{ color: "var(--accent-coral, #ffd4cc)", marginBottom: 8, fontFamily: "var(--font-mono)", fontSize: 11 }}>HARDWARE · PANEL</div>
-          <h2>Resumen de hoy</h2>
-          <p>Hay {stats.open} incidencias abiertas{stats.overdue > 0 ? `, ${stats.overdue} fuera de SLA` : ""}. {stats.activeRmas} RMA activos en curso.</p>
-          <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-            <button className="btn btn--primary" onClick={() => router.push("/incidents")}>
-              <Plus size={14} /> Nueva incidencia
-            </button>
-            <button className="btn btn--outline" style={{ background: "rgba(255,255,255,0.1)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)" }} onClick={() => router.push("/tablero")}>
-              Tablero Kanban <ArrowRight size={14} />
-            </button>
+        <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+          <div>
+            <div className="ds-overline" style={{ color: "var(--accent-coral, #ffd4cc)", marginBottom: 8, fontFamily: "var(--font-mono)", fontSize: 11, textTransform: "uppercase" }}>
+              HARDWARE{fecha ? ` · ${fecha}` : ""}{hora ? ` · ${hora}` : ""}
+            </div>
+            <h2>{greeting(now ? now.getHours() : 9)}{firstName ? `, ${firstName}` : ""}</h2>
+            <p>Hay {stats.open} incidencia{stats.open !== 1 ? "s" : ""} abierta{stats.open !== 1 ? "s" : ""}{stats.overdue > 0 ? `, ${stats.overdue} fuera de SLA` : ""}. {stats.activeRmas} RMA activos en curso.</p>
+            <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+              <button className="btn btn--primary" onClick={() => router.push("/incidents")}>
+                <Plus size={14} /> Nueva incidencia
+              </button>
+              <button className="btn btn--outline" style={{ background: "rgba(255,255,255,0.1)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)" }} onClick={() => router.push("/tablero")}>
+                Tablero Kanban <ArrowRight size={14} />
+              </button>
+            </div>
           </div>
+
+          {/* Clúster de avatars del equipo (técnicos conectados) */}
+          {users.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+              <div className="ds-overline" style={{ color: "rgba(255,255,255,0.55)", fontFamily: "var(--font-mono)", fontSize: 10, textTransform: "uppercase" }}>Equipo</div>
+              <div style={{ display: "flex" }}>
+                {users.slice(0, 6).map((u, idx) => {
+                  const isMe = !!session?.user?.id && u.id === (session.user as { id?: string }).id;
+                  return (
+                    <div
+                      key={u.id}
+                      title={u.name + (isMe ? " (tú)" : "")}
+                      style={{ marginLeft: idx === 0 ? 0 : -8, borderRadius: "50%", boxShadow: isMe ? "0 0 0 2px var(--primary)" : "0 0 0 2px var(--gray-900)", position: "relative", zIndex: users.length - idx }}
+                    >
+                      <Avatar name={u.name} />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
