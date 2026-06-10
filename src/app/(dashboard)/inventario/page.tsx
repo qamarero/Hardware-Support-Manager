@@ -1,18 +1,10 @@
 import type { Metadata } from "next";
+import { InventarioScreen } from "@/components/inventario-v2/inventario-screen";
 
 export const metadata: Metadata = { title: "Inventario" };
 
+export const dynamic = "force-dynamic";
+
 export default function InventarioPage() {
-  return (
-    <div>
-      <div className="topbar__title" style={{ marginBottom: 24 }}>
-        <h1>Inventario</h1>
-        <p>Equipos y dispositivos</p>
-      </div>
-      <div className="empty">
-        <h4>Próximamente</h4>
-        <p className="muted">La pantalla de inventario se construye en W4.</p>
-      </div>
-    </div>
-  );
+  return <InventarioScreen />;
 }
