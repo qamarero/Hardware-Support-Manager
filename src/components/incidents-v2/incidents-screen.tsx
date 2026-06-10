@@ -2,15 +2,22 @@
 
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Plus, Loader2, Ticket } from "lucide-react";
+import { Search, Plus, Loader2, Ticket, MessageSquare } from "lucide-react";
 import { fetchIncidents, fetchUsersForSelect } from "@/server/actions/incidents";
 import { IncidentStatusBadge, PriorityPill, SlaBar, Avatar } from "@/components/proto/badges";
+import { ConversationPopup } from "@/components/proto/conversation-popup";
 import { IncidentDetailDrawer } from "./incident-detail-drawer";
 import { IncidentFormDrawer } from "./incident-form-drawer";
 import { RmaWizard } from "@/components/incidents/rma-wizard";
 import { INCIDENT_STATUS_LABELS, type IncidentStatus } from "@/lib/constants/incidents";
+import { extractConversationId } from "@/lib/intercom/sync";
 import { formatRelativeTime } from "@/lib/utils/date-format";
 import type { IncidentRow } from "@/server/queries/incidents";
+
+/** Conversación de Intercom asociada (de la URL o del id de escalación). */
+function conversationIdOf(i: IncidentRow): string | null {
+  return extractConversationId(i.intercomUrl ?? "") ?? i.intercomEscalationId ?? null;
+}
 
 const STATUS_ORDER: IncidentStatus[] = [
   "nuevo", "en_triaje", "en_gestion", "esperando_cliente", "esperando_proveedor", "esperando_pieza", "resuelto", "cerrado",
@@ -20,6 +27,7 @@ export function IncidentsScreen() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [rmaFor, setRmaFor] = useState<IncidentRow | null>(null);
+  const [chatFor, setChatFor] = useState<IncidentRow | null>(null);
   const [status, setStatus] = useState<string>("all");
   const [priority, setPriority] = useState<string>("all");
   const [assignee, setAssignee] = useState<string>("all");
@@ -129,7 +137,7 @@ export function IncidentsScreen() {
               <tr>
                 <th>ID</th>
                 <th>Incidencia</th>
-                <th>Equipo</th>
+                <th>Cliente</th>
                 <th>Contacto</th>
                 <th>Asignado</th>
                 <th>Prioridad</th>
@@ -143,17 +151,23 @@ export function IncidentsScreen() {
                 <tr key={i.id} onClick={() => setSelectedId(i.id)}>
                   <td className="id-cell">{i.incidentNumber}</td>
                   <td>
-                    <div className="fw-600">{i.title}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span className="fw-600">{i.title}</span>
+                      {conversationIdOf(i) && (
+                        <button
+                          className="icon-btn"
+                          title="Ver conversación de Intercom"
+                          aria-label="Ver conversación de Intercom"
+                          onClick={(e) => { e.stopPropagation(); setChatFor(i); }}
+                          style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, borderRadius: 7, border: "1px solid var(--border)", background: "var(--orange-50)", color: "var(--primary)", cursor: "pointer" }}
+                        >
+                          <MessageSquare size={14} />
+                        </button>
+                      )}
+                    </div>
                   </td>
-                  <td>
-                    {i.deviceModel || i.deviceBrand ? (
-                      <div className="text-sm">
-                        <div style={{ fontWeight: 500 }}>{[i.deviceBrand, i.deviceModel].filter(Boolean).join(" ")}</div>
-                        {i.deviceSerialNumber && <div className="mono text-xs muted">{i.deviceSerialNumber}</div>}
-                      </div>
-                    ) : "—"}
-                  </td>
-                  <td className="text-sm">{i.contactName ?? i.clientCompanyName ?? i.clientName ?? "—"}</td>
+                  <td className="text-sm">{i.clientCompanyName ?? i.clientName ?? "—"}</td>
+                  <td className="text-sm">{i.contactName ?? "—"}</td>
                   <td>
                     {i.assignedUserName ? (
                       <div className="flex items-center gap-2">
@@ -190,6 +204,15 @@ export function IncidentsScreen() {
       />
       {rmaFor && (
         <RmaWizard open={!!rmaFor} onOpenChange={(o) => !o && setRmaFor(null)} incident={rmaFor} />
+      )}
+      {chatFor && (
+        <ConversationPopup
+          conversationId={conversationIdOf(chatFor)}
+          title={chatFor.incidentNumber}
+          subtitle={chatFor.clientCompanyName ?? chatFor.clientName ?? chatFor.title}
+          intercomUrl={chatFor.intercomUrl}
+          onClose={() => setChatFor(null)}
+        />
       )}
     </div>
   );
