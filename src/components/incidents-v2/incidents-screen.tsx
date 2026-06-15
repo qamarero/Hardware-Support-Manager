@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { Fragment, useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, Plus, Loader2, Ticket, MessageSquare } from "lucide-react";
 import { fetchIncidents, fetchUsersForSelect } from "@/server/actions/incidents";
@@ -23,6 +23,10 @@ function conversationIdOf(i: IncidentRow): string | null {
 const STATUS_ORDER: IncidentStatus[] = [
   "nuevo", "en_triaje", "en_gestion", "esperando_cliente", "esperando_proveedor", "esperando_pieza", "resuelto", "cerrado",
 ];
+
+/** Estados terminales: la incidencia ya no requiere gestión activa. */
+const CLOSED_STATUSES = new Set<IncidentStatus>(["resuelto", "cerrado", "cancelado"]);
+const isClosed = (s: IncidentStatus) => CLOSED_STATUSES.has(s);
 
 export function IncidentsScreen() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -69,12 +73,25 @@ export function IncidentsScreen() {
     }
     const prioOrder: Record<string, number> = { critica: 0, alta: 1, media: 2, baja: 3 };
     arr.sort((a, b) => {
+      // En "Todas", agrupamos abiertas arriba y cerradas/resueltas abajo.
+      if (status === "all") {
+        const ga = isClosed(a.status) ? 1 : 0;
+        const gb = isClosed(b.status) ? 1 : 0;
+        if (ga !== gb) return ga - gb;
+      }
       if (sortKey === "priority") return (prioOrder[a.priority] ?? 9) - (prioOrder[b.priority] ?? 9);
       // updatedAt y sla → por updatedAt desc (sla aproximado)
       return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
     return arr;
   }, [all, status, priority, assignee, query, sortKey]);
+
+  // Índice de la primera incidencia cerrada/resuelta: ahí va el divisor visual.
+  const firstClosedIdx = useMemo(
+    () => (status === "all" ? filtered.findIndex((i) => isClosed(i.status)) : -1),
+    [filtered, status]
+  );
+  const showDivider = firstClosedIdx > 0; // hay al menos una abierta encima
 
   return (
     <div className="stack">
@@ -148,8 +165,43 @@ export function IncidentsScreen() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((i) => (
-                <tr key={i.id} onClick={() => setSelectedId(i.id)}>
+              {filtered.map((i, idx) => (
+                <Fragment key={i.id}>
+                {showDivider && idx === firstClosedIdx && (
+                  <tr className="row-divider" aria-hidden>
+                    <td colSpan={9} style={{ padding: 0 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          padding: "10px 12px 6px",
+                          color: "var(--gray-500)",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            letterSpacing: "0.06em",
+                            textTransform: "uppercase",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          Cerradas y resueltas
+                        </span>
+                        <span style={{ flex: 1, height: 1, background: "var(--border)" }} />
+                        <span style={{ fontSize: 11, fontWeight: 600 }}>
+                          {filtered.length - firstClosedIdx}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                <tr
+                  onClick={() => setSelectedId(i.id)}
+                  style={isClosed(i.status) ? { opacity: 0.6 } : undefined}
+                >
                   <td className="id-cell">{i.incidentNumber}</td>
                   <td>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -182,6 +234,7 @@ export function IncidentsScreen() {
                   <td><IncidentStatusBadge status={i.status} /></td>
                   <td className="text-sm muted">{formatRelativeTime(i.updatedAt)}</td>
                 </tr>
+                </Fragment>
               ))}
             </tbody>
           </table>
