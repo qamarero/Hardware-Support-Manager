@@ -221,8 +221,13 @@ export async function getSlaMetrics(
     const overdueCount = Number(row.overdue_count) || 0;
     const reopenCount = Number(row.reopen_count) || 0;
     const totalResolved = Number(row.total_resolved) || 0;
+    // Clamp a [0,100]: la query actual cuenta EVENTOS de reopen (no incidencias
+    // distintas), por lo que si una incidencia se reabre varias veces el ratio
+    // puede superar 100%. Sin clamp el portal rechaza el shape (zod max(100)).
+    // TODO: rediseñar la fórmula para contar incidencias distintas reabiertas
+    // sobre total resueltas en el mismo universo temporal.
     const reopenRate = totalResolved > 0
-      ? Math.round((reopenCount / totalResolved) * 100 * 10) / 10
+      ? Math.min(100, Math.round((reopenCount / totalResolved) * 100 * 10) / 10)
       : 0;
     const rmaDays = row.rma_avg_days ? parseFloat(row.rma_avg_days) : null;
 
