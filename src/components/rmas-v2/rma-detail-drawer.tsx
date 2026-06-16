@@ -3,12 +3,13 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Check, Clock, Ticket } from "lucide-react";
+import { Loader2, Check, Clock, Ticket, Pencil, X } from "lucide-react";
 import { Drawer, Field } from "@/components/proto/drawer";
 import { RmaStatusBadge } from "@/components/proto/badges";
 import { AttachmentSection } from "@/components/shared/attachment-section";
 import { EventLogTimeline } from "@/components/shared/event-log-timeline";
-import { fetchRmaById, updateRma, transitionRma } from "@/server/actions/rmas";
+import { ManualNoteForm } from "@/components/shared/manual-note-form";
+import { fetchRmaById, updateRma, transitionRma, fetchProvidersForSelect } from "@/server/actions/rmas";
 import { getRmaAvailableTransitions } from "@/lib/state-machines/rma";
 import { RMA_STATUS_LABELS, type RmaStatus } from "@/lib/constants/rmas";
 import { PAUSED_RMA_STATES } from "@/lib/constants/statuses";
@@ -32,19 +33,58 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
   const [trackingIn, setTrackingIn] = useState("");
   const [notes, setNotes] = useState("");
 
+  // Edición de datos del RMA (equipo, proveedor, contacto).
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({
+    providerId: "", contactName: "", deviceBrand: "", deviceModel: "", deviceSerialNumber: "", deviceType: "",
+  });
+
   const { data: rma, isLoading } = useQuery({
     queryKey: ["rma-detail", rmaId],
     queryFn: () => fetchRmaById(rmaId!),
     enabled: !!rmaId,
   });
+  const { data: providers = [] } = useQuery({
+    queryKey: ["providers", "select"],
+    queryFn: () => fetchProvidersForSelect(),
+    enabled: !!rmaId && editing,
+  });
 
   useEffect(() => {
     setTab("detalle");
+    setEditing(false);
     setProviderRma(rma?.providerRmaNumber ?? "");
     setTrackingOut(rma?.trackingNumberOutgoing ?? "");
     setTrackingIn(rma?.trackingNumberReturn ?? "");
     setNotes(rma?.notes ?? "");
   }, [rma?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function startEdit() {
+    if (!rma) return;
+    setForm({
+      providerId: rma.providerId ?? "",
+      contactName: rma.contactName ?? "",
+      deviceBrand: rma.deviceBrand ?? "",
+      deviceModel: rma.deviceModel ?? "",
+      deviceSerialNumber: rma.deviceSerialNumber ?? "",
+      deviceType: rma.deviceType ?? "",
+    });
+    setEditing(true);
+  }
+
+  const saveEdit = () => {
+    updateM.mutate(
+      {
+        providerId: form.providerId || undefined,
+        contactName: form.contactName,
+        deviceBrand: form.deviceBrand,
+        deviceModel: form.deviceModel,
+        deviceSerialNumber: form.deviceSerialNumber,
+        deviceType: form.deviceType,
+      },
+      { onSuccess: (r) => { if (r.success) setEditing(false); } }
+    );
+  };
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["rma-detail", rmaId] });
@@ -175,22 +215,63 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
 
           {tab === "detalle" && (
             <div className="stack" style={{ gap: 20 }}>
-              {(rma.deviceBrand || rma.deviceModel || rma.deviceSerialNumber) && (
-                <div>
-                  <div className="field__label" style={{ marginBottom: 8 }}>Equipo afectado</div>
-                  <div className="card" style={{ padding: 16 }}>
-                    <div className="fw-700" style={{ fontSize: 14 }}>{[rma.deviceBrand, rma.deviceModel].filter(Boolean).join(" ") || "—"}</div>
-                    {rma.deviceSerialNumber && <div className="text-xs muted mono" style={{ marginTop: 2 }}>Serie: {rma.deviceSerialNumber}{rma.deviceType ? ` · ${rma.deviceType}` : ""}</div>}
+              {/* Toggle editar datos */}
+              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: -8 }}>
+                {editing ? (
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button className="btn btn--ghost btn--sm" onClick={() => setEditing(false)}><X size={14} /> Cancelar</button>
+                    <button className="btn btn--primary btn--sm" onClick={saveEdit} disabled={updateM.isPending}>
+                      {updateM.isPending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Guardar
+                    </button>
                   </div>
-                </div>
-              )}
+                ) : (
+                  <button className="btn btn--outline btn--sm" onClick={startEdit}><Pencil size={14} /> Editar datos</button>
+                )}
+              </div>
 
-              <dl className="dl">
-                <dt>Proveedor</dt><dd>{rma.providerName ?? "—"}</dd>
-                <dt>Cliente</dt><dd>{rma.clientCompanyName ?? rma.clientName ?? "—"}</dd>
-                <dt>Abierto</dt><dd>{formatDateTime(rma.createdAt)}</dd>
-                <dt>Última actualización</dt><dd>{formatDateTime(rma.updatedAt)}</dd>
-              </dl>
+              {editing ? (
+                <div className="stack" style={{ gap: 16 }}>
+                  <div className="row row--2">
+                    <Field label="Proveedor">
+                      <select className="select" value={form.providerId} onChange={(e) => setForm({ ...form, providerId: e.target.value })}>
+                        <option value="">Sin proveedor</option>
+                        {providers.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="Persona de contacto">
+                      <input className="input" value={form.contactName} onChange={(e) => setForm({ ...form, contactName: e.target.value })} />
+                    </Field>
+                  </div>
+                  <div className="row row--3">
+                    <Field label="Marca"><input className="input" value={form.deviceBrand} onChange={(e) => setForm({ ...form, deviceBrand: e.target.value })} /></Field>
+                    <Field label="Modelo"><input className="input" value={form.deviceModel} onChange={(e) => setForm({ ...form, deviceModel: e.target.value })} /></Field>
+                    <Field label="Nº de serie"><input className="input mono" value={form.deviceSerialNumber} onChange={(e) => setForm({ ...form, deviceSerialNumber: e.target.value })} /></Field>
+                  </div>
+                  <Field label="Tipo de equipo">
+                    <input className="input" placeholder="Ej. TPV, impresora, tablet…" value={form.deviceType} onChange={(e) => setForm({ ...form, deviceType: e.target.value })} />
+                  </Field>
+                </div>
+              ) : (
+                <>
+                  {(rma.deviceBrand || rma.deviceModel || rma.deviceSerialNumber) && (
+                    <div>
+                      <div className="field__label" style={{ marginBottom: 8 }}>Equipo afectado</div>
+                      <div className="card" style={{ padding: 16 }}>
+                        <div className="fw-700" style={{ fontSize: 14 }}>{[rma.deviceBrand, rma.deviceModel].filter(Boolean).join(" ") || "—"}</div>
+                        {rma.deviceSerialNumber && <div className="text-xs muted mono" style={{ marginTop: 2 }}>Serie: {rma.deviceSerialNumber}{rma.deviceType ? ` · ${rma.deviceType}` : ""}</div>}
+                      </div>
+                    </div>
+                  )}
+
+                  <dl className="dl">
+                    <dt>Proveedor</dt><dd>{rma.providerName ?? "—"}</dd>
+                    <dt>Cliente</dt><dd>{rma.clientCompanyName ?? rma.clientName ?? "—"}</dd>
+                    <dt>Persona de contacto</dt><dd>{rma.contactName ?? "—"}</dd>
+                    <dt>Abierto</dt><dd>{formatDateTime(rma.createdAt)}</dd>
+                    <dt>Última actualización</dt><dd>{formatDateTime(rma.updatedAt)}</dd>
+                  </dl>
+                </>
+              )}
 
               <Field label="Nº RMA del proveedor" hint="Código que devuelve el proveedor al autorizar">
                 <input className="input mono" placeholder="Pendiente" value={providerRma}
@@ -211,11 +292,17 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
                 </Field>
               </div>
 
-              <Field label="Notas">
+              <Field label="Notas generales">
                 <textarea className="textarea" placeholder="Notas internas del RMA…" value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   onBlur={() => notes !== (rma.notes ?? "") && updateM.mutate({ notes })} />
               </Field>
+
+              {/* Notas de técnicos (historial) */}
+              <div className="stack" style={{ gap: 8 }}>
+                <div className="field__label">Añadir nota al historial</div>
+                <ManualNoteForm entityType="rma" entityId={rma.id} />
+              </div>
             </div>
           )}
 
