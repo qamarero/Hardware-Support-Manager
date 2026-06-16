@@ -3,14 +3,16 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Check, RotateCcw, Clock, Paperclip } from "lucide-react";
+import { Loader2, Check, RotateCcw, Clock, Pencil, X } from "lucide-react";
 import { Drawer, Field } from "@/components/proto/drawer";
+import { Combobox } from "@/components/proto/combobox";
 import { IncidentStatusBadge, PriorityPill, SlaBar, slaProgress } from "@/components/proto/badges";
 import { ConversationThread } from "@/components/intercom/conversation-thread";
 import { ManualNoteForm } from "@/components/shared/manual-note-form";
 import { AttachmentSection } from "@/components/shared/attachment-section";
 import { EventLogTimeline } from "@/components/shared/event-log-timeline";
 import { fetchIncidentById, updateIncident, transitionIncident, fetchUsersForSelect } from "@/server/actions/incidents";
+import { fetchClientsForSelect } from "@/server/actions/clients";
 import { getAvailableTransitions } from "@/lib/state-machines/incident";
 import { extractConversationId } from "@/lib/intercom/sync";
 import { intercomConversationUrl } from "@/lib/utils/intercom-url";
@@ -30,6 +32,13 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
   const [diagnosis, setDiagnosis] = useState("");
   const [resolution, setResolution] = useState("");
 
+  // Edición de datos del caso (título, descripción, cliente, contacto, equipo, SLA).
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({
+    title: "", description: "", clientId: "", intercomUrl: "",
+    contactName: "", deviceBrand: "", deviceModel: "", deviceSerialNumber: "", slaHours: 0,
+  });
+
   const { data: inc, isLoading } = useQuery({
     queryKey: ["incident-detail", incidentId],
     queryFn: () => fetchIncidentById(incidentId!),
@@ -40,12 +49,49 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
     queryFn: () => fetchUsersForSelect(),
     enabled: !!incidentId,
   });
+  const { data: clients = [] } = useQuery({
+    queryKey: ["clients", "select"],
+    queryFn: () => fetchClientsForSelect(),
+    enabled: !!incidentId && editing,
+  });
 
   useEffect(() => {
     setTab("detalle");
+    setEditing(false);
     setDiagnosis(inc?.diagnosis ?? "");
     setResolution(inc?.resolution ?? "");
   }, [inc?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function startEdit() {
+    if (!inc) return;
+    setForm({
+      title: inc.title ?? "",
+      description: inc.description ?? "",
+      clientId: inc.clientId ?? "",
+      intercomUrl: inc.intercomUrl ?? "",
+      contactName: inc.contactName ?? "",
+      deviceBrand: inc.deviceBrand ?? "",
+      deviceModel: inc.deviceModel ?? "",
+      deviceSerialNumber: inc.deviceSerialNumber ?? "",
+      slaHours: inc.slaHours ?? 0,
+    });
+    setEditing(true);
+  }
+
+  const saveEdit = () => {
+    const patch: Record<string, unknown> = {
+      title: form.title.trim(),
+      description: form.description,
+      clientId: form.clientId,
+      intercomUrl: form.intercomUrl,
+      contactName: form.contactName,
+      deviceBrand: form.deviceBrand,
+      deviceModel: form.deviceModel,
+      deviceSerialNumber: form.deviceSerialNumber,
+    };
+    if (form.slaHours) patch.slaHours = form.slaHours;
+    updateM.mutate(patch, { onSuccess: (r) => { if (r.success) setEditing(false); } });
+  };
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["incident-detail", incidentId] });
@@ -145,59 +191,113 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
 
           {tab === "detalle" && (
             <div className="stack" style={{ gap: 20 }}>
-              {inc.description && (
-                <div>
-                  <div className="field__label" style={{ marginBottom: 6 }}>Descripción</div>
-                  <div style={{ background: "var(--gray-50)", padding: "12px 14px", borderRadius: 10, fontSize: 13, lineHeight: 1.55, whiteSpace: "pre-line" }}>
-                    {inc.description}
+              {/* Toggle editar datos */}
+              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: -8 }}>
+                {editing ? (
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button className="btn btn--ghost btn--sm" onClick={() => setEditing(false)}><X size={14} /> Cancelar</button>
+                    <button className="btn btn--primary btn--sm" onClick={saveEdit} disabled={updateM.isPending || !form.title.trim()}>
+                      {updateM.isPending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Guardar
+                    </button>
                   </div>
-                </div>
-              )}
-
-              {(inc.deviceBrand || inc.deviceModel || inc.deviceSerialNumber) && (
-                <div>
-                  <div className="field__label" style={{ marginBottom: 8 }}>Equipo afectado</div>
-                  <div className="card" style={{ padding: 16, display: "flex", alignItems: "center", gap: 14 }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="fw-700" style={{ fontSize: 14 }}>{[inc.deviceBrand, inc.deviceModel].filter(Boolean).join(" ") || "—"}</div>
-                      {inc.deviceSerialNumber && <div className="text-xs muted mono" style={{ marginTop: 2 }}>Serie: {inc.deviceSerialNumber}{inc.deviceType ? ` · ${inc.deviceType}` : ""}</div>}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="row row--2">
-                <Field label="Técnico asignado">
-                  <select className="select" value={inc.assignedUserId ?? ""} onChange={(e) => updateM.mutate({ assignedUserId: e.target.value })}>
-                    <option value="">Sin asignar</option>
-                    {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-                  </select>
-                </Field>
-                <Field label="Prioridad">
-                  <select className="select" value={inc.priority} onChange={(e) => updateM.mutate({ priority: e.target.value })}>
-                    <option value="critica">Crítica</option>
-                    <option value="alta">Alta</option>
-                    <option value="media">Media</option>
-                    <option value="baja">Baja</option>
-                  </select>
-                </Field>
+                ) : (
+                  <button className="btn btn--outline btn--sm" onClick={startEdit}><Pencil size={14} /> Editar datos</button>
+                )}
               </div>
 
-              <dl className="dl">
-                <dt>Cliente</dt><dd>{inc.clientCompanyName ?? inc.clientName ?? "—"}</dd>
-                <dt>Intercom</dt>
-                <dd>
-                  {intercomConversationUrl(conversationId) ? (
-                    <a href={intercomConversationUrl(conversationId)!} target="_blank" rel="noopener noreferrer" className="ds-link">
-                      Abrir conversación ↗
-                    </a>
-                  ) : "—"}
-                </dd>
-                <dt>Persona de contacto</dt><dd>{inc.contactName ?? "—"}</dd>
-                <dt>Abierta</dt><dd>{formatDateTime(inc.createdAt)}</dd>
-                <dt>Última actualización</dt><dd>{formatDateTime(inc.updatedAt)}</dd>
-                <dt>SLA</dt><dd>{inc.slaHours ? `${inc.slaHours}h` : "Según prioridad"} · {slaProgress(inc).label}</dd>
-              </dl>
+              {editing ? (
+                <div className="stack" style={{ gap: 16 }}>
+                  <Field label="Título *">
+                    <input className="input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+                  </Field>
+                  <Field label="Descripción">
+                    <textarea className="textarea" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+                  </Field>
+                  <div className="row row--2">
+                    <Field label="Cliente">
+                      <Combobox options={clients} value={form.clientId} onChange={(id) => setForm({ ...form, clientId: id })} placeholder="Buscar cliente…" emptyLabel="Ningún cliente coincide" />
+                    </Field>
+                    <Field label="URL Intercom" hint="Enlace a la conversación">
+                      <input className="input" value={form.intercomUrl} onChange={(e) => setForm({ ...form, intercomUrl: e.target.value })} />
+                    </Field>
+                  </div>
+                  <div className="row row--2">
+                    <Field label="Persona de contacto">
+                      <input className="input" value={form.contactName} onChange={(e) => setForm({ ...form, contactName: e.target.value })} />
+                    </Field>
+                    <Field label="SLA (horas)">
+                      <select className="select" value={form.slaHours} onChange={(e) => setForm({ ...form, slaHours: Number(e.target.value) })}>
+                        <option value={0}>Según prioridad</option>
+                        <option value={24}>24h — Crítica</option>
+                        <option value={48}>48h — Alta</option>
+                        <option value={72}>72h — Estándar</option>
+                        <option value={120}>120h — Baja</option>
+                      </select>
+                    </Field>
+                  </div>
+                  <div className="row row--3">
+                    <Field label="Marca"><input className="input" value={form.deviceBrand} onChange={(e) => setForm({ ...form, deviceBrand: e.target.value })} /></Field>
+                    <Field label="Modelo"><input className="input" value={form.deviceModel} onChange={(e) => setForm({ ...form, deviceModel: e.target.value })} /></Field>
+                    <Field label="Nº de serie"><input className="input" value={form.deviceSerialNumber} onChange={(e) => setForm({ ...form, deviceSerialNumber: e.target.value })} /></Field>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {inc.description && (
+                    <div>
+                      <div className="field__label" style={{ marginBottom: 6 }}>Descripción</div>
+                      <div style={{ background: "var(--gray-50)", padding: "12px 14px", borderRadius: 10, fontSize: 13, lineHeight: 1.55, whiteSpace: "pre-line" }}>
+                        {inc.description}
+                      </div>
+                    </div>
+                  )}
+
+                  {(inc.deviceBrand || inc.deviceModel || inc.deviceSerialNumber) && (
+                    <div>
+                      <div className="field__label" style={{ marginBottom: 8 }}>Equipo afectado</div>
+                      <div className="card" style={{ padding: 16, display: "flex", alignItems: "center", gap: 14 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div className="fw-700" style={{ fontSize: 14 }}>{[inc.deviceBrand, inc.deviceModel].filter(Boolean).join(" ") || "—"}</div>
+                          {inc.deviceSerialNumber && <div className="text-xs muted mono" style={{ marginTop: 2 }}>Serie: {inc.deviceSerialNumber}{inc.deviceType ? ` · ${inc.deviceType}` : ""}</div>}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="row row--2">
+                    <Field label="Técnico asignado">
+                      <select className="select" value={inc.assignedUserId ?? ""} onChange={(e) => updateM.mutate({ assignedUserId: e.target.value })}>
+                        <option value="">Sin asignar</option>
+                        {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="Prioridad">
+                      <select className="select" value={inc.priority} onChange={(e) => updateM.mutate({ priority: e.target.value })}>
+                        <option value="critica">Crítica</option>
+                        <option value="alta">Alta</option>
+                        <option value="media">Media</option>
+                        <option value="baja">Baja</option>
+                      </select>
+                    </Field>
+                  </div>
+
+                  <dl className="dl">
+                    <dt>Cliente</dt><dd>{inc.clientCompanyName ?? inc.clientName ?? "—"}</dd>
+                    <dt>Intercom</dt>
+                    <dd>
+                      {intercomConversationUrl(conversationId) ? (
+                        <a href={intercomConversationUrl(conversationId)!} target="_blank" rel="noopener noreferrer" className="ds-link">
+                          Abrir conversación ↗
+                        </a>
+                      ) : "—"}
+                    </dd>
+                    <dt>Persona de contacto</dt><dd>{inc.contactName ?? "—"}</dd>
+                    <dt>Abierta</dt><dd>{formatDateTime(inc.createdAt)}</dd>
+                    <dt>Última actualización</dt><dd>{formatDateTime(inc.updatedAt)}</dd>
+                    <dt>SLA</dt><dd>{inc.slaHours ? `${inc.slaHours}h` : "Según prioridad"} · {slaProgress(inc).label}</dd>
+                  </dl>
+                </>
+              )}
 
               <Field label="Diagnóstico">
                 <textarea className="textarea" placeholder="Pasos de diagnóstico, hallazgos…" value={diagnosis}
