@@ -17,17 +17,21 @@ import {
   Store,
   UserCog,
   Settings,
-  Search,
-  Bell,
   LogOut,
 } from "lucide-react";
 import { QamareroLogo } from "@/components/layout/qamarero-logo";
+import { GlobalSearch } from "@/components/shell/global-search";
+import { NotificationsBell } from "@/components/shell/notifications-bell";
+import { useAlertBadges } from "@/components/layout/sidebar-badges";
+
+type BadgeKey = "incidents" | "rmas" | "intercom";
 
 interface NavItem {
   href: string;
   label: string;
   icon: typeof Ticket;
   adminOnly?: boolean;
+  badge?: BadgeKey;
 }
 
 const SECTIONS: { title: string; items: NavItem[] }[] = [
@@ -35,17 +39,17 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
     title: "Operaciones",
     items: [
       { href: "/dashboard", label: "Panel", icon: LayoutDashboard },
-      { href: "/incidents", label: "Incidencias", icon: Ticket },
+      { href: "/incidents", label: "Incidencias", icon: Ticket, badge: "incidents" },
       { href: "/tablero", label: "Tablero Kanban", icon: LayoutGrid },
       { href: "/corcho", label: "Corcho", icon: StickyNote },
       { href: "/casos", label: "Casos · RMA", icon: RefreshCw },
-      { href: "/rmas", label: "RMA", icon: RotateCcw },
+      { href: "/rmas", label: "RMA", icon: RotateCcw, badge: "rmas" },
     ],
   },
   {
     title: "Bandejas",
     items: [
-      { href: "/intercom", label: "Bandeja Intercom", icon: Inbox },
+      { href: "/intercom", label: "Bandeja Intercom", icon: Inbox, badge: "intercom" },
       { href: "/submissions", label: "Bandeja Soporte", icon: ClipboardList },
     ],
   },
@@ -84,9 +88,19 @@ function initials(name: string): string {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { data: session } = useSession();
+  const { data: badges } = useAlertBadges();
   const isAdmin = session?.user?.role === "admin";
   const userName = session?.user?.name ?? "Usuario";
   const userRole = session?.user?.role ?? "viewer";
+
+  // Mapea cada badge del nav a su contador (incidencias = estancadas+SLA;
+  // RMA = atascados en proveedor + almacén; intercom = pendientes de registrar).
+  function badgeValue(key: BadgeKey): number {
+    if (!badges) return 0;
+    if (key === "incidents") return badges.incidents;
+    if (key === "rmas") return badges.rmas + badges.warehouse;
+    return badges.intercom;
+  }
 
   return (
     <div className="app">
@@ -109,6 +123,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {items.map((it) => {
                 const active = pathname === it.href || pathname.startsWith(it.href + "/");
                 const Icon = it.icon;
+                const count = it.badge ? badgeValue(it.badge) : 0;
                 return (
                   <Link
                     key={it.href}
@@ -116,6 +131,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     className={`nav-item ${active ? "is-active" : ""}`}
                   >
                     <Icon size={16} /> {it.label}
+                    {count > 0 && (
+                      <span className={`nav-item__count ${it.badge !== "intercom" ? "nav-item__count--alert" : ""}`}>
+                        {count > 99 ? "99+" : count}
+                      </span>
+                    )}
                   </Link>
                 );
               })}
@@ -144,16 +164,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* ─── MAIN ─── */}
       <div className="main">
         <div className="topbar">
-          <div className="topbar__title">
-            <h1>Hardware Support</h1>
-          </div>
-          <div className="search">
-            <Search size={14} />
-            <input placeholder="Buscar global…" />
-          </div>
-          <button className="btn btn--ghost btn--icon" title="Notificaciones">
-            <Bell size={16} />
-          </button>
+          <GlobalSearch />
+          <div style={{ flex: 1 }} />
+          <NotificationsBell />
         </div>
 
         <div className="page">{children}</div>
