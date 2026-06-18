@@ -11,6 +11,7 @@ import { ConversationThread } from "@/components/intercom/conversation-thread";
 import { ManualNoteForm } from "@/components/shared/manual-note-form";
 import { AttachmentSection } from "@/components/shared/attachment-section";
 import { EventLogTimeline } from "@/components/shared/event-log-timeline";
+import { ReminderSection } from "@/components/reminders/reminder-section";
 import { fetchIncidentById, updateIncident, transitionIncident, fetchUsersForSelect } from "@/server/actions/incidents";
 import { fetchClientsForSelect } from "@/server/actions/clients";
 import { getAvailableTransitions } from "@/lib/state-machines/incident";
@@ -309,6 +310,9 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
                   onChange={(e) => setResolution(e.target.value)}
                   onBlur={() => resolution !== (inc.resolution ?? "") && updateM.mutate({ resolution })} />
               </Field>
+
+              {/* Recordatorios / seguimientos */}
+              <ReminderSection entityType="incident" entityId={inc.id} defaultTitle={`Seguimiento ${inc.incidentNumber}`} />
 
               {/* Intercom (conservado) */}
               {conversationId && (

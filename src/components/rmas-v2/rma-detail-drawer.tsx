@@ -9,6 +9,7 @@ import { RmaStatusBadge } from "@/components/proto/badges";
 import { AttachmentSection } from "@/components/shared/attachment-section";
 import { EventLogTimeline } from "@/components/shared/event-log-timeline";
 import { ManualNoteForm } from "@/components/shared/manual-note-form";
+import { ReminderSection } from "@/components/reminders/reminder-section";
 import { fetchRmaById, updateRma, transitionRma, fetchProvidersForSelect } from "@/server/actions/rmas";
 import { getRmaAvailableTransitions } from "@/lib/state-machines/rma";
 import { RMA_STATUS_LABELS, type RmaStatus } from "@/lib/constants/rmas";
@@ -303,6 +304,9 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
                 <div className="field__label">Añadir nota al historial</div>
                 <ManualNoteForm entityType="rma" entityId={rma.id} />
               </div>
+
+              {/* Recordatorios / seguimientos */}
+              <ReminderSection entityType="rma" entityId={rma.id} defaultTitle={`Seguimiento RMA ${rma.rmaNumber}`} />
             </div>
           )}
 
