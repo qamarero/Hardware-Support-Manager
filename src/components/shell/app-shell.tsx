@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import {
+  CalendarCheck,
   LayoutDashboard,
   Ticket,
   LayoutGrid,
@@ -38,6 +39,7 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: "Operaciones",
     items: [
+      { href: "/mi-dia", label: "Mi día", icon: CalendarCheck },
       { href: "/dashboard", label: "Panel", icon: LayoutDashboard },
       { href: "/incidents", label: "Incidencias", icon: Ticket, badge: "incidents" },
       { href: "/tablero", label: "Tablero Kanban", icon: LayoutGrid },
