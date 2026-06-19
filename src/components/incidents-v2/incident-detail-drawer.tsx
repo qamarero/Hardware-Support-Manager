@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Loader2, Check, RotateCcw, Clock, Pencil, X } from "lucide-react";
 import { Drawer, Field } from "@/components/proto/drawer";
 import { Combobox } from "@/components/proto/combobox";
+import { ArticleCombobox } from "@/components/proto/article-combobox";
 import { IncidentStatusBadge, PriorityPill, SlaBar, slaProgress } from "@/components/proto/badges";
 import { ConversationThread } from "@/components/intercom/conversation-thread";
 import { ManualNoteForm } from "@/components/shared/manual-note-form";
@@ -18,6 +19,7 @@ import { fetchClientsForSelect } from "@/server/actions/clients";
 import { getAvailableTransitions } from "@/lib/state-machines/incident";
 import { extractConversationId } from "@/lib/intercom/sync";
 import { intercomConversationUrl } from "@/lib/utils/intercom-url";
+import { incidentMissingFields } from "@/lib/utils/incident-completeness";
 import { INCIDENT_STATUS_LABELS, type IncidentStatus } from "@/lib/constants/incidents";
 import { PAUSED_INCIDENT_STATES } from "@/lib/constants/statuses";
 import { formatDateTime } from "@/lib/utils/date-format";
@@ -38,7 +40,7 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     title: "", description: "", clientId: "", intercomUrl: "",
-    contactName: "", deviceBrand: "", deviceModel: "", deviceSerialNumber: "", slaHours: 0,
+    contactName: "", articleId: "", deviceType: "", deviceBrand: "", deviceModel: "", deviceSerialNumber: "", slaHours: 0,
   });
 
   const { data: inc, isLoading } = useQuery({
@@ -72,6 +74,8 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
       clientId: inc.clientId ?? "",
       intercomUrl: inc.intercomUrl ?? "",
       contactName: inc.contactName ?? "",
+      articleId: inc.articleId ?? "",
+      deviceType: inc.deviceType ?? "",
       deviceBrand: inc.deviceBrand ?? "",
       deviceModel: inc.deviceModel ?? "",
       deviceSerialNumber: inc.deviceSerialNumber ?? "",
@@ -87,6 +91,8 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
       clientId: form.clientId,
       intercomUrl: form.intercomUrl,
       contactName: form.contactName,
+      articleId: form.articleId,
+      deviceType: form.deviceType,
       deviceBrand: form.deviceBrand,
       deviceModel: form.deviceModel,
       deviceSerialNumber: form.deviceSerialNumber,
@@ -123,6 +129,7 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
   const transitions = inc ? getAvailableTransitions(inc.status as IncidentStatus, "admin") : [];
   const isPaused = inc ? (PAUSED_INCIDENT_STATES as readonly string[]).includes(inc.status) : false;
   const isClosed = inc ? ["resuelto", "cerrado", "cancelado"].includes(inc.status) : false;
+  const missing = inc ? incidentMissingFields(inc) : [];
 
   const footer = inc ? (
     <>
@@ -207,6 +214,16 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
                 )}
               </div>
 
+              {!editing && missing.length > 0 && (
+                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "var(--amber-50)", border: "1px solid var(--warning)", borderRadius: 10, fontSize: 13 }}>
+                  <Clock size={14} style={{ color: "var(--warning)", flexShrink: 0 }} />
+                  <span style={{ flex: 1, color: "var(--amber-900, var(--fg-primary))" }}>
+                    Información parcial — falta: <strong>{missing.join(", ")}</strong>
+                  </span>
+                  <button className="btn btn--secondary btn--sm" onClick={startEdit}>Completar</button>
+                </div>
+              )}
+
               {editing ? (
                 <div className="stack" style={{ gap: 16 }}>
                   <Field label="Título *">
@@ -237,10 +254,14 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
                       </select>
                     </Field>
                   </div>
-                  <div className="row row--3">
-                    <Field label="Marca"><input className="input" value={form.deviceBrand} onChange={(e) => setForm({ ...form, deviceBrand: e.target.value })} /></Field>
-                    <Field label="Modelo"><input className="input" value={form.deviceModel} onChange={(e) => setForm({ ...form, deviceModel: e.target.value })} /></Field>
-                    <Field label="Nº de serie"><input className="input" value={form.deviceSerialNumber} onChange={(e) => setForm({ ...form, deviceSerialNumber: e.target.value })} /></Field>
+                  <div className="row row--2">
+                    <Field label="Equipo afectado" hint="Del catálogo; o añádelo si no está">
+                      <ArticleCombobox
+                        value={form.articleId}
+                        onSelect={(a) => setForm({ ...form, articleId: a?.id ?? "", deviceType: a?.deviceType ?? "", deviceBrand: a?.brand ?? "", deviceModel: a?.model ?? "" })}
+                      />
+                    </Field>
+                    <Field label="Nº de serie"><input className="input mono" value={form.deviceSerialNumber} onChange={(e) => setForm({ ...form, deviceSerialNumber: e.target.value })} /></Field>
                   </div>
                 </div>
               ) : (

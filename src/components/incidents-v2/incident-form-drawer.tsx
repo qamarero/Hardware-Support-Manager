@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Save, Loader2 } from "lucide-react";
 import { Drawer, Field } from "@/components/proto/drawer";
 import { Combobox } from "@/components/proto/combobox";
+import { ArticleCombobox } from "@/components/proto/article-combobox";
 import { createIncident } from "@/server/actions/incidents";
 import { fetchClientsForSelect } from "@/server/actions/clients";
 
@@ -27,6 +28,8 @@ export function IncidentFormDrawer({ open, onClose, onCreated, users }: Props) {
   const qc = useQueryClient();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [articleId, setArticleId] = useState("");
+  const [deviceType, setDeviceType] = useState("");
   const [deviceBrand, setDeviceBrand] = useState("");
   const [deviceModel, setDeviceModel] = useState("");
   const [deviceSerial, setDeviceSerial] = useState("");
@@ -45,7 +48,7 @@ export function IncidentFormDrawer({ open, onClose, onCreated, users }: Props) {
   });
 
   function reset() {
-    setTitle(""); setDescription(""); setDeviceBrand(""); setDeviceModel("");
+    setTitle(""); setDescription(""); setArticleId(""); setDeviceType(""); setDeviceBrand(""); setDeviceModel("");
     setDeviceSerial(""); setReporter(""); setPriority("media"); setAssignedUserId("");
     setHardwareOrigin("qamarero"); setSlaHours(72);
     setClientId(""); setIntercomUrl("");
@@ -63,6 +66,8 @@ export function IncidentFormDrawer({ open, onClose, onCreated, users }: Props) {
         assignedUserId,
         clientId,
         intercomUrl,
+        articleId,
+        deviceType,
         deviceBrand,
         deviceModel,
         deviceSerialNumber: deviceSerial,
@@ -112,20 +117,26 @@ export function IncidentFormDrawer({ open, onClose, onCreated, users }: Props) {
           </Field>
         </div>
         <div className="row row--2">
-          <Field label="Equipo afectado — marca/modelo">
-            <input className="input" placeholder="Ej. Dell Latitude 7440" value={deviceModel} onChange={(e) => setDeviceModel(e.target.value)} />
+          <Field label="Equipo afectado" hint="Del catálogo; o añádelo si no está">
+            <ArticleCombobox
+              value={articleId}
+              onSelect={(a) => {
+                setArticleId(a?.id ?? "");
+                setDeviceType(a?.deviceType ?? "");
+                setDeviceBrand(a?.brand ?? "");
+                setDeviceModel(a?.model ?? "");
+              }}
+            />
           </Field>
           <Field label="Persona de contacto" hint="Nombre del usuario afectado">
             <input className="input" placeholder="Ej. Carlos Vega" value={reporter} onChange={(e) => setReporter(e.target.value)} />
           </Field>
         </div>
         <div className="row row--2">
-          <Field label="Marca">
-            <input className="input" value={deviceBrand} onChange={(e) => setDeviceBrand(e.target.value)} />
-          </Field>
           <Field label="Nº de serie">
-            <input className="input" value={deviceSerial} onChange={(e) => setDeviceSerial(e.target.value)} />
+            <input className="input mono" placeholder="Serie de la unidad" value={deviceSerial} onChange={(e) => setDeviceSerial(e.target.value)} />
           </Field>
+          <div />
         </div>
         <div className="row row--3">
           <Field label="Prioridad">

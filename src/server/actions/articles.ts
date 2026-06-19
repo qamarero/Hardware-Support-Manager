@@ -57,3 +57,29 @@ export async function fetchArticlesForSelect(): Promise<
     .from(articles)
     .orderBy(articles.deviceType, articles.brand, articles.model);
 }
+
+/** Alta rápida de un artículo al catálogo (reusa si ya existe el trío). */
+export async function createArticle(input: {
+  deviceType: string;
+  brand: string;
+  model: string;
+}): Promise<{ id: string; deviceType: string; brand: string; model: string } | null> {
+  await getRequiredSession();
+  const deviceType = input.deviceType.trim();
+  const brand = input.brand.trim();
+  const model = input.model.trim();
+  if (!deviceType || !brand || !model) return null;
+
+  const [existing] = await db
+    .select({ id: articles.id, deviceType: articles.deviceType, brand: articles.brand, model: articles.model })
+    .from(articles)
+    .where(sql`lower(${articles.deviceType}) = lower(${deviceType}) AND lower(${articles.brand}) = lower(${brand}) AND lower(${articles.model}) = lower(${model})`)
+    .limit(1);
+  if (existing) return existing;
+
+  const [row] = await db
+    .insert(articles)
+    .values({ deviceType, brand, model })
+    .returning({ id: articles.id, deviceType: articles.deviceType, brand: articles.brand, model: articles.model });
+  return row;
+}

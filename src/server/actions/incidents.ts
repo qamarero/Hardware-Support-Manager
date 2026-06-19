@@ -116,6 +116,8 @@ export async function updateIncident(
   if (parsed.data.priority !== undefined) values.priority = parsed.data.priority;
   if (parsed.data.assignedUserId !== undefined)
     values.assignedUserId = parsed.data.assignedUserId || null;
+  if (parsed.data.articleId !== undefined)
+    values.articleId = parsed.data.articleId || null;
   if (parsed.data.deviceType !== undefined)
     values.deviceType = parsed.data.deviceType || null;
   if (parsed.data.deviceBrand !== undefined)

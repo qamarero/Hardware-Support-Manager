@@ -12,6 +12,7 @@ import { RmaWizard } from "@/components/incidents/rma-wizard";
 import { INCIDENT_STATUS_LABELS, type IncidentStatus } from "@/lib/constants/incidents";
 import { extractConversationId } from "@/lib/intercom/sync";
 import { intercomConversationUrl } from "@/lib/utils/intercom-url";
+import { incidentMissingFields } from "@/lib/utils/incident-completeness";
 import { formatRelativeTime } from "@/lib/utils/date-format";
 import type { IncidentRow } from "@/server/queries/incidents";
 
@@ -206,6 +207,9 @@ export function IncidentsScreen() {
                   <td>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span className="fw-600">{i.title}</span>
+                      {incidentMissingFields(i).length > 0 && (
+                        <span className="badge badge--amber" style={{ fontSize: 10 }} title={`Falta: ${incidentMissingFields(i).join(", ")}`}>Incompleta</span>
+                      )}
                       {conversationIdOf(i) && (
                         <button
                           className="icon-btn"
