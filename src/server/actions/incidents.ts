@@ -15,9 +15,9 @@ import {
 } from "@/lib/validators/incident";
 import { isValidTransition } from "@/lib/state-machines/incident";
 import { generateSequentialId } from "@/lib/utils/id-generator";
-import { getIncidents, getIncidentById, getLinkedRmas } from "@/server/queries/incidents";
+import { getIncidents, getIncidentById, getLinkedRmas, getClientContext } from "@/server/queries/incidents";
 import type { ActionResult, PaginationParams, PaginatedResult } from "@/types";
-import type { IncidentRow, LinkedRma } from "@/server/queries/incidents";
+import type { IncidentRow, LinkedRma, ClientContextResult } from "@/server/queries/incidents";
 import { syncIncidentTransition } from "@/lib/intercom/sync";
 import type { IncidentStatus } from "@/lib/constants/incidents";
 import type { UserRole } from "@/lib/constants/roles";
@@ -420,6 +420,14 @@ export async function fetchIncidents(
 ): Promise<PaginatedResult<IncidentRow>> {
   await getRequiredSession();
   return getIncidents(params);
+}
+
+export async function fetchClientContext(
+  clientId: string,
+  excludeIncidentId?: string
+): Promise<ClientContextResult> {
+  await getRequiredSession();
+  return getClientContext(clientId, excludeIncidentId);
 }
 
 export async function fetchUsersForSelect(): Promise<

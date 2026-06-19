@@ -12,6 +12,7 @@ import { ManualNoteForm } from "@/components/shared/manual-note-form";
 import { AttachmentSection } from "@/components/shared/attachment-section";
 import { EventLogTimeline } from "@/components/shared/event-log-timeline";
 import { ReminderSection } from "@/components/reminders/reminder-section";
+import { ClientContext } from "./client-context";
 import { fetchIncidentById, updateIncident, transitionIncident, fetchUsersForSelect } from "@/server/actions/incidents";
 import { fetchClientsForSelect } from "@/server/actions/clients";
 import { getAvailableTransitions } from "@/lib/state-machines/incident";
@@ -310,6 +311,11 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
                   onChange={(e) => setResolution(e.target.value)}
                   onBlur={() => resolution !== (inc.resolution ?? "") && updateM.mutate({ resolution })} />
               </Field>
+
+              {/* Historial del cliente */}
+              {inc.clientId && (
+                <ClientContext clientId={inc.clientId} clientName={inc.clientCompanyName ?? inc.clientName} currentIncidentId={inc.id} />
+              )}
 
               {/* Recordatorios / seguimientos */}
               <ReminderSection entityType="incident" entityId={inc.id} defaultTitle={`Seguimiento ${inc.incidentNumber}`} />

@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { incidents, users, clients, clientLocations, rmas } from "@/lib/db/schema";
-import { eq, or, and, asc, desc, count, sql, gte, lte, inArray, type AnyColumn } from "drizzle-orm";
+import { eq, ne, or, and, not, asc, desc, count, sql, gte, lte, inArray, type AnyColumn } from "drizzle-orm";
+import { CLOSED_INCIDENT_STATUSES, CLOSED_RMA_STATUSES } from "@/lib/constants/statuses";
 import type { PaginationParams, PaginatedResult } from "@/types";
 
 export type IncidentRow = typeof incidents.$inferSelect & {
@@ -316,5 +317,68 @@ export async function getIncidentsAggregates(
     byPriority: byPriorityRes.map((r) => ({ priority: r.priority, count: r.count })),
     byCategory: byCategoryRes.map((r) => ({ category: r.category, count: r.count })),
     byHardwareOrigin: byOriginRes.map((r) => ({ hardwareOrigin: r.hardwareOrigin, count: r.count })),
+  };
+}
+
+// ─── Contexto del cliente (historial para la ficha) ──────────────────────────
+
+export interface ClientContextResult {
+  totalIncidents: number;
+  openIncidents: number;
+  activeRmas: number;
+  recentIncidents: {
+    id: string;
+    incidentNumber: string;
+    title: string;
+    status: string;
+    createdAt: Date;
+  }[];
+}
+
+/**
+ * Historial operativo de un cliente: nº total de incidencias, abiertas,
+ * RMAs activos y las últimas incidencias. Para mostrar en la ficha y dar
+ * contexto/recurrencia ("este cliente ya tuvo N incidencias").
+ */
+export async function getClientContext(
+  clientId: string,
+  excludeIncidentId?: string
+): Promise<ClientContextResult> {
+  const closedInc = [...CLOSED_INCIDENT_STATUSES] as (typeof incidents.status.enumValues)[number][];
+  const closedRma = [...CLOSED_RMA_STATUSES] as (typeof rmas.status.enumValues)[number][];
+
+  const recentWhere = excludeIncidentId
+    ? and(eq(incidents.clientId, clientId), ne(incidents.id, excludeIncidentId))
+    : eq(incidents.clientId, clientId);
+
+  const [totalRow, openRow, rmaRow, recent] = await Promise.all([
+    db.select({ c: count() }).from(incidents).where(eq(incidents.clientId, clientId)),
+    db
+      .select({ c: count() })
+      .from(incidents)
+      .where(and(eq(incidents.clientId, clientId), not(inArray(incidents.status, closedInc)))),
+    db
+      .select({ c: count() })
+      .from(rmas)
+      .where(and(eq(rmas.clientId, clientId), not(inArray(rmas.status, closedRma)))),
+    db
+      .select({
+        id: incidents.id,
+        incidentNumber: incidents.incidentNumber,
+        title: incidents.title,
+        status: incidents.status,
+        createdAt: incidents.createdAt,
+      })
+      .from(incidents)
+      .where(recentWhere)
+      .orderBy(desc(incidents.createdAt))
+      .limit(6),
+  ]);
+
+  return {
+    totalIncidents: totalRow[0]?.c ?? 0,
+    openIncidents: openRow[0]?.c ?? 0,
+    activeRmas: rmaRow[0]?.c ?? 0,
+    recentIncidents: recent,
   };
 }
