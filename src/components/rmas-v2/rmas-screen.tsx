@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { Fragment, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Search, Plus, Loader2, RotateCcw, Laptop } from "lucide-react";
@@ -8,12 +8,17 @@ import { fetchRmas } from "@/server/actions/rmas";
 import { RmaStatusBadge } from "@/components/proto/badges";
 import { RmaDetailDrawer } from "./rma-detail-drawer";
 import { RMA_STATUS_LABELS, type RmaStatus } from "@/lib/constants/rmas";
+import { CLOSED_RMA_STATUSES } from "@/lib/constants/statuses";
 import { formatRelativeTime } from "@/lib/utils/date-format";
 import type { RmaRow } from "@/server/queries/rmas";
 
+// Estados activos arriba; cerrados (entregado/rechazado/cerrado/cancelado) en su sección.
 const STATUS_ORDER: RmaStatus[] = [
-  "borrador", "solicitado", "aprobado", "enviado_proveedor", "en_proveedor", "devuelto", "recibido_oficina", "cerrado", "cancelado",
+  "borrador", "solicitado", "aprobado", "enviado_proveedor", "en_proveedor", "devuelto", "recibido_oficina", "entregado_cliente", "rechazado", "cerrado", "cancelado",
 ];
+
+const CLOSED_RMA = new Set<string>(CLOSED_RMA_STATUSES);
+const isRmaClosed = (s: string) => CLOSED_RMA.has(s);
 
 export function RmasScreen() {
   const router = useRouter();
@@ -48,8 +53,24 @@ export function RmasScreen() {
         (r.incidentNumber ?? "").toLowerCase().includes(q)
       );
     }
+    arr.sort((a, b) => {
+      // En "Todos", activos arriba y cerrados/finalizados abajo.
+      if (status === "all") {
+        const ga = isRmaClosed(a.status) ? 1 : 0;
+        const gb = isRmaClosed(b.status) ? 1 : 0;
+        if (ga !== gb) return ga - gb;
+      }
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
     return arr;
   }, [all, status, query]);
+
+  // Índice del primer RMA cerrado: ahí va el divisor visual.
+  const firstClosedIdx = useMemo(
+    () => (status === "all" ? filtered.findIndex((r) => isRmaClosed(r.status)) : -1),
+    [filtered, status]
+  );
+  const showDivider = firstClosedIdx > 0;
 
   return (
     <div className="stack">
@@ -104,8 +125,22 @@ export function RmasScreen() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((r) => (
-                <tr key={r.id} onClick={() => setSelectedId(r.id)}>
+              {filtered.map((r, idx) => (
+                <Fragment key={r.id}>
+                {showDivider && idx === firstClosedIdx && (
+                  <tr className="row-divider" aria-hidden>
+                    <td colSpan={8} style={{ padding: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px 6px", color: "var(--gray-500)" }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+                          Finalizados
+                        </span>
+                        <span style={{ flex: 1, height: 1, background: "var(--border)" }} />
+                        <span style={{ fontSize: 11, fontWeight: 600 }}>{filtered.length - firstClosedIdx}</span>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                <tr onClick={() => setSelectedId(r.id)} style={isRmaClosed(r.status) ? { opacity: 0.6 } : undefined}>
                   <td className="id-cell">{r.rmaNumber}</td>
                   <td className="mono text-sm fw-600">{r.providerRmaNumber || "—"}</td>
                   <td className="text-sm">{r.providerName ?? "—"}</td>
@@ -125,6 +160,7 @@ export function RmasScreen() {
                   <td className="id-cell">{r.incidentNumber ?? "—"}</td>
                   <td className="text-sm muted">{formatRelativeTime(r.updatedAt)}</td>
                 </tr>
+                </Fragment>
               ))}
             </tbody>
           </table>
