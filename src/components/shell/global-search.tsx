@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { Search, Loader2, Ticket, RotateCcw, ArrowRight } from "lucide-react";
 import { useDebouncedSearch } from "@/hooks/use-debounced-search";
 import { searchGlobal } from "@/server/actions/search";
 import { tokenizeSearchInput } from "@/lib/utils/search-normalize";
+import { useDrawers } from "@/components/shell/drawers-provider";
 
 /**
  * Buscador global de la topbar (proto). Reutiliza la server action
@@ -14,7 +14,7 @@ import { tokenizeSearchInput } from "@/lib/utils/search-normalize";
  * Atajo Ctrl/Cmd+K para enfocar.
  */
 export function GlobalSearch() {
-  const router = useRouter();
+  const { openIncident, openRma } = useDrawers();
   const { inputValue, setInputValue, debouncedValue } = useDebouncedSearch(250);
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -58,10 +58,11 @@ export function GlobalSearch() {
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
-  function go(href: string) {
+  function go(kind: "incident" | "rma", id: string) {
     setOpen(false);
     setInputValue("");
-    router.push(href);
+    if (kind === "incident") openIncident(id);
+    else openRma(id);
   }
 
   return (
@@ -101,7 +102,7 @@ export function GlobalSearch() {
                   number={inc.incidentNumber}
                   label={inc.title}
                   sub={[inc.clientCompanyName ?? inc.clientName, [inc.deviceBrand, inc.deviceModel].filter(Boolean).join(" ")].filter(Boolean).join(" · ")}
-                  onClick={() => go(`/incidents/${inc.id}`)}
+                  onClick={() => go("incident", inc.id)}
                 />
               ))}
               {rmas.length > 0 && <Group icon={<RotateCcw size={12} />} title="RMAs" />}
@@ -111,7 +112,7 @@ export function GlobalSearch() {
                   number={rma.rmaNumber}
                   label={rma.providerName ?? ""}
                   sub={[rma.clientCompanyName ?? rma.clientName, [rma.deviceBrand, rma.deviceModel].filter(Boolean).join(" "), rma.incidentNumber].filter(Boolean).join(" · ")}
-                  onClick={() => go(`/rmas/${rma.id}`)}
+                  onClick={() => go("rma", rma.id)}
                 />
               ))}
             </>

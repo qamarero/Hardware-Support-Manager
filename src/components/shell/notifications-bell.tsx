@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Bell, Loader2, Ticket, RotateCcw, Package, Clock, ArrowRight } from "lucide-react";
 import { fetchAlertItems } from "@/server/actions/alerts";
+import { useDrawers } from "@/components/shell/drawers-provider";
 import type { AlertItem } from "@/server/queries/alerts";
 
 const TYPE_META: Record<AlertItem["type"], { icon: typeof Ticket; label: string }> = {
@@ -16,7 +16,7 @@ const TYPE_META: Record<AlertItem["type"], { icon: typeof Ticket; label: string 
 
 /** Campana de la topbar → centro de avisos. Reutiliza getAlertItems. */
 export function NotificationsBell() {
-  const router = useRouter();
+  const { openByUrl } = useDrawers();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
 
@@ -40,7 +40,7 @@ export function NotificationsBell() {
 
   function go(url: string) {
     setOpen(false);
-    router.push(url);
+    openByUrl(url);
   }
 
   return (
