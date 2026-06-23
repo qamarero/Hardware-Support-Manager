@@ -5,6 +5,8 @@ import { intercomInbox } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getConversation, getContact } from "@/lib/intercom/client";
 import { buildAttrsMap, getAttr } from "@/lib/intercom/ticket-attrs";
+import { getIntercomCaptureRules } from "@/server/queries/settings";
+import { DEFAULT_INTERCOM_CAPTURE_RULES } from "@/lib/constants/intercom-capture";
 
 function verifySignature(body: string, signature: string | null, secret: string): boolean {
   if (!signature) return false;
@@ -106,9 +108,18 @@ function flattenAttributes(attrs: unknown): string {
   }
 }
 
-function isRelevantEscalation(payload: any): boolean {
+async function isRelevantEscalation(payload: any): Promise<boolean> {
   const item = payload?.data?.item;
   if (!item) return false;
+
+  // Reglas configurables (Ajustes). Fallback seguro a las de por defecto si la
+  // lectura falla — el webhook NUNCA debe romperse por esto.
+  let rules = DEFAULT_INTERCOM_CAPTURE_RULES;
+  try {
+    rules = await getIntercomCaptureRules();
+  } catch (err) {
+    console.error("[Intercom Webhook] no se pudieron leer reglas de captura, uso defaults:", err);
+  }
 
   const fieldsToCheck = [
     item.ticket_type?.name,
@@ -126,8 +137,19 @@ function isRelevantEscalation(payload: any): boolean {
     .join(" ")
     .toLowerCase();
 
-  const RELEVANT_KEYWORDS = ["hardware", "rma"];
-  return RELEVANT_KEYWORDS.some((kw) => fieldsToCheck.includes(kw));
+  // 1) keyword en texto/atributos
+  const keywords = (rules.keywords ?? []).map((s) => s.toLowerCase()).filter(Boolean);
+  if (keywords.some((kw) => fieldsToCheck.includes(kw))) return true;
+
+  // 2) ticket type concreto (p.ej. "Folio de atención backoffice escalado a hardware")
+  const ttName = String(item.ticket_type?.name ?? "").toLowerCase();
+  if (ttName && (rules.ticketTypes ?? []).some((t) => t && ttName.includes(t.toLowerCase()))) return true;
+
+  // 3) tag concreto
+  const tagNames: string[] = (item.tags?.tags?.map?.((t: any) => String(t.name ?? "").toLowerCase()) ?? []);
+  if ((rules.tags ?? []).some((t) => t && tagNames.includes(t.toLowerCase()))) return true;
+
+  return false;
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
@@ -166,7 +188,7 @@ export async function POST(request: NextRequest) {
 
   const topic = (payload.topic as string) ?? "";
   const { conversationId, contactName, contactEmail, subject, assigneeName } = extractData(payload);
-  const relevant = isRelevantEscalation(payload);
+  const relevant = await isRelevantEscalation(payload);
 
   console.log(
     `[Intercom Webhook] Topic: ${topic} | ID: ${conversationId} | Contact: ${contactName ?? "null"} | Subject: ${subject ?? "null"} | Relevant: ${relevant}`

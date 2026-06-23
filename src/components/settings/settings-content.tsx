@@ -15,6 +15,7 @@ import { ThemeSelector } from "./theme-selector";
 import { updateSetting } from "@/server/actions/settings";
 import { SLA_PRIORITY_LABELS, type SlaThresholds } from "@/lib/constants/sla";
 import { AlertThresholdsCard } from "./alert-thresholds-card";
+import { IntercomCaptureRulesCard } from "./intercom-capture-rules-card";
 import type { AlertThresholds } from "@/lib/constants/alerts";
 
 interface SettingsContentProps {
@@ -215,6 +216,9 @@ export function SettingsContent({
 
       {/* Umbrales de Alertas */}
       <AlertThresholdsCard initialThresholds={initialAlertThresholds} />
+
+      {/* Reglas de captura de la Bandeja Intercom */}
+      <IntercomCaptureRulesCard />
 
       {/* Plantillas de mensajes */}
       <Card>

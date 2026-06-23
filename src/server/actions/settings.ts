@@ -5,7 +5,14 @@ import { db } from "@/lib/db";
 import { appSettings } from "@/lib/db/schema";
 import { getRequiredSession } from "@/lib/auth/get-session";
 import { requireRole } from "@/lib/auth/get-session";
+import { getIntercomCaptureRules } from "@/server/queries/settings";
+import type { IntercomCaptureRules } from "@/lib/constants/intercom-capture";
 import type { ActionResult } from "@/types";
+
+export async function fetchIntercomCaptureRules(): Promise<IntercomCaptureRules> {
+  await getRequiredSession();
+  return getIntercomCaptureRules();
+}
 
 export async function updateSetting(key: string, value: unknown): Promise<ActionResult<void>> {
   await getRequiredSession();

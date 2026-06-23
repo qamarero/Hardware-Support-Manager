@@ -3,6 +3,7 @@ import { appSettings } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { DEFAULT_SLA_THRESHOLDS, type SlaThresholds } from "@/lib/constants/sla";
 import { DEFAULT_ALERT_THRESHOLDS, type AlertThresholds } from "@/lib/constants/alerts";
+import { DEFAULT_INTERCOM_CAPTURE_RULES, INTERCOM_CAPTURE_RULES_KEY, type IntercomCaptureRules } from "@/lib/constants/intercom-capture";
 
 /**
  * Retrieve a typed setting from the app_settings table.
@@ -91,6 +92,16 @@ export async function getAlertThresholds(): Promise<AlertThresholds> {
 
 export async function getDefaultPageSize(): Promise<number> {
   return getSetting("default_page_size", 10);
+}
+
+export async function getIntercomCaptureRules(): Promise<IntercomCaptureRules> {
+  const r = await getSetting<Partial<IntercomCaptureRules>>(INTERCOM_CAPTURE_RULES_KEY, DEFAULT_INTERCOM_CAPTURE_RULES);
+  // Normaliza por si el JSON guardado no trae todas las claves.
+  return {
+    keywords: r.keywords ?? DEFAULT_INTERCOM_CAPTURE_RULES.keywords,
+    ticketTypes: r.ticketTypes ?? [],
+    tags: r.tags ?? [],
+  };
 }
 
 export async function getDefaultView(): Promise<"table" | "canvas"> {
