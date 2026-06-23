@@ -22,7 +22,7 @@ function conversationIdOf(i: IncidentRow): string | null {
 }
 
 const STATUS_ORDER: IncidentStatus[] = [
-  "nuevo", "en_triaje", "en_gestion", "esperando_cliente", "esperando_proveedor", "esperando_pieza", "resuelto", "cerrado",
+  "nuevo", "en_gestion", "esperando_cliente", "esperando_proveedor", "esperando_pieza", "resuelto", "cerrado",
 ];
 
 /** Estados terminales: la incidencia ya no requiere gestión activa. */

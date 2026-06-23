@@ -21,7 +21,7 @@ export const INCIDENT_STATUS_LABELS: Record<IncidentStatus, string> = {
   en_gestion: "En curso",
   esperando_cliente: "Esperando cliente",
   esperando_proveedor: "Esperando proveedor",
-  esperando_pieza: "Esperando pieza",
+  esperando_pieza: "Esperando resolución del RMA",
   resuelto: "Resuelta",
   cerrado: "Cerrada",
   cancelado: "Cancelada",

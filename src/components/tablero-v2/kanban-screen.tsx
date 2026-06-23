@@ -16,7 +16,7 @@ import type { IncidentRow } from "@/server/queries/incidents";
 
 // Columnas del tablero (estados activos). Cerrado/cancelado quedan fuera del flujo diario.
 const COLUMNS: IncidentStatus[] = [
-  "nuevo", "en_triaje", "en_gestion", "esperando_pieza", "esperando_proveedor", "esperando_cliente", "resuelto",
+  "nuevo", "en_gestion", "esperando_pieza", "esperando_proveedor", "esperando_cliente", "resuelto",
 ];
 
 const DOT_COLOR: Record<string, string> = {

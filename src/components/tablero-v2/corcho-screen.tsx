@@ -29,7 +29,7 @@ function rotFor(id: string): number {
 }
 
 const COLUMN_ORDER: IncidentStatus[] = [
-  "nuevo", "en_triaje", "en_gestion", "esperando_pieza", "esperando_proveedor", "esperando_cliente", "resuelto", "cerrado", "cancelado",
+  "nuevo", "en_gestion", "esperando_pieza", "esperando_proveedor", "esperando_cliente", "resuelto", "cerrado", "cancelado",
 ];
 const PRIORITY_ORDER: IncidentPriority[] = ["critica", "alta", "media", "baja"];
 const CLOSED = ["resuelto", "cerrado", "cancelado"];

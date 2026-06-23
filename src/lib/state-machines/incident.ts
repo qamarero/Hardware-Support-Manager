@@ -10,19 +10,19 @@ export interface StateTransition {
 }
 
 export const INCIDENT_TRANSITIONS: StateTransition[] = [
-  // From nuevo
-  { from: "nuevo", to: "en_triaje", label: "Iniciar Triaje", requiredRole: ["admin", "technician"] },
+  // From nuevo (mostrado como "Abierta"). El triaje se da por hecho al crear
+  // la incidencia en la herramienta, así que se pasa directo a gestión.
+  { from: "nuevo", to: "en_gestion", label: "Iniciar Gestión", requiredRole: ["admin", "technician"] },
+  { from: "nuevo", to: "esperando_cliente", label: "Esperar Cliente", requiredRole: ["admin", "technician"] },
   { from: "nuevo", to: "cancelado", label: "Cancelar", requiredRole: ["admin"] },
-  // From en_triaje
-  { from: "en_triaje", to: "en_gestion", label: "Iniciar Gestión", requiredRole: ["admin", "technician"] },
-  { from: "en_triaje", to: "esperando_cliente", label: "Esperar Cliente", requiredRole: ["admin", "technician"] },
-  { from: "en_triaje", to: "cancelado", label: "Cancelar", requiredRole: ["admin"] },
-  // From en_gestion (mostrado como "En curso")
+  // From en_gestion (mostrado como "En curso"). "Derivar a RMA" NO es una
+  // transición aquí: se hace con el asistente de RMA (botón "Crear RMA"), que
+  // crea el RMA y deja la incidencia en "esperando_pieza" (esperando resolución
+  // del RMA, con el SLA en pausa).
   { from: "en_gestion", to: "esperando_cliente", label: "Esperar Cliente", requiredRole: ["admin", "technician"] },
   { from: "en_gestion", to: "esperando_proveedor", label: "Esperar Proveedor", requiredRole: ["admin", "technician"] },
-  { from: "en_gestion", to: "esperando_pieza", label: "Esperar Pieza", requiredRole: ["admin", "technician"] },
+  { from: "en_gestion", to: "esperando_pieza", label: "Esperar resolución de RMA", requiredRole: ["admin", "technician"] },
   { from: "en_gestion", to: "resuelto", label: "Marcar Resuelto", requiredRole: ["admin", "technician"] },
-  { from: "en_gestion", to: "resuelto", label: "Derivar a RMA", requiredRole: ["admin", "technician"], resolutionType: "derivado_rma" },
   { from: "en_gestion", to: "cancelado", label: "Cancelar", requiredRole: ["admin"] },
   // From esperando_cliente
   { from: "esperando_cliente", to: "en_gestion", label: "Reanudar Gestión", requiredRole: ["admin", "technician"] },
