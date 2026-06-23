@@ -16,6 +16,15 @@ import { ReminderSection } from "@/components/reminders/reminder-section";
 import { ClientContext } from "./client-context";
 import { fetchIncidentById, updateIncident, transitionIncident, fetchUsersForSelect } from "@/server/actions/incidents";
 import { fetchClientsForSelect } from "@/server/actions/clients";
+import { createReminder } from "@/server/actions/reminders";
+
+/** ISO para un recordatorio dentro de N días a las 9:00. */
+function followUpInDays(n: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  d.setHours(9, 0, 0, 0);
+  return d.toISOString();
+}
 import { getAvailableTransitions } from "@/lib/state-machines/incident";
 import { extractConversationId } from "@/lib/intercom/sync";
 import { intercomConversationUrl } from "@/lib/utils/intercom-url";
@@ -115,10 +124,31 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
 
   const transitionM = useMutation({
     mutationFn: (toStatus: string) => transitionIncident({ incidentId: incidentId!, toStatus }),
-    onSuccess: (r) => {
+    onSuccess: (r, toStatus) => {
       if (!r.success) { toast.error(r.error); return; }
-      toast.success("Estado actualizado");
       invalidate();
+      // Al pasar a un estado de espera, sugerir un recordatorio de seguimiento.
+      if (inc && (PAUSED_INCIDENT_STATES as readonly string[]).includes(toStatus)) {
+        toast.success(`Estado: ${INCIDENT_STATUS_LABELS[toStatus as IncidentStatus]}`, {
+          action: {
+            label: "Recordar seguimiento (+2d)",
+            onClick: async () => {
+              const res = await createReminder({
+                entityType: "incident",
+                entityId: inc.id,
+                title: `Seguimiento ${inc.incidentNumber}`,
+                dueAt: followUpInDays(2),
+              });
+              if (res.success) {
+                toast.success("Recordatorio creado para dentro de 2 días");
+                qc.invalidateQueries({ queryKey: ["reminders"] });
+              }
+            },
+          },
+        });
+      } else {
+        toast.success("Estado actualizado");
+      }
     },
     onError: () => toast.error("Error al cambiar estado"),
   });

@@ -10,6 +10,14 @@ import { AttachmentSection } from "@/components/shared/attachment-section";
 import { EventLogTimeline } from "@/components/shared/event-log-timeline";
 import { ManualNoteForm } from "@/components/shared/manual-note-form";
 import { ReminderSection } from "@/components/reminders/reminder-section";
+import { createReminder } from "@/server/actions/reminders";
+
+function rmaFollowUpInDays(n: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  d.setHours(9, 0, 0, 0);
+  return d.toISOString();
+}
 import { fetchRmaById, updateRma, transitionRma, fetchProvidersForSelect } from "@/server/actions/rmas";
 import { getRmaAvailableTransitions } from "@/lib/state-machines/rma";
 import { RMA_STATUS_LABELS, RMA_OUTCOME_LABELS, RMA_LOGISTICS_LABELS, RMA_REPAIR_PATH_LABELS, type RmaStatus } from "@/lib/constants/rmas";
@@ -108,10 +116,31 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
 
   const transitionM = useMutation({
     mutationFn: (toStatus: string) => transitionRma({ rmaId: rmaId!, toStatus }),
-    onSuccess: (r) => {
+    onSuccess: (r, toStatus) => {
       if (!r.success) { toast.error(r.error); return; }
-      toast.success("Estado actualizado");
       invalidate();
+      // Al enviar el equipo al proveedor, sugerir recordatorio de seguimiento.
+      if (rma && (PAUSED_RMA_STATES as readonly string[]).includes(toStatus)) {
+        toast.success(`Estado: ${RMA_STATUS_LABELS[toStatus as RmaStatus]}`, {
+          action: {
+            label: "Recordar seguimiento (+3d)",
+            onClick: async () => {
+              const res = await createReminder({
+                entityType: "rma",
+                entityId: rma.id,
+                title: `Seguir RMA ${rma.rmaNumber} (proveedor)`,
+                dueAt: rmaFollowUpInDays(3),
+              });
+              if (res.success) {
+                toast.success("Recordatorio creado para dentro de 3 días");
+                qc.invalidateQueries({ queryKey: ["reminders"] });
+              }
+            },
+          },
+        });
+      } else {
+        toast.success("Estado actualizado");
+      }
     },
     onError: () => toast.error("Error al cambiar estado"),
   });
