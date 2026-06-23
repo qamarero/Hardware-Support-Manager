@@ -7,8 +7,8 @@ import { articles } from "./articles";
 
 export const rmaStatusEnum = hsmSchema.enum("rma_status", [
   "borrador", "solicitado", "aprobado", "enviado_proveedor",
-  "en_proveedor", "devuelto", "recibido_oficina",
-  "cerrado", "cancelado",
+  "en_proveedor", "devuelto", "recibido_oficina", "entregado_cliente",
+  "rechazado", "cerrado", "cancelado",
 ]);
 
 export const rmas = hsmSchema.table("rmas", {
@@ -41,6 +41,10 @@ export const rmas = hsmSchema.table("rmas", {
   // El contador de antigüedad se congela mientras el equipo está en el proveedor.
   slaPausedMs: varchar("sla_paused_ms", { length: 50 }).default("0").notNull(),
   articleId: uuid("article_id").references(() => articles.id, { onDelete: "set null" }),
+  // Granularidad para métricas (A8): cómo acabó, logística y vía de reparación.
+  outcome: varchar("outcome", { length: 30 }), // reparado|sustituido|abono|rechazado|sin_solucion|sustitucion_directa
+  logistics: varchar("logistics", { length: 30 }), // proveedor_gestiona|nosotros_intermediamos
+  repairPath: varchar("repair_path", { length: 30 }), // interna_hwtool|proveedor
   deviceValueCents: bigint("device_value_cents", { mode: "number" }),
   repairCostCents: bigint("repair_cost_cents", { mode: "number" }),
   shippingCostCents: bigint("shipping_cost_cents", { mode: "number" }),

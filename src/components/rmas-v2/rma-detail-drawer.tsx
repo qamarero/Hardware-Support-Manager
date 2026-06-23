@@ -12,7 +12,7 @@ import { ManualNoteForm } from "@/components/shared/manual-note-form";
 import { ReminderSection } from "@/components/reminders/reminder-section";
 import { fetchRmaById, updateRma, transitionRma, fetchProvidersForSelect } from "@/server/actions/rmas";
 import { getRmaAvailableTransitions } from "@/lib/state-machines/rma";
-import { RMA_STATUS_LABELS, type RmaStatus } from "@/lib/constants/rmas";
+import { RMA_STATUS_LABELS, RMA_OUTCOME_LABELS, RMA_LOGISTICS_LABELS, RMA_REPAIR_PATH_LABELS, type RmaStatus } from "@/lib/constants/rmas";
 import { PAUSED_RMA_STATES } from "@/lib/constants/statuses";
 import { formatDateTime } from "@/lib/utils/date-format";
 
@@ -21,9 +21,9 @@ interface Props {
   onClose: () => void;
 }
 
-// Secuencia principal del flujo RMA (cancelado queda fuera del stepper).
+// Secuencia principal del flujo RMA (rechazado/cancelado quedan fuera del stepper).
 const STAGES: RmaStatus[] = [
-  "borrador", "solicitado", "aprobado", "enviado_proveedor", "en_proveedor", "devuelto", "recibido_oficina", "cerrado",
+  "borrador", "solicitado", "aprobado", "enviado_proveedor", "en_proveedor", "devuelto", "recibido_oficina", "entregado_cliente", "cerrado",
 ];
 
 export function RmaDetailDrawer({ rmaId, onClose }: Props) {
@@ -38,6 +38,7 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     providerId: "", contactName: "", deviceBrand: "", deviceModel: "", deviceSerialNumber: "", deviceType: "",
+    outcome: "", logistics: "", repairPath: "",
   });
 
   const { data: rma, isLoading } = useQuery({
@@ -69,6 +70,9 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
       deviceModel: rma.deviceModel ?? "",
       deviceSerialNumber: rma.deviceSerialNumber ?? "",
       deviceType: rma.deviceType ?? "",
+      outcome: rma.outcome ?? "",
+      logistics: rma.logistics ?? "",
+      repairPath: rma.repairPath ?? "",
     });
     setEditing(true);
   }
@@ -82,6 +86,9 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
         deviceModel: form.deviceModel,
         deviceSerialNumber: form.deviceSerialNumber,
         deviceType: form.deviceType,
+        outcome: form.outcome,
+        logistics: form.logistics,
+        repairPath: form.repairPath,
       },
       { onSuccess: (r) => { if (r.success) setEditing(false); } }
     );
@@ -251,6 +258,26 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
                   <Field label="Tipo de equipo">
                     <input className="input" placeholder="Ej. TPV, impresora, tablet…" value={form.deviceType} onChange={(e) => setForm({ ...form, deviceType: e.target.value })} />
                   </Field>
+                  <div className="row row--3">
+                    <Field label="Logística">
+                      <select className="select" value={form.logistics} onChange={(e) => setForm({ ...form, logistics: e.target.value })}>
+                        <option value="">—</option>
+                        {Object.entries(RMA_LOGISTICS_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="Vía de reparación">
+                      <select className="select" value={form.repairPath} onChange={(e) => setForm({ ...form, repairPath: e.target.value })}>
+                        <option value="">—</option>
+                        {Object.entries(RMA_REPAIR_PATH_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="Resultado">
+                      <select className="select" value={form.outcome} onChange={(e) => setForm({ ...form, outcome: e.target.value })}>
+                        <option value="">—</option>
+                        {Object.entries(RMA_OUTCOME_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                      </select>
+                    </Field>
+                  </div>
                 </div>
               ) : (
                 <>
@@ -268,6 +295,9 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
                     <dt>Proveedor</dt><dd>{rma.providerName ?? "—"}</dd>
                     <dt>Cliente</dt><dd>{rma.clientCompanyName ?? rma.clientName ?? "—"}</dd>
                     <dt>Persona de contacto</dt><dd>{rma.contactName ?? "—"}</dd>
+                    {rma.logistics && (<><dt>Logística</dt><dd>{RMA_LOGISTICS_LABELS[rma.logistics as keyof typeof RMA_LOGISTICS_LABELS] ?? rma.logistics}</dd></>)}
+                    {rma.repairPath && (<><dt>Vía de reparación</dt><dd>{RMA_REPAIR_PATH_LABELS[rma.repairPath as keyof typeof RMA_REPAIR_PATH_LABELS] ?? rma.repairPath}</dd></>)}
+                    {rma.outcome && (<><dt>Resultado</dt><dd>{RMA_OUTCOME_LABELS[rma.outcome as keyof typeof RMA_OUTCOME_LABELS] ?? rma.outcome}</dd></>)}
                     <dt>Abierto</dt><dd>{formatDateTime(rma.createdAt)}</dd>
                     <dt>Última actualización</dt><dd>{formatDateTime(rma.updatedAt)}</dd>
                   </dl>

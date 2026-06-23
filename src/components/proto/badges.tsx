@@ -25,7 +25,9 @@ const RMA_BADGE: Record<string, string> = {
   enviado_proveedor: "badge--amber",
   en_proveedor: "badge--amber",
   devuelto: "badge--purple",
-  recibido_oficina: "badge--green",
+  recibido_oficina: "badge--blue",
+  entregado_cliente: "badge--green",
+  rechazado: "badge--red",
   cerrado: "badge--gray",
   cancelado: "badge--gray",
 };

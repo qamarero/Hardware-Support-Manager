@@ -21,9 +21,10 @@ export const OPEN_INCIDENT_STATUSES = [
 ] as const;
 
 /** RMA statuses that represent a closed/finished lifecycle.
- *  Note: `recibido_oficina` counts as closed because the device is already
- *  back from the provider — the RMA workflow is effectively done. */
-export const CLOSED_RMA_STATUSES = ["recibido_oficina", "cerrado", "cancelado"] as const;
+ *  El equipo ya volvió al cliente (entregado), se cerró, se canceló o el
+ *  proveedor lo rechazó. `recibido_oficina` YA NO es terminal: ahora es un
+ *  paso intermedio (recibido en oficina, pendiente de entregar al cliente). */
+export const CLOSED_RMA_STATUSES = ["entregado_cliente", "rechazado", "cerrado", "cancelado"] as const;
 
 /** RMA statuses considered "active" — the inverse of CLOSED_RMA_STATUSES. */
 export const OPEN_RMA_STATUSES = [
@@ -33,6 +34,7 @@ export const OPEN_RMA_STATUSES = [
   "enviado_proveedor",
   "en_proveedor",
   "devuelto",
+  "recibido_oficina",
 ] as const;
 
 /** Incident statuses where the SLA clock is paused (waiting on external party). */

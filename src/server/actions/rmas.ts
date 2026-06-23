@@ -138,6 +138,14 @@ export async function updateRma(
     values.providerRmaNumber = parsed.data.providerRmaNumber || null;
   if (parsed.data.notes !== undefined)
     values.notes = parsed.data.notes || null;
+  if (parsed.data.articleId !== undefined)
+    values.articleId = parsed.data.articleId || null;
+  if (parsed.data.outcome !== undefined)
+    values.outcome = parsed.data.outcome || null;
+  if (parsed.data.logistics !== undefined)
+    values.logistics = parsed.data.logistics || null;
+  if (parsed.data.repairPath !== undefined)
+    values.repairPath = parsed.data.repairPath || null;
 
   // Auto-fill clientName from client record if clientId changed
   if (values.clientId) {
@@ -253,6 +261,31 @@ export async function transitionRma(
 
   if (!result.success) {
     return { success: false, error: result.error };
+  }
+
+  // Auto-cierre de la incidencia vinculada: cuando el RMA se entrega al cliente
+  // o se cierra, la incidencia (que estaba en "esperando_pieza") se marca como
+  // resuelta. Se hace en contexto de request (la sesión sigue disponible) vía
+  // transitionIncident para que la pausa de SLA y la nota a Intercom cuadren.
+  if (toStatus === "entregado_cliente" || toStatus === "cerrado") {
+    try {
+      const [link] = await db
+        .select({ incidentId: rmas.incidentId, rmaNumber: rmas.rmaNumber, incStatus: incidents.status })
+        .from(rmas)
+        .leftJoin(incidents, eq(rmas.incidentId, incidents.id))
+        .where(eq(rmas.id, rmaId))
+        .limit(1);
+      if (link?.incidentId && link.incStatus && !["resuelto", "cerrado", "cancelado"].includes(link.incStatus)) {
+        const { transitionIncident } = await import("@/server/actions/incidents");
+        await transitionIncident({
+          incidentId: link.incidentId,
+          toStatus: "resuelto",
+          comment: `Resuelta automáticamente al ${toStatus === "cerrado" ? "cerrar" : "entregar"} el RMA ${link.rmaNumber}.`,
+        });
+      }
+    } catch (err) {
+      console.error("[RMA] auto-cierre de incidencia falló:", err);
+    }
   }
 
   // Sync note to Intercom after response using the linked incident's

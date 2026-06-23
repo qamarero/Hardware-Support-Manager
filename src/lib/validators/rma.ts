@@ -21,6 +21,10 @@ const rmaBaseFields = {
   trackingNumberReturn: z.string().max(255).optional().or(z.literal("")),
   providerRmaNumber: z.string().max(255).optional().or(z.literal("")),
   notes: z.string().optional().or(z.literal("")),
+  // Granularidad para métricas (A8).
+  outcome: z.enum(["reparado", "sustituido", "abono", "rechazado", "sin_solucion", "sustitucion_directa"]).optional().or(z.literal("")),
+  logistics: z.enum(["proveedor_gestiona", "nosotros_intermediamos"]).optional().or(z.literal("")),
+  repairPath: z.enum(["interna_hwtool", "proveedor"]).optional().or(z.literal("")),
 };
 
 export const createRmaSchema = z.object(rmaBaseFields);
@@ -36,8 +40,8 @@ export const transitionRmaSchema = z.object({
   rmaId: z.string().uuid(),
   toStatus: z.enum([
     "borrador", "solicitado", "aprobado", "enviado_proveedor",
-    "en_proveedor", "devuelto", "recibido_oficina",
-    "cerrado", "cancelado",
+    "en_proveedor", "devuelto", "recibido_oficina", "entregado_cliente",
+    "rechazado", "cerrado", "cancelado",
   ]),
   comment: z.string().optional(),
 });
