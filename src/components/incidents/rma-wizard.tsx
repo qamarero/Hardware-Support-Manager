@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ArticleCombobox } from "@/components/proto/article-combobox";
 import { fetchProvidersForSelect, createRma } from "@/server/actions/rmas";
 import { transitionIncident } from "@/server/actions/incidents";
 import type { RmaFormInput } from "@/lib/validators/rma";
@@ -65,6 +66,8 @@ export function RmaWizard({ open, onOpenChange, incident }: RmaWizardProps) {
   const [step, setStep] = useState(1);
 
   const [providerId, setProviderId] = useState("");
+  const [articleId, setArticleId] = useState(incident.articleId ?? "");
+  const [deviceType, setDeviceType] = useState(incident.deviceType ?? "");
   const [deviceBrand, setDeviceBrand] = useState(incident.deviceBrand ?? "");
   const [deviceModel, setDeviceModel] = useState(incident.deviceModel ?? "");
   const [deviceSerial, setDeviceSerial] = useState(incident.deviceSerialNumber ?? "");
@@ -105,8 +108,8 @@ export function RmaWizard({ open, onOpenChange, incident }: RmaWizardProps) {
         clientId: incident.clientId ?? "",
         clientName: incident.clientCompanyName ?? incident.clientName ?? "",
         clientIntercomUrl: incident.intercomUrl ?? "",
-        articleId: incident.articleId ?? "",
-        deviceType: incident.deviceType ?? "",
+        articleId,
+        deviceType,
         deviceBrand,
         deviceModel,
         deviceSerialNumber: deviceSerial,
@@ -217,9 +220,20 @@ export function RmaWizard({ open, onOpenChange, incident }: RmaWizardProps) {
                   </Select>
                 )}
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2"><Label>Marca</Label><Input value={deviceBrand} onChange={(e) => setDeviceBrand(e.target.value)} /></div>
-                <div className="space-y-2"><Label>Modelo</Label><Input value={deviceModel} onChange={(e) => setDeviceModel(e.target.value)} /></div>
+              <div className="space-y-2">
+                <Label>Equipo (catálogo)</Label>
+                <ArticleCombobox
+                  value={articleId}
+                  onSelect={(a) => {
+                    setArticleId(a?.id ?? "");
+                    setDeviceType(a?.deviceType ?? "");
+                    setDeviceBrand(a?.brand ?? "");
+                    setDeviceModel(a?.model ?? "");
+                  }}
+                />
+                {(deviceBrand || deviceModel) && (
+                  <p className="text-xs text-muted-foreground">{[deviceBrand, deviceModel].filter(Boolean).join(" ")}</p>
+                )}
               </div>
               <div className="space-y-2"><Label>Nº de serie</Label><Input value={deviceSerial} onChange={(e) => setDeviceSerial(e.target.value)} /></div>
             </div>
