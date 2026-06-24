@@ -35,6 +35,7 @@ export function ReminderSection({ entityType, entityId, defaultTitle }: Props) {
   const [title, setTitle] = useState("");
   const [note, setNote] = useState("");
   const [due, setDue] = useState<Date>(() => presetDate("manana"));
+  const [recurrence, setRecurrence] = useState("none");
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["reminders", "entity", entityType, entityId],
@@ -54,11 +55,12 @@ export function ReminderSection({ entityType, entityId, defaultTitle }: Props) {
         dueAt: due.toISOString(),
         entityType,
         entityId,
+        recurrence,
       }),
     onSuccess: (r) => {
       if (!r.success) { toast.error(r.error); return; }
       toast.success("Recordatorio creado");
-      setAdding(false); setTitle(""); setNote(""); setDue(presetDate("manana"));
+      setAdding(false); setTitle(""); setNote(""); setDue(presetDate("manana")); setRecurrence("none");
       invalidate();
     },
     onError: () => toast.error("Error al crear el recordatorio"),
@@ -123,9 +125,19 @@ export function ReminderSection({ entityType, entityId, defaultTitle }: Props) {
               </div>
               <div className="text-xs muted" style={{ marginTop: 6 }}>Programado: {formatDateTime(due)}</div>
             </div>
-            <Field label="Nota (opcional)">
-              <input className="input" value={note} onChange={(e) => setNote(e.target.value)} />
-            </Field>
+            <div className="row row--2">
+              <Field label="Nota (opcional)">
+                <input className="input" value={note} onChange={(e) => setNote(e.target.value)} />
+              </Field>
+              <Field label="Repetir">
+                <select className="select" value={recurrence} onChange={(e) => setRecurrence(e.target.value)}>
+                  <option value="none">No repetir</option>
+                  <option value="daily">Cada día</option>
+                  <option value="weekly">Cada semana</option>
+                  <option value="monthly">Cada mes</option>
+                </select>
+              </Field>
+            </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <button className="btn btn--ghost btn--sm" onClick={() => setAdding(false)}>Cancelar</button>
               <button className="btn btn--primary btn--sm" onClick={() => createM.mutate()} disabled={createM.isPending}>

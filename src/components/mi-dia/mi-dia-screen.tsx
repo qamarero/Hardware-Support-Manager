@@ -6,8 +6,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { Bell, Check, Clock, Loader2, Plus, Inbox, AlertTriangle, ArrowRight, CalendarClock } from "lucide-react";
-import { fetchIncidents } from "@/server/actions/incidents";
-import { fetchReminders, completeReminder, snoozeReminder, createReminder } from "@/server/actions/reminders";
+import { fetchIncidents, fetchUsersForSelect } from "@/server/actions/incidents";
+import { fetchReminders, completeReminder, snoozeReminder, createReminder, reassignReminder } from "@/server/actions/reminders";
 import { IncidentStatusBadge, PriorityPill, SlaBar, slaProgress } from "@/components/proto/badges";
 import { useAlertBadges } from "@/components/layout/sidebar-badges";
 import { IncidentDetailDrawer } from "@/components/incidents-v2/incident-detail-drawer";
@@ -42,6 +42,10 @@ export function MiDiaScreen() {
     queryKey: ["incidents", "mine", meId],
     queryFn: () => fetchIncidents({ page: 1, pageSize: 500, sortBy: "updatedAt", sortOrder: "desc", filters: { assignedUserId: [meId!] } }),
     enabled: !!meId,
+  });
+  const { data: users = [] } = useQuery({
+    queryKey: ["users", "select"],
+    queryFn: () => fetchUsersForSelect(),
   });
 
   const myIncidents: IncidentRow[] = useMemo(() => incData?.data ?? [], [incData]);
@@ -92,6 +96,11 @@ export function MiDiaScreen() {
     mutationFn: ({ id, dueAt }: { id: string; dueAt: string }) => snoozeReminder({ id, dueAt }),
     onSuccess: (r) => { if (!r.success) { toast.error(r.error); return; } toast.success("Recordatorio pospuesto"); invalidate(); },
   });
+  const reassignM = useMutation({
+    mutationFn: ({ id, userId }: { id: string; userId: string }) => reassignReminder({ id, userId }),
+    onSuccess: (r) => { if (!r.success) { toast.error(r.error); return; } toast.success("Recordatorio delegado"); invalidate(); },
+    onError: () => toast.error("Error al delegar"),
+  });
 
   function openReminderEntity(r: ReminderRow) {
     if (r.entityType === "incident" && r.entityId) setIncidentId(r.entityId);
@@ -139,11 +148,11 @@ export function MiDiaScreen() {
               <div className="muted text-sm" style={{ padding: "4px 2px" }}>Sin recordatorios. Crea uno o ponlos desde una ficha.</div>
             )}
             {vencidos.length > 0 && <SubLabel text="Vencidos" tone="bad" />}
-            {vencidos.map((r) => <ReminderRowView key={r.id} r={r} overdue onComplete={() => completeM.mutate(r)} onSnooze={(dueAt) => snoozeM.mutate({ id: r.id, dueAt })} onOpen={() => openReminderEntity(r)} />)}
+            {vencidos.map((r) => <ReminderRowView key={r.id} r={r} overdue onComplete={() => completeM.mutate(r)} onSnooze={(dueAt) => snoozeM.mutate({ id: r.id, dueAt })} onReassign={(userId) => reassignM.mutate({ id: r.id, userId })} users={users} onOpen={() => openReminderEntity(r)} />)}
             {hoy.length > 0 && <SubLabel text="Hoy" tone="warn" />}
-            {hoy.map((r) => <ReminderRowView key={r.id} r={r} onComplete={() => completeM.mutate(r)} onSnooze={(dueAt) => snoozeM.mutate({ id: r.id, dueAt })} onOpen={() => openReminderEntity(r)} />)}
+            {hoy.map((r) => <ReminderRowView key={r.id} r={r} onComplete={() => completeM.mutate(r)} onSnooze={(dueAt) => snoozeM.mutate({ id: r.id, dueAt })} onReassign={(userId) => reassignM.mutate({ id: r.id, userId })} users={users} onOpen={() => openReminderEntity(r)} />)}
             {proximos.length > 0 && <SubLabel text="Próximos" tone="muted" />}
-            {proximos.map((r) => <ReminderRowView key={r.id} r={r} onComplete={() => completeM.mutate(r)} onSnooze={(dueAt) => snoozeM.mutate({ id: r.id, dueAt })} onOpen={() => openReminderEntity(r)} />)}
+            {proximos.map((r) => <ReminderRowView key={r.id} r={r} onComplete={() => completeM.mutate(r)} onSnooze={(dueAt) => snoozeM.mutate({ id: r.id, dueAt })} onReassign={(userId) => reassignM.mutate({ id: r.id, userId })} users={users} onOpen={() => openReminderEntity(r)} />)}
           </Section>
 
           {/* SLA en riesgo */}
@@ -237,7 +246,7 @@ function SubLabel({ text, tone }: { text: string; tone: "bad" | "warn" | "muted"
   return <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color, marginTop: 4 }}>{text}</div>;
 }
 
-function ReminderRowView({ r, overdue, onComplete, onSnooze, onOpen }: { r: ReminderRow; overdue?: boolean; onComplete: () => void; onSnooze: (dueAt: string) => void; onOpen: () => void }) {
+function ReminderRowView({ r, overdue, onComplete, onSnooze, onReassign, users, onOpen }: { r: ReminderRow; overdue?: boolean; onComplete: () => void; onSnooze: (dueAt: string) => void; onReassign: (userId: string) => void; users: { id: string; name: string }[]; onOpen: () => void }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: "var(--gray-50)", borderRadius: 10 }}>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -250,6 +259,18 @@ function ReminderRowView({ r, overdue, onComplete, onSnooze, onOpen }: { r: Remi
           {r.note && <span>· {r.note}</span>}
         </div>
       </div>
+      {users.length > 0 && (
+        <select
+          className="select"
+          style={{ width: "auto", fontSize: 12, padding: "4px 6px" }}
+          value=""
+          onChange={(e) => { if (e.target.value) onReassign(e.target.value); }}
+          title="Delegar a otro técnico"
+        >
+          <option value="">Delegar…</option>
+          {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+        </select>
+      )}
       <SnoozeControl onSnooze={onSnooze} />
       <button className="btn btn--ghost btn--sm" title="Marcar hecho" onClick={onComplete}><Check size={14} /></button>
     </div>
@@ -275,12 +296,13 @@ function IncidentRowView({ i, onOpen, suffix }: { i: IncidentRow; onOpen: () => 
 function StandaloneReminderForm({ onDone }: { onDone: () => void }) {
   const [title, setTitle] = useState("");
   const [note, setNote] = useState("");
+  const [recurrence, setRecurrence] = useState("none");
   const [due, setDue] = useState<Date>(() => { const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(9, 0, 0, 0); return d; });
 
   function toLocal(d: Date) { const p = (n: number) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; }
 
   const createM = useMutation({
-    mutationFn: () => createReminder({ title: title.trim() || "Recordatorio", note, dueAt: due.toISOString() }),
+    mutationFn: () => createReminder({ title: title.trim() || "Recordatorio", note, dueAt: due.toISOString(), recurrence }),
     onSuccess: (r) => { if (!r.success) { toast.error(r.error); return; } toast.success("Recordatorio creado"); onDone(); },
     onError: () => toast.error("Error al crear el recordatorio"),
   });
@@ -291,6 +313,12 @@ function StandaloneReminderForm({ onDone }: { onDone: () => void }) {
         <input className="input" placeholder="Ej. Llamar al proveedor X" value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <input className="input" type="datetime-local" style={{ width: "auto" }} value={toLocal(due)} onChange={(e) => { if (e.target.value) setDue(new Date(e.target.value)); }} />
+          <select className="select" style={{ width: "auto" }} value={recurrence} onChange={(e) => setRecurrence(e.target.value)} title="Repetir">
+            <option value="none">No repetir</option>
+            <option value="daily">Cada día</option>
+            <option value="weekly">Cada semana</option>
+            <option value="monthly">Cada mes</option>
+          </select>
           <input className="input" placeholder="Nota (opcional)" style={{ flex: 1, minWidth: 160 }} value={note} onChange={(e) => setNote(e.target.value)} />
           <button className="btn btn--primary btn--sm" onClick={() => createM.mutate()} disabled={createM.isPending}>
             {createM.isPending ? <Loader2 size={14} className="animate-spin" /> : <Bell size={14} />} Crear

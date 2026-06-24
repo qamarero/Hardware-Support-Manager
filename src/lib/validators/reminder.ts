@@ -8,6 +8,12 @@ export const createReminderSchema = z.object({
   entityId: z.string().uuid().optional(),
   // Dueño; si no se pasa, se asigna al usuario de la sesión.
   userId: z.string().uuid().optional(),
+  recurrence: z.enum(["none", "daily", "weekly", "monthly"]).optional(),
+});
+
+export const reassignReminderSchema = z.object({
+  id: z.string().uuid(),
+  userId: z.string().uuid(),
 });
 
 export const snoozeReminderSchema = z.object({

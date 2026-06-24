@@ -36,6 +36,9 @@ export const reminders = hsmSchema.table(
     title: varchar("title", { length: 500 }).notNull(),
     note: text("note"),
     dueAt: timestamp("due_at", { withTimezone: true }).notNull(),
+    // Recurrencia: none | daily | weekly | monthly. Al completar uno recurrente
+    // se genera la siguiente ocurrencia.
+    recurrence: varchar("recurrence", { length: 20 }).default("none").notNull(),
 
     status: reminderStatusEnum("status").notNull().default("pendiente"),
     completedAt: timestamp("completed_at", { withTimezone: true }),
