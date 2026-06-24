@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ExternalLink, Loader2, CheckCircle, X, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ import { Separator } from "@/components/ui/separator";
 import { SearchableSelect } from "@/components/shared/searchable-select";
 import { InboxStatusBadge } from "./inbox-status-badge";
 import { ConversationThread } from "./conversation-thread";
-import { convertToIncident, dismissInboxItem } from "@/server/actions/intercom-inbox";
+import { convertToIncident, dismissInboxItem, recoverDiscardedInboxItem } from "@/server/actions/intercom-inbox";
 import { fetchClientsForSelect, fetchClientByExternalId } from "@/server/actions/clients";
 import {
   INCIDENT_CATEGORY_LABELS,
@@ -257,11 +257,22 @@ export function ConversationDetail({ item, onConvert, onDismiss }: ConversationD
     onError: () => toast.error("Error al crear incidencia"),
   });
 
+  const qc = useQueryClient();
+
   const dismissMutation = useMutation({
     mutationFn: () => dismissInboxItem({ inboxItemId: item.id }),
     onSuccess: (result) => {
       if (result.success) {
-        toast.success("Conversación descartada");
+        toast.success("Conversación descartada", {
+          action: {
+            label: "Deshacer",
+            onClick: async () => {
+              await recoverDiscardedInboxItem(item.id);
+              qc.invalidateQueries({ queryKey: ["intercom-inbox"] });
+              toast.success("Descarte deshecho");
+            },
+          },
+        });
         onDismiss();
       } else {
         toast.error(result.error);
@@ -294,11 +305,29 @@ export function ConversationDetail({ item, onConvert, onDismiss }: ConversationD
             </span>
           </div>
         </div>
-        <Button variant="ghost" size="sm" asChild>
-          <a href={intercomUrl} target="_blank" rel="noopener noreferrer">
-            Ver en Intercom <ExternalLink className="ml-1 h-3 w-3" />
-          </a>
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          {isPending && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              onClick={() => dismissMutation.mutate()}
+              disabled={dismissMutation.isPending}
+            >
+              {dismissMutation.isPending ? (
+                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+              ) : (
+                <X className="mr-1 h-3 w-3" />
+              )}
+              Descartar
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" asChild>
+            <a href={intercomUrl} target="_blank" rel="noopener noreferrer">
+              Ver en Intercom <ExternalLink className="ml-1 h-3 w-3" />
+            </a>
+          </Button>
+        </div>
       </div>
 
       {/* Converted link */}
