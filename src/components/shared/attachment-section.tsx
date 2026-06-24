@@ -52,6 +52,7 @@ export function AttachmentSection({
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [dragging, setDragging] = useState(false);
 
   const { data: attachments = [], isLoading } = useQuery({
     queryKey: ["attachments", entityType, entityId],
@@ -76,65 +77,78 @@ export function AttachmentSection({
     onError: () => toast.error("Error al eliminar el adjunto"),
   });
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Sube uno o varios archivos en secuencia (input múltiple, drag&drop o pegar).
+  const handleFiles = async (fileList: FileList | File[] | null) => {
+    const files = fileList ? Array.from(fileList) : [];
+    if (files.length === 0) return;
 
-    // Validación cliente antes de subir — feedback inmediato sin round-trip.
-    if (file.size > MAX_FILE_SIZE) {
-      const limitMb = Math.round(MAX_FILE_SIZE / (1024 * 1024));
-      toast.error(`El archivo excede el tamaño máximo permitido (${limitMb} MB)`);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      return;
-    }
-    if (!(ALLOWED_FILE_TYPES as readonly string[]).includes(file.type)) {
-      toast.error(`Tipo de archivo no permitido (${file.type || "desconocido"})`);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      return;
-    }
-
+    const limitMb = Math.round(MAX_FILE_SIZE / (1024 * 1024));
     setIsUploading(true);
+    let ok = 0;
     try {
-      // Upload directo navegador → Vercel Blob (bypass del límite 4.5 MB de
-      // serverless functions). El endpoint /api/upload/sign firma el token.
-      const blob = await upload(`attachments/${file.name}`, file, {
-        access: "public",
-        handleUploadUrl: "/api/upload/sign",
-        contentType: file.type || undefined,
-      });
-
-      const result = await createAttachment({
-        entityType,
-        entityId,
-        fileName: file.name,
-        fileUrl: blob.url,
-        fileSize: file.size,
-        fileType: file.type,
-      });
-
-      if (result.success) {
-        toast.success("Adjunto subido correctamente");
-        queryClient.invalidateQueries({
-          queryKey: ["attachments", entityType, entityId],
-        });
-        queryClient.invalidateQueries({
-          queryKey: ["event-logs", entityType, entityId],
-        });
-      } else {
-        toast.error(result.error);
+      for (const file of files) {
+        if (file.size > MAX_FILE_SIZE) {
+          toast.error(`${file.name}: excede ${limitMb} MB`);
+          continue;
+        }
+        if (!(ALLOWED_FILE_TYPES as readonly string[]).includes(file.type)) {
+          toast.error(`${file.name}: tipo no permitido (${file.type || "desconocido"})`);
+          continue;
+        }
+        try {
+          // Upload directo navegador → Vercel Blob (bypass del límite 4.5 MB).
+          // Prefijo con timestamp para evitar colisiones al subir varios.
+          const blob = await upload(`attachments/${Date.now()}-${file.name}`, file, {
+            access: "public",
+            handleUploadUrl: "/api/upload/sign",
+            contentType: file.type || undefined,
+          });
+          const result = await createAttachment({
+            entityType,
+            entityId,
+            fileName: file.name,
+            fileUrl: blob.url,
+            fileSize: file.size,
+            fileType: file.type,
+          });
+          if (result.success) ok++;
+          else toast.error(result.error);
+        } catch (err) {
+          console.error("[attachment-section] Error al subir:", err);
+          toast.error(`${file.name}: error al subir`);
+        }
       }
-    } catch (err) {
-      console.error("[attachment-section] Error al subir:", err);
-      const message = err instanceof Error ? err.message : "Error al subir el archivo";
-      toast.error(message);
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+
+    if (ok > 0) {
+      toast.success(ok === 1 ? "Adjunto subido" : `${ok} adjuntos subidos`);
+      queryClient.invalidateQueries({ queryKey: ["attachments", entityType, entityId] });
+      queryClient.invalidateQueries({ queryKey: ["event-logs", entityType, entityId] });
+    }
+  };
+
+  const onPaste = (e: React.ClipboardEvent) => {
+    const files = Array.from(e.clipboardData?.items ?? [])
+      .filter((it) => it.kind === "file")
+      .map((it) => it.getAsFile())
+      .filter((f): f is File => !!f);
+    if (files.length) {
+      e.preventDefault();
+      handleFiles(files);
+    }
   };
 
   return (
-    <Card>
+    <Card
+      onPaste={onPaste}
+      onDragOver={(e) => { e.preventDefault(); if (!dragging) setDragging(true); }}
+      onDragLeave={(e) => { e.preventDefault(); setDragging(false); }}
+      onDrop={(e) => { e.preventDefault(); setDragging(false); handleFiles(e.dataTransfer.files); }}
+      className={dragging ? "ring-2 ring-primary" : undefined}
+    >
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-lg flex items-center gap-2">
           <Paperclip className="h-4 w-4" />
@@ -144,8 +158,9 @@ export function AttachmentSection({
           <input
             ref={fileInputRef}
             type="file"
+            multiple
             className="hidden"
-            onChange={handleUpload}
+            onChange={(e) => handleFiles(e.target.files)}
           />
           <Button
             variant="outline"
@@ -158,7 +173,7 @@ export function AttachmentSection({
             ) : (
               <Upload className="h-4 w-4 mr-1" />
             )}
-            Subir archivo
+            Subir archivos
           </Button>
         </div>
       </CardHeader>
@@ -169,7 +184,7 @@ export function AttachmentSection({
           </div>
         ) : attachments.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">
-            Sin adjuntos
+            Sin adjuntos · arrastra archivos aquí o pega una captura (Ctrl+V)
           </p>
         ) : (
           <ul className="divide-y">
@@ -202,7 +217,7 @@ export function AttachmentSection({
                     variant="ghost"
                     size="icon"
                     className="shrink-0"
-                    onClick={() => deleteMutation.mutate(att.id)}
+                    onClick={() => { if (window.confirm(`¿Eliminar "${att.fileName}"? Esta acción no se puede deshacer.`)) deleteMutation.mutate(att.id); }}
                     disabled={deleteMutation.isPending}
                   >
                     <Trash2 className="h-4 w-4 text-destructive" />
