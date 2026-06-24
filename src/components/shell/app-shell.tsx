@@ -25,7 +25,7 @@ import { GlobalSearch } from "@/components/shell/global-search";
 import { NotificationsBell } from "@/components/shell/notifications-bell";
 import { useAlertBadges } from "@/components/layout/sidebar-badges";
 
-type BadgeKey = "incidents" | "rmas" | "intercom";
+type BadgeKey = "incidents" | "rmas" | "intercom" | "submissions";
 
 interface NavItem {
   href: string;
@@ -52,7 +52,7 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
     title: "Bandejas",
     items: [
       { href: "/intercom", label: "Bandeja Intercom", icon: Inbox, badge: "intercom" },
-      { href: "/submissions", label: "Bandeja Soporte", icon: ClipboardList },
+      { href: "/submissions", label: "Bandeja Soporte", icon: ClipboardList, badge: "submissions" },
     ],
   },
   {
@@ -101,6 +101,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (!badges) return 0;
     if (key === "incidents") return badges.incidents;
     if (key === "rmas") return badges.rmas + badges.warehouse;
+    if (key === "submissions") return badges.submissions;
     return badges.intercom;
   }
 
@@ -134,7 +135,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   >
                     <Icon size={16} /> {it.label}
                     {count > 0 && (
-                      <span className={`nav-item__count ${it.badge !== "intercom" ? "nav-item__count--alert" : ""}`}>
+                      <span className={`nav-item__count ${it.badge !== "intercom" && it.badge !== "submissions" ? "nav-item__count--alert" : ""}`}>
                         {count > 99 ? "99+" : count}
                       </span>
                     )}

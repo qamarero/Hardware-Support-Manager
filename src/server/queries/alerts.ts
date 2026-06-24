@@ -43,6 +43,7 @@ export interface AlertBadgeCounts {
   rmas: number;
   warehouse: number;
   intercom: number;
+  submissions: number;
   total: number;
 }
 
@@ -237,6 +238,7 @@ export async function getAlertCounts(): Promise<AlertBadgeCounts> {
     rmas: 0,
     warehouse: 0,
     intercom: 0,
+    submissions: 0,
     total: 0,
   };
 
@@ -275,7 +277,10 @@ export async function getAlertCounts(): Promise<AlertBadgeCounts> {
         ) AS sla_count,
         (SELECT count(*) FROM hsm.intercom_inbox
          WHERE status = 'pendiente'
-        ) AS intercom_count
+        ) AS intercom_count,
+        (SELECT count(*) FROM hsm.support_submissions
+         WHERE status = 'pendiente'
+        ) AS submissions_count
     `);
 
     const row = result[0] as Record<string, string> | undefined;
@@ -286,6 +291,7 @@ export async function getAlertCounts(): Promise<AlertBadgeCounts> {
     const stuckCount = Number(row.stuck_count) || 0;
     const warehouseCount = Number(row.warehouse_count) || 0;
     const intercomCount = Number(row.intercom_count) || 0;
+    const submissionsCount = Number(row.submissions_count) || 0;
     const incidentCount = staleCount + slaCount;
 
     return {
@@ -293,7 +299,8 @@ export async function getAlertCounts(): Promise<AlertBadgeCounts> {
       rmas: stuckCount,
       warehouse: warehouseCount,
       intercom: intercomCount,
-      total: incidentCount + stuckCount + warehouseCount + intercomCount,
+      submissions: submissionsCount,
+      total: incidentCount + stuckCount + warehouseCount + intercomCount + submissionsCount,
     };
   } catch {
     return defaults;
