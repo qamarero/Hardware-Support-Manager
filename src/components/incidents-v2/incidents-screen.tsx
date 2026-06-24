@@ -58,6 +58,32 @@ export function IncidentsScreen() {
     onError: () => toast.error("Error al cambiar prioridad"),
   });
 
+  // Selección múltiple + acciones masivas.
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const toggleSel = (id: string) =>
+    setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const clearSel = () => setSelected(new Set());
+
+  const bulkAssignM = useMutation({
+    mutationFn: async (userId: string) => {
+      const ids = [...selected];
+      for (const id of ids) await quickAssignIncident(id, userId || null);
+      return ids.length;
+    },
+    onSuccess: (n) => { toast.success(`${n} incidencia(s) reasignada(s)`); clearSel(); refreshList(); },
+    onError: () => toast.error("Error en la asignación masiva"),
+  });
+  const bulkPriorityM = useMutation({
+    mutationFn: async (priority: string) => {
+      const ids = [...selected];
+      for (const id of ids) await updateIncident(id, { priority });
+      return ids.length;
+    },
+    onSuccess: (n) => { toast.success(`${n} incidencia(s) actualizada(s)`); clearSel(); refreshList(); },
+    onError: () => toast.error("Error al cambiar prioridad"),
+  });
+  const bulkBusy = bulkAssignM.isPending || bulkPriorityM.isPending;
+
   // Traemos un lote grande y filtramos/ordenamos en cliente (herramienta interna).
   const { data, isLoading } = useQuery({
     queryKey: ["incidents-v2"],
@@ -111,6 +137,10 @@ export function IncidentsScreen() {
     [filtered, status]
   );
   const showDivider = firstClosedIdx > 0; // hay al menos una abierta encima
+
+  const allVisibleIds = useMemo(() => filtered.map((i) => i.id), [filtered]);
+  const allSelected = allVisibleIds.length > 0 && allVisibleIds.every((id) => selected.has(id));
+  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(allVisibleIds));
 
   return (
     <div className="stack">
@@ -167,6 +197,30 @@ export function IncidentsScreen() {
         ))}
       </div>
 
+      {/* Barra de acciones masivas */}
+      {selected.size > 0 && (
+        <div className="card" style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <span className="fw-700 text-sm">{selected.size} seleccionada{selected.size !== 1 ? "s" : ""}</span>
+          <select className="select" style={{ width: "auto" }} value="" disabled={bulkBusy}
+            onChange={(e) => { if (e.target.value) bulkAssignM.mutate(e.target.value === "__none__" ? "" : e.target.value); }}>
+            <option value="">Asignar a…</option>
+            <option value="__none__">Sin asignar</option>
+            {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </select>
+          <select className="select" style={{ width: "auto" }} value="" disabled={bulkBusy}
+            onChange={(e) => { if (e.target.value) bulkPriorityM.mutate(e.target.value); }}>
+            <option value="">Prioridad…</option>
+            <option value="critica">Crítica</option>
+            <option value="alta">Alta</option>
+            <option value="media">Media</option>
+            <option value="baja">Baja</option>
+          </select>
+          {bulkBusy && <Loader2 size={14} className="animate-spin" />}
+          <div style={{ flex: 1 }} />
+          <button className="btn btn--ghost btn--sm" onClick={clearSel}>Limpiar selección</button>
+        </div>
+      )}
+
       {/* Tabla densa */}
       {isLoading ? (
         <div className="card empty"><Loader2 className="animate-spin" /> <span className="muted">Cargando…</span></div>
@@ -181,6 +235,9 @@ export function IncidentsScreen() {
           <table className="table table--dense">
             <thead>
               <tr>
+                <th style={{ width: 28 }}>
+                  <input type="checkbox" checked={allSelected} onChange={toggleAll} aria-label="Seleccionar todo" />
+                </th>
                 <th>ID</th>
                 <th>Incidencia</th>
                 <th>Cliente</th>
@@ -197,7 +254,7 @@ export function IncidentsScreen() {
                 <Fragment key={i.id}>
                 {showDivider && idx === firstClosedIdx && (
                   <tr className="row-divider" aria-hidden>
-                    <td colSpan={9} style={{ padding: 0 }}>
+                    <td colSpan={10} style={{ padding: 0 }}>
                       <div
                         style={{
                           display: "flex",
@@ -230,6 +287,9 @@ export function IncidentsScreen() {
                   onClick={() => setSelectedId(i.id)}
                   style={isClosed(i.status) ? { opacity: 0.6 } : undefined}
                 >
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <input type="checkbox" checked={selected.has(i.id)} onChange={() => toggleSel(i.id)} aria-label={`Seleccionar ${i.incidentNumber}`} />
+                  </td>
                   <td className="id-cell"><CopyId value={i.incidentNumber} /></td>
                   <td>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
