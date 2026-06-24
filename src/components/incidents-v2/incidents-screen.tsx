@@ -1,10 +1,12 @@
 "use client";
 
 import { Fragment, useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
+import { toast } from "sonner";
 import { Search, Plus, Loader2, Ticket, MessageSquare } from "lucide-react";
-import { fetchIncidents, fetchUsersForSelect } from "@/server/actions/incidents";
-import { IncidentStatusBadge, PriorityPill, SlaBar, Avatar } from "@/components/proto/badges";
+import { fetchIncidents, fetchUsersForSelect, quickAssignIncident, updateIncident } from "@/server/actions/incidents";
+import { IncidentStatusBadge, SlaBar, Avatar } from "@/components/proto/badges";
 import { ConversationPopup } from "@/components/proto/conversation-popup";
 import { CopyId } from "@/components/proto/copy-id";
 import { IncidentDetailDrawer } from "./incident-detail-drawer";
@@ -31,6 +33,9 @@ const CLOSED_STATUSES = new Set<IncidentStatus>(["resuelto", "cerrado", "cancela
 const isClosed = (s: IncidentStatus) => CLOSED_STATUSES.has(s);
 
 export function IncidentsScreen() {
+  const qc = useQueryClient();
+  const { data: session } = useSession();
+  const meId = (session?.user as { id?: string } | undefined)?.id;
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [rmaFor, setRmaFor] = useState<IncidentRow | null>(null);
@@ -40,6 +45,18 @@ export function IncidentsScreen() {
   const [assignee, setAssignee] = useState<string>("all");
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<"updatedAt" | "priority" | "sla">("updatedAt");
+
+  const refreshList = () => qc.invalidateQueries({ queryKey: ["incidents-v2"] });
+  const assignM = useMutation({
+    mutationFn: ({ id, userId }: { id: string; userId: string }) => quickAssignIncident(id, userId || null),
+    onSuccess: (r) => { if (!r.success) { toast.error(r.error); return; } refreshList(); },
+    onError: () => toast.error("Error al asignar"),
+  });
+  const priorityM = useMutation({
+    mutationFn: ({ id, priority }: { id: string; priority: string }) => updateIncident(id, { priority }),
+    onSuccess: (r) => { if (!r.success) { toast.error(r.error); return; } refreshList(); },
+    onError: () => toast.error("Error al cambiar prioridad"),
+  });
 
   // Traemos un lote grande y filtramos/ordenamos en cliente (herramienta interna).
   const { data, isLoading } = useQuery({
@@ -108,6 +125,15 @@ export function IncidentsScreen() {
           <Search size={14} />
           <input placeholder="Buscar por ID, título, modelo, serie…" value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>
+        {meId && (
+          <button
+            className={`chip ${assignee === meId ? "is-active" : ""}`}
+            onClick={() => setAssignee(assignee === meId ? "all" : meId)}
+            title="Ver solo las asignadas a mí"
+          >
+            Mías
+          </button>
+        )}
         <select className="select" style={{ width: "auto" }} value={priority} onChange={(e) => setPriority(e.target.value)}>
           <option value="all">Toda prioridad</option>
           <option value="critica">Crítica</option>
@@ -226,15 +252,35 @@ export function IncidentsScreen() {
                   </td>
                   <td className="text-sm">{i.clientCompanyName ?? i.clientName ?? "—"}</td>
                   <td className="text-sm">{i.contactName ?? "—"}</td>
-                  <td>
-                    {i.assignedUserName ? (
-                      <div className="flex items-center gap-2">
-                        <Avatar name={i.assignedUserName} size="sm" />
-                        <span className="text-sm">{i.assignedUserName.split(" ")[0]}</span>
-                      </div>
-                    ) : "—"}
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-2">
+                      {i.assignedUserName && <Avatar name={i.assignedUserName} size="sm" />}
+                      <select
+                        className="select"
+                        style={{ width: "auto", maxWidth: 120, fontSize: 12, padding: "4px 8px" }}
+                        value={i.assignedUserId ?? ""}
+                        onChange={(e) => assignM.mutate({ id: i.id, userId: e.target.value })}
+                        title="Asignar técnico"
+                      >
+                        <option value="">Sin asignar</option>
+                        {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                      </select>
+                    </div>
                   </td>
-                  <td><PriorityPill priority={i.priority} /></td>
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <select
+                      className="select"
+                      style={{ width: "auto", maxWidth: 110, fontSize: 12, padding: "4px 8px" }}
+                      value={i.priority}
+                      onChange={(e) => priorityM.mutate({ id: i.id, priority: e.target.value })}
+                      title="Cambiar prioridad"
+                    >
+                      <option value="critica">Crítica</option>
+                      <option value="alta">Alta</option>
+                      <option value="media">Media</option>
+                      <option value="baja">Baja</option>
+                    </select>
+                  </td>
                   <td><SlaBar incident={i} /></td>
                   <td><IncidentStatusBadge status={i.status} /></td>
                   <td className="text-sm muted">{formatRelativeTime(i.updatedAt)}</td>
