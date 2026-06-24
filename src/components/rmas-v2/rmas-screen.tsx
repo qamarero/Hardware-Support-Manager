@@ -8,8 +8,8 @@ import { fetchRmas } from "@/server/actions/rmas";
 import { RmaStatusBadge } from "@/components/proto/badges";
 import { CopyId } from "@/components/proto/copy-id";
 import { RmaDetailDrawer } from "./rma-detail-drawer";
-import { RMA_STATUS_LABELS, type RmaStatus } from "@/lib/constants/rmas";
-import { CLOSED_RMA_STATUSES } from "@/lib/constants/statuses";
+import { RMA_STATUS_LABELS, RMA_OUTCOME_LABELS, RMA_LOGISTICS_LABELS, type RmaStatus } from "@/lib/constants/rmas";
+import { CLOSED_RMA_STATUSES, PAUSED_RMA_STATES } from "@/lib/constants/statuses";
 import { formatRelativeTime } from "@/lib/utils/date-format";
 import type { RmaRow } from "@/server/queries/rmas";
 
@@ -20,6 +20,17 @@ const STATUS_ORDER: RmaStatus[] = [
 
 const CLOSED_RMA = new Set<string>(CLOSED_RMA_STATUSES);
 const isRmaClosed = (s: string) => CLOSED_RMA.has(s);
+const PAUSED_RMA = new Set<string>(PAUSED_RMA_STATES);
+
+// Color del chip de resultado, para identificarlo de un vistazo.
+const OUTCOME_BADGE: Record<string, string> = {
+  reparado: "badge--green",
+  sustituido: "badge--green",
+  sustitucion_directa: "badge--green",
+  abono: "badge--blue",
+  rechazado: "badge--red",
+  sin_solucion: "badge--amber",
+};
 
 export function RmasScreen() {
   const router = useRouter();
@@ -121,6 +132,7 @@ export function RmasScreen() {
                 <th>Equipo</th>
                 <th>Cliente</th>
                 <th>Estado</th>
+                <th>Resultado</th>
                 <th>Incidencia</th>
                 <th>Actualizado</th>
               </tr>
@@ -130,7 +142,7 @@ export function RmasScreen() {
                 <Fragment key={r.id}>
                 {showDivider && idx === firstClosedIdx && (
                   <tr className="row-divider" aria-hidden>
-                    <td colSpan={8} style={{ padding: 0 }}>
+                    <td colSpan={9} style={{ padding: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px 6px", color: "var(--gray-500)" }}>
                         <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
                           Finalizados
@@ -157,7 +169,30 @@ export function RmasScreen() {
                     ) : "—"}
                   </td>
                   <td className="text-sm">{r.clientCompanyName ?? r.clientName ?? "—"}</td>
-                  <td><RmaStatusBadge status={r.status} /></td>
+                  <td>
+                    <div className="flex items-center gap-2" style={{ flexWrap: "wrap" }}>
+                      <RmaStatusBadge status={r.status} />
+                      {PAUSED_RMA.has(r.status) && (
+                        <span className="badge badge--blue" title="SLA en pausa — el equipo está en el proveedor">⏸ En pausa</span>
+                      )}
+                    </div>
+                  </td>
+                  <td>
+                    {r.outcome ? (
+                      <div className="stack" style={{ gap: 2 }}>
+                        <span className={`badge ${OUTCOME_BADGE[r.outcome] ?? "badge--gray"}`}>
+                          {RMA_OUTCOME_LABELS[r.outcome as keyof typeof RMA_OUTCOME_LABELS] ?? r.outcome}
+                        </span>
+                        {r.logistics && (
+                          <span className="text-xs muted">{RMA_LOGISTICS_LABELS[r.logistics as keyof typeof RMA_LOGISTICS_LABELS] ?? r.logistics}</span>
+                        )}
+                      </div>
+                    ) : r.logistics ? (
+                      <span className="text-xs muted">{RMA_LOGISTICS_LABELS[r.logistics as keyof typeof RMA_LOGISTICS_LABELS] ?? r.logistics}</span>
+                    ) : (
+                      <span className="muted">—</span>
+                    )}
+                  </td>
                   <td className="id-cell">{r.incidentNumber ? <CopyId value={r.incidentNumber} /> : "—"}</td>
                   <td className="text-sm muted">{formatRelativeTime(r.updatedAt)}</td>
                 </tr>

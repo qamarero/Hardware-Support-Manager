@@ -43,6 +43,10 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
   const [trackingIn, setTrackingIn] = useState("");
   const [notes, setNotes] = useState("");
 
+  // Captura de resultado obligatoria al cerrar/entregar el RMA.
+  const [closingTo, setClosingTo] = useState<string | null>(null);
+  const [closingOutcome, setClosingOutcome] = useState("");
+
   // Edición de datos del RMA (equipo, proveedor, contacto).
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
@@ -68,6 +72,8 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
     setTrackingOut(rma?.trackingNumberOutgoing ?? "");
     setTrackingIn(rma?.trackingNumberReturn ?? "");
     setNotes(rma?.notes ?? "");
+    setClosingTo(null);
+    setClosingOutcome("");
   }, [rma?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function startEdit() {
@@ -116,10 +122,14 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
   });
 
   const transitionM = useMutation({
-    mutationFn: (toStatus: string) => transitionRma({ rmaId: rmaId!, toStatus }),
-    onSuccess: (r, toStatus) => {
+    mutationFn: (vars: { toStatus: string; outcome?: string }) =>
+      transitionRma({ rmaId: rmaId!, toStatus: vars.toStatus, ...(vars.outcome ? { outcome: vars.outcome } : {}) }),
+    onSuccess: (r, vars) => {
       if (!r.success) { toast.error(r.error); return; }
+      setClosingTo(null);
+      setClosingOutcome("");
       invalidate();
+      const toStatus = vars.toStatus;
       // Al enviar el equipo al proveedor, sugerir recordatorio de seguimiento.
       if (rma && (PAUSED_RMA_STATES as readonly string[]).includes(toStatus)) {
         toast.success(`Estado: ${RMA_STATUS_LABELS[toStatus as RmaStatus]}`, {
@@ -154,27 +164,72 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
   const nextStage = currentIdx >= 0 && currentIdx < STAGES.length - 1 ? STAGES[currentIdx + 1] : null;
   const canAdvance = nextStage ? transitions.some((t) => t.to === nextStage) : false;
 
+  // Algunos cierres requieren registrar el resultado antes de confirmar.
+  function requestTransition(toStatus: string) {
+    if (toStatus === "rechazado") {
+      // El proveedor rechaza: el resultado es evidente, se fija automáticamente.
+      transitionM.mutate({ toStatus, outcome: "rechazado" });
+      return;
+    }
+    const needsOutcome = toStatus === "entregado_cliente" || (toStatus === "cerrado" && !rma?.outcome);
+    if (needsOutcome) {
+      setClosingOutcome(rma?.outcome ?? "");
+      setClosingTo(toStatus);
+      return;
+    }
+    transitionM.mutate({ toStatus });
+  }
+
   const footer = rma ? (
-    <>
-      <select
-        className="select"
-        style={{ width: "auto" }}
-        value=""
-        onChange={(e) => e.target.value && transitionM.mutate(e.target.value)}
-        disabled={transitionM.isPending}
-      >
-        <option value="">Cambiar estado…</option>
-        {transitions.map((t) => (
-          <option key={t.to} value={t.to}>{RMA_STATUS_LABELS[t.to as RmaStatus]}</option>
-        ))}
-      </select>
-      <div style={{ flex: 1 }} />
-      {nextStage && canAdvance && (
-        <button className="btn btn--primary btn--sm" onClick={() => transitionM.mutate(nextStage)} disabled={transitionM.isPending}>
-          <Check size={14} /> Avanzar a {RMA_STATUS_LABELS[nextStage]}
+    closingTo ? (
+      <>
+        <span className="text-sm fw-700" style={{ whiteSpace: "nowrap" }}>
+          Resultado al {RMA_STATUS_LABELS[closingTo as RmaStatus]}:
+        </span>
+        <select
+          className="select"
+          style={{ width: "auto" }}
+          value={closingOutcome}
+          onChange={(e) => setClosingOutcome(e.target.value)}
+          autoFocus
+        >
+          <option value="">Elige resultado…</option>
+          {Object.entries(RMA_OUTCOME_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
+        <div style={{ flex: 1 }} />
+        <button className="btn btn--ghost btn--sm" onClick={() => { setClosingTo(null); setClosingOutcome(""); }} disabled={transitionM.isPending}>
+          Cancelar
         </button>
-      )}
-    </>
+        <button
+          className="btn btn--primary btn--sm"
+          disabled={!closingOutcome || transitionM.isPending}
+          onClick={() => transitionM.mutate({ toStatus: closingTo, outcome: closingOutcome })}
+        >
+          {transitionM.isPending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Confirmar
+        </button>
+      </>
+    ) : (
+      <>
+        <select
+          className="select"
+          style={{ width: "auto" }}
+          value=""
+          onChange={(e) => e.target.value && requestTransition(e.target.value)}
+          disabled={transitionM.isPending}
+        >
+          <option value="">Cambiar estado…</option>
+          {transitions.map((t) => (
+            <option key={t.to} value={t.to}>{RMA_STATUS_LABELS[t.to as RmaStatus]}</option>
+          ))}
+        </select>
+        <div style={{ flex: 1 }} />
+        {nextStage && canAdvance && (
+          <button className="btn btn--primary btn--sm" onClick={() => requestTransition(nextStage)} disabled={transitionM.isPending}>
+            <Check size={14} /> Avanzar a {RMA_STATUS_LABELS[nextStage]}
+          </button>
+        )}
+      </>
+    )
   ) : null;
 
   return (

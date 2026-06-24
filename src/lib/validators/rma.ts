@@ -44,6 +44,9 @@ export const transitionRmaSchema = z.object({
     "rechazado", "cerrado", "cancelado",
   ]),
   comment: z.string().optional(),
+  // Resultado capturado en el cierre (entregado/cerrado/rechazado). Aditivo: se
+  // guarda en la misma transición para no dejar la ficha sin resultado.
+  outcome: z.enum(["reparado", "sustituido", "abono", "rechazado", "sin_solucion", "sustitucion_directa"]).optional(),
 });
 
 export type CreateRmaInput = z.infer<typeof createRmaSchema>;

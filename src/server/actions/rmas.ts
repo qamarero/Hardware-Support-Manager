@@ -203,7 +203,7 @@ export async function transitionRma(
     return { success: false, error: "Datos inválidos" };
   }
 
-  const { rmaId, toStatus, comment } = parsed.data;
+  const { rmaId, toStatus, comment, outcome } = parsed.data;
 
   const result = await db.transaction(async (tx) => {
     const [current] = await tx
@@ -239,6 +239,12 @@ export async function transitionRma(
       const pausedDuration = Math.max(0, Date.now() - pausedSince);
       const existingPaused = Number(current.slaPausedMs) || 0;
       updateValues.slaPausedMs = String(existingPaused + pausedDuration);
+    }
+
+    // Resultado capturado al cerrar/entregar/rechazar: se persiste junto al
+    // cambio de estado para que la ficha nunca quede sin resultado.
+    if (outcome) {
+      updateValues.outcome = outcome;
     }
 
     await tx
