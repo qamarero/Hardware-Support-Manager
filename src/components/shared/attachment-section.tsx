@@ -115,7 +115,8 @@ export function AttachmentSection({
           else toast.error(result.error);
         } catch (err) {
           console.error("[attachment-section] Error al subir:", err);
-          toast.error(`${file.name}: error al subir`);
+          const msg = err instanceof Error && err.message ? err.message : "error al subir";
+          toast.error(`${file.name}: ${msg}`);
         }
       }
     } finally {

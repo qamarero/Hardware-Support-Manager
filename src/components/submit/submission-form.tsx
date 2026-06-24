@@ -107,7 +107,7 @@ export function SubmissionForm() {
                 <span className="h-4 w-1 rounded-full bg-primary" />
                 Quién eres
               </h3>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2 sm:items-start">
                 <FormField
                   control={form.control}
                   name="submitterName"
@@ -170,12 +170,12 @@ export function SubmissionForm() {
                   name="intercomUrl"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>URL de la conversación Intercom</FormLabel>
+                      <FormLabel>URL de la conversación Intercom *</FormLabel>
                       <FormControl>
                         <Input placeholder="https://app.intercom.com/..." {...field} />
                       </FormControl>
                       <FormDescription className="text-xs">
-                        Opcional pero muy recomendado para mantener el contexto
+                        Obligatorio — la necesitamos para abrir la conversación y no perder el contexto
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -257,7 +257,7 @@ export function SubmissionForm() {
                 <span className="h-4 w-1 rounded-full bg-primary" />
                 Dispositivo (opcional)
               </h3>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2 sm:items-start">
                 <FormField
                   control={form.control}
                   name="deviceType"

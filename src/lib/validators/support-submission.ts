@@ -36,12 +36,11 @@ export const createSubmissionSchema = z.object({
   contactPhone: z.string().max(50).optional().or(z.literal("")),
   intercomUrl: z
     .string()
+    .min(1, "La URL de la conversación de Intercom es obligatoria")
     .max(1000)
-    .optional()
-    .or(z.literal(""))
     .refine(
-      (val) => !val || val.startsWith("http"),
-      "Debe ser una URL válida"
+      (val) => val.startsWith("http"),
+      "Debe ser una URL válida (https://app.intercom.com/...)"
     ),
 
   // Honeypot field — must be empty (bots fill it)
