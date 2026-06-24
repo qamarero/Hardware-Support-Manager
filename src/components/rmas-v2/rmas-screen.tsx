@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Search, Plus, Loader2, RotateCcw, Laptop } from "lucide-react";
 import { fetchRmas } from "@/server/actions/rmas";
 import { RmaStatusBadge } from "@/components/proto/badges";
+import { CopyId } from "@/components/proto/copy-id";
 import { RmaDetailDrawer } from "./rma-detail-drawer";
 import { RMA_STATUS_LABELS, type RmaStatus } from "@/lib/constants/rmas";
 import { CLOSED_RMA_STATUSES } from "@/lib/constants/statuses";
@@ -141,8 +142,8 @@ export function RmasScreen() {
                   </tr>
                 )}
                 <tr onClick={() => setSelectedId(r.id)} style={isRmaClosed(r.status) ? { opacity: 0.6 } : undefined}>
-                  <td className="id-cell">{r.rmaNumber}</td>
-                  <td className="mono text-sm fw-600">{r.providerRmaNumber || "—"}</td>
+                  <td className="id-cell"><CopyId value={r.rmaNumber} /></td>
+                  <td className="mono text-sm fw-600">{r.providerRmaNumber ? <CopyId value={r.providerRmaNumber} /> : "—"}</td>
                   <td className="text-sm">{r.providerName ?? "—"}</td>
                   <td>
                     {r.deviceModel || r.deviceBrand ? (
@@ -157,7 +158,7 @@ export function RmasScreen() {
                   </td>
                   <td className="text-sm">{r.clientCompanyName ?? r.clientName ?? "—"}</td>
                   <td><RmaStatusBadge status={r.status} /></td>
-                  <td className="id-cell">{r.incidentNumber ?? "—"}</td>
+                  <td className="id-cell">{r.incidentNumber ? <CopyId value={r.incidentNumber} /> : "—"}</td>
                   <td className="text-sm muted">{formatRelativeTime(r.updatedAt)}</td>
                 </tr>
                 </Fragment>

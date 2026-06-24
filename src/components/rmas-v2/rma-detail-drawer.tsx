@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Loader2, Check, Clock, Ticket, Pencil, X } from "lucide-react";
 import { Drawer, Field } from "@/components/proto/drawer";
 import { RmaStatusBadge } from "@/components/proto/badges";
+import { CopyId } from "@/components/proto/copy-id";
 import { AttachmentSection } from "@/components/shared/attachment-section";
 import { EventLogTimeline } from "@/components/shared/event-log-timeline";
 import { ManualNoteForm } from "@/components/shared/manual-note-form";
@@ -193,6 +194,7 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
         <div className="stack" style={{ gap: 20 }}>
           {/* Strip */}
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <span className="id-cell"><CopyId value={rma.rmaNumber} /></span>
             <RmaStatusBadge status={rma.status} />
             {rma.incidentNumber && (
               <span className="badge badge--outline">

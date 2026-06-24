@@ -6,6 +6,7 @@ import { Search, Plus, Loader2, Ticket, MessageSquare } from "lucide-react";
 import { fetchIncidents, fetchUsersForSelect } from "@/server/actions/incidents";
 import { IncidentStatusBadge, PriorityPill, SlaBar, Avatar } from "@/components/proto/badges";
 import { ConversationPopup } from "@/components/proto/conversation-popup";
+import { CopyId } from "@/components/proto/copy-id";
 import { IncidentDetailDrawer } from "./incident-detail-drawer";
 import { IncidentFormDrawer } from "./incident-form-drawer";
 import { RmaWizard } from "@/components/incidents/rma-wizard";
@@ -203,7 +204,7 @@ export function IncidentsScreen() {
                   onClick={() => setSelectedId(i.id)}
                   style={isClosed(i.status) ? { opacity: 0.6 } : undefined}
                 >
-                  <td className="id-cell">{i.incidentNumber}</td>
+                  <td className="id-cell"><CopyId value={i.incidentNumber} /></td>
                   <td>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span className="fw-600">{i.title}</span>

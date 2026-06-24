@@ -7,6 +7,7 @@ import { Loader2, Check, RotateCcw, Clock, Pencil, X } from "lucide-react";
 import { Drawer, Field } from "@/components/proto/drawer";
 import { Combobox } from "@/components/proto/combobox";
 import { ArticleCombobox } from "@/components/proto/article-combobox";
+import { CopyId } from "@/components/proto/copy-id";
 import { IncidentStatusBadge, PriorityPill, SlaBar, slaProgress } from "@/components/proto/badges";
 import { ConversationThread } from "@/components/intercom/conversation-thread";
 import { ManualNoteForm } from "@/components/shared/manual-note-form";
@@ -206,6 +207,7 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
         <div className="stack" style={{ gap: 20 }}>
           {/* Strip */}
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <span className="id-cell"><CopyId value={inc.incidentNumber} /></span>
             <IncidentStatusBadge status={inc.status} />
             <PriorityPill priority={inc.priority} />
             <SlaBar incident={inc} />
