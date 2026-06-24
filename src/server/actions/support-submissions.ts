@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers";
 import { db } from "@/lib/db";
-import { supportSubmissions, incidents, eventLogs, clients } from "@/lib/db/schema";
+import { supportSubmissions, incidents, eventLogs, clients, attachments } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getRequiredSession } from "@/lib/auth/get-session";
@@ -79,6 +79,7 @@ export async function submitSupportRequest(
     deviceSerialNumber,
     contactPhone,
     intercomUrl,
+    attachments,
   } = parsed.data;
 
   try {
@@ -107,6 +108,7 @@ export async function submitSupportRequest(
         deviceSerialNumber: deviceSerialNumber || null,
         contactPhone: contactPhone || null,
         intercomUrl: intercomUrl || null,
+        attachments: attachments ?? [],
       })
       .returning({ id: supportSubmissions.id });
 
@@ -215,6 +217,22 @@ export async function convertSubmissionToIncident(
           intercomUrl: finalIntercomUrl || null,
         })
         .returning({ id: incidents.id, incidentNumber: incidents.incidentNumber });
+
+      // Copiar los adjuntos del formulario a la incidencia recién creada.
+      const subAttachments = submission.attachments ?? [];
+      if (subAttachments.length > 0) {
+        await tx.insert(attachments).values(
+          subAttachments.map((a) => ({
+            entityType: "incident" as const,
+            entityId: newIncident.id,
+            fileName: a.name,
+            fileUrl: a.url,
+            fileSize: a.size,
+            fileType: a.type,
+            uploadedBy: session.user.id,
+          }))
+        );
+      }
 
       await tx
         .update(supportSubmissions)

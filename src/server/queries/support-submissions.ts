@@ -46,6 +46,7 @@ export async function getSupportSubmissions(
           deviceSerialNumber: supportSubmissions.deviceSerialNumber,
           contactPhone: supportSubmissions.contactPhone,
           intercomUrl: supportSubmissions.intercomUrl,
+          attachments: supportSubmissions.attachments,
           convertedIncidentId: supportSubmissions.convertedIncidentId,
           convertedByUserId: supportSubmissions.convertedByUserId,
           convertedAt: supportSubmissions.convertedAt,

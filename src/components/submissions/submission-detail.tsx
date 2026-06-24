@@ -155,6 +155,23 @@ export function SubmissionDetail({ item, onConvert, onDismiss }: SubmissionDetai
         )}
       </div>
 
+      {/* Fotos adjuntas del formulario */}
+      {item.attachments && item.attachments.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">
+            Fotos adjuntas ({item.attachments.length})
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {item.attachments.map((a) => (
+              <a key={a.url} href={a.url} target="_blank" rel="noopener noreferrer" className="block">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={a.url} alt={a.name} className="h-20 w-20 rounded-lg border object-cover transition hover:opacity-80" />
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Conversion form (only for pending) */}
       {isPending && (
         <>

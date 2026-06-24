@@ -5,7 +5,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Send } from "lucide-react";
+import { Loader2, Send, Paperclip, X } from "lucide-react";
+import { upload } from "@vercel/blob/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,12 +33,13 @@ import {
   type CreateSubmissionInput,
 } from "@/lib/validators/support-submission";
 import { submitSupportRequest } from "@/server/actions/support-submissions";
-import { ALLOWED_SUBMITTER_DOMAINS } from "@/lib/constants/support-submissions";
+import { ALLOWED_SUBMITTER_DOMAINS, SUBMIT_IMAGE_TYPES, SUBMIT_MAX_IMAGE_SIZE, SUBMIT_MAX_ATTACHMENTS } from "@/lib/constants/support-submissions";
 import { DEVICE_TYPES, DEVICE_TYPE_LABELS, type DeviceType } from "@/lib/constants/device-types";
 import { SubmissionSuccess } from "./submission-success";
 
 export function SubmissionForm() {
   const [submitted, setSubmitted] = useState(false);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
 
   const form = useForm<CreateSubmissionInput>({
     resolver: zodResolver(createSubmissionSchema),
@@ -55,6 +57,7 @@ export function SubmissionForm() {
       deviceSerialNumber: "",
       contactPhone: "",
       intercomUrl: "",
+      attachments: [],
       website: "", // honeypot
     },
   });
@@ -72,6 +75,58 @@ export function SubmissionForm() {
       toast.error("Error al enviar el formulario. Intenta de nuevo.");
     },
   });
+
+  const photos = form.watch("attachments") ?? [];
+
+  async function handlePhotos(fileList: FileList | null) {
+    const files = fileList ? Array.from(fileList) : [];
+    if (!files.length) return;
+    const current = form.getValues("attachments") ?? [];
+    if (current.length + files.length > SUBMIT_MAX_ATTACHMENTS) {
+      toast.error(`Máximo ${SUBMIT_MAX_ATTACHMENTS} fotos`);
+      return;
+    }
+    setUploadingPhotos(true);
+    const added: { url: string; name: string; size: number; type: string }[] = [];
+    try {
+      for (const file of files) {
+        if (!(SUBMIT_IMAGE_TYPES as readonly string[]).includes(file.type)) {
+          toast.error(`${file.name}: solo se permiten imágenes`);
+          continue;
+        }
+        if (file.size > SUBMIT_MAX_IMAGE_SIZE) {
+          toast.error(`${file.name}: excede ${Math.round(SUBMIT_MAX_IMAGE_SIZE / (1024 * 1024))} MB`);
+          continue;
+        }
+        try {
+          const blob = await upload(`submissions/${Date.now()}-${file.name}`, file, {
+            access: "public",
+            handleUploadUrl: "/api/submit-upload/sign",
+            contentType: file.type || undefined,
+          });
+          added.push({ url: blob.url, name: file.name, size: file.size, type: file.type });
+        } catch (err) {
+          console.error("[submit] error al subir foto:", err);
+          const msg = err instanceof Error && err.message ? err.message : "error al subir";
+          toast.error(`${file.name}: ${msg}`);
+        }
+      }
+    } finally {
+      setUploadingPhotos(false);
+    }
+    if (added.length) {
+      form.setValue("attachments", [...current, ...added], { shouldValidate: true });
+    }
+  }
+
+  function removePhoto(url: string) {
+    const current = form.getValues("attachments") ?? [];
+    form.setValue(
+      "attachments",
+      current.filter((p) => p.url !== url),
+      { shouldValidate: true }
+    );
+  }
 
   if (submitted) {
     return <SubmissionSuccess onReset={() => { form.reset(); setSubmitted(false); }} />;
@@ -348,6 +403,61 @@ export function SubmissionForm() {
                   </FormItem>
                 )}
               />
+            </div>
+
+            <Separator className="bg-border/40" />
+
+            {/* Fotos del problema */}
+            <div>
+              <h3 className="flex items-center gap-3 text-sm font-semibold text-foreground uppercase tracking-wide mb-4">
+                <span className="h-4 w-1 rounded-full bg-primary" />
+                Fotos del problema (opcional)
+              </h3>
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Una imagen ayuda muchísimo: foto del equipo, del error en pantalla, del cableado…
+                  (máx {SUBMIT_MAX_ATTACHMENTS}, {Math.round(SUBMIT_MAX_IMAGE_SIZE / (1024 * 1024))} MB cada una)
+                </p>
+                {photos.length > 0 && (
+                  <div className="flex flex-wrap gap-3">
+                    {photos.map((p) => (
+                      <div key={p.url} className="relative">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={p.url} alt={p.name} className="h-20 w-20 rounded-lg border object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removePhoto(p.url)}
+                          className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow"
+                          aria-label={`Quitar ${p.name}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <input
+                  id="submit-photo-input"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => { handlePhotos(e.target.files); e.target.value = ""; }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={uploadingPhotos || photos.length >= SUBMIT_MAX_ATTACHMENTS}
+                  onClick={() => document.getElementById("submit-photo-input")?.click()}
+                >
+                  {uploadingPhotos ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Paperclip className="mr-2 h-4 w-4" />
+                  )}
+                  Añadir fotos
+                </Button>
+              </div>
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-4">

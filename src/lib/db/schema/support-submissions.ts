@@ -1,8 +1,16 @@
-import { uuid, varchar, text, timestamp, index } from "drizzle-orm/pg-core";
+import { uuid, varchar, text, timestamp, index, jsonb } from "drizzle-orm/pg-core";
 import { hsmSchema } from "./hsm-schema";
 import { incidents } from "./incidents";
 import { clients } from "./clients";
 import { users } from "./users";
+
+/** Adjunto (imagen) subido desde el formulario público de soporte. */
+export interface SubmissionAttachment {
+  url: string;
+  name: string;
+  size: number;
+  type: string;
+}
 
 export const supportSubmissionStatusEnum = hsmSchema.enum(
   "support_submission_status",
@@ -42,6 +50,9 @@ export const supportSubmissions = hsmSchema.table(
     // Contact info
     contactPhone: varchar("contact_phone", { length: 50 }),
     intercomUrl: varchar("intercom_url", { length: 1000 }),
+
+    // Adjuntos (imágenes) subidos desde el formulario público.
+    attachments: jsonb("attachments").$type<SubmissionAttachment[]>().default([]).notNull(),
 
     // Review metadata
     convertedIncidentId: uuid("converted_incident_id")

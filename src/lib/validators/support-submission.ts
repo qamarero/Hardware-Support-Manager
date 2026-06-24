@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ALLOWED_SUBMITTER_DOMAINS } from "@/lib/constants/support-submissions";
+import { ALLOWED_SUBMITTER_DOMAINS, SUBMIT_MAX_ATTACHMENTS } from "@/lib/constants/support-submissions";
 
 const emailDomainRegex = new RegExp(
   `@(${ALLOWED_SUBMITTER_DOMAINS.join("|").replace(/\./g, "\\.")})$`,
@@ -42,6 +42,19 @@ export const createSubmissionSchema = z.object({
       (val) => val.startsWith("http"),
       "Debe ser una URL válida (https://app.intercom.com/...)"
     ),
+
+  // Adjuntos (imágenes) subidos desde el formulario público.
+  attachments: z
+    .array(
+      z.object({
+        url: z.string().url(),
+        name: z.string().max(255),
+        size: z.number().int().nonnegative(),
+        type: z.string().max(100),
+      })
+    )
+    .max(SUBMIT_MAX_ATTACHMENTS)
+    .optional(),
 
   // Honeypot field — must be empty (bots fill it)
   website: z.string().max(0, "").optional().or(z.literal("")),
