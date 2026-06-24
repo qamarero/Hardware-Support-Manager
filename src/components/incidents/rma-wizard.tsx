@@ -26,6 +26,7 @@ import {
 import { ArticleCombobox } from "@/components/proto/article-combobox";
 import { fetchProvidersForSelect, createRma } from "@/server/actions/rmas";
 import { transitionIncident } from "@/server/actions/incidents";
+import { createReminder } from "@/server/actions/reminders";
 import type { RmaFormInput } from "@/lib/validators/rma";
 import type { IncidentRow } from "@/server/queries/incidents";
 import { invalidateRmaQueries } from "@/lib/query-keys";
@@ -124,6 +125,17 @@ export function RmaWizard({ open, onOpenChange, incident }: RmaWizardProps) {
 
       const result = await createRma(payload);
       if (!result.success) throw new Error(result.error);
+
+      // Auto-recordatorio de seguimiento con el proveedor (+3 días).
+      const followUp = new Date();
+      followUp.setDate(followUp.getDate() + 3);
+      followUp.setHours(9, 0, 0, 0);
+      await createReminder({
+        entityType: "rma",
+        entityId: result.data.id,
+        title: `Seguir RMA con proveedor — ${incident.incidentNumber}`,
+        dueAt: followUp.toISOString(),
+      }).catch(() => { /* best-effort: el RMA ya está creado */ });
 
       // Derivar: pausar la incidencia pasándola a "esperando_pieza" (si la
       // transición es válida desde su estado actual). Reutiliza transitionIncident

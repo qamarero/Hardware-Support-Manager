@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
@@ -75,19 +75,28 @@ export function MiDiaScreen() {
     qc.invalidateQueries({ queryKey: ["reminders"] });
   }
   const completeM = useMutation({
-    mutationFn: (id: string) => completeReminder(id),
-    onSuccess: (r) => { if (!r.success) { toast.error(r.error); return; } invalidate(); },
+    mutationFn: (r: ReminderRow) => completeReminder(r.id).then((res) => ({ res, r })),
+    onSuccess: ({ res, r }) => {
+      if (!res.success) { toast.error(res.error); return; }
+      invalidate();
+      // Deshacer: revertir a pendiente con su fecha original.
+      toast.success("Recordatorio hecho", {
+        action: {
+          label: "Deshacer",
+          onClick: async () => { await snoozeReminder({ id: r.id, dueAt: new Date(r.dueAt).toISOString() }); invalidate(); },
+        },
+      });
+    },
   });
   const snoozeM = useMutation({
     mutationFn: ({ id, dueAt }: { id: string; dueAt: string }) => snoozeReminder({ id, dueAt }),
-    onSuccess: (r) => { if (!r.success) { toast.error(r.error); return; } toast.success("Pospuesto a mañana"); invalidate(); },
+    onSuccess: (r) => { if (!r.success) { toast.error(r.error); return; } toast.success("Recordatorio pospuesto"); invalidate(); },
   });
 
   function openReminderEntity(r: ReminderRow) {
     if (r.entityType === "incident" && r.entityId) setIncidentId(r.entityId);
     else if (r.entityType === "rma" && r.entityId) setRmaId(r.entityId);
   }
-  function tomorrow9(): string { const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(9, 0, 0, 0); return d.toISOString(); }
 
   const greeting = session?.user?.name ? `, ${session.user.name.split(" ")[0]}` : "";
   const intercomPending = badges?.intercom ?? 0;
@@ -130,11 +139,11 @@ export function MiDiaScreen() {
               <div className="muted text-sm" style={{ padding: "4px 2px" }}>Sin recordatorios. Crea uno o ponlos desde una ficha.</div>
             )}
             {vencidos.length > 0 && <SubLabel text="Vencidos" tone="bad" />}
-            {vencidos.map((r) => <ReminderRowView key={r.id} r={r} overdue onComplete={() => completeM.mutate(r.id)} onSnooze={() => snoozeM.mutate({ id: r.id, dueAt: tomorrow9() })} onOpen={() => openReminderEntity(r)} />)}
+            {vencidos.map((r) => <ReminderRowView key={r.id} r={r} overdue onComplete={() => completeM.mutate(r)} onSnooze={(dueAt) => snoozeM.mutate({ id: r.id, dueAt })} onOpen={() => openReminderEntity(r)} />)}
             {hoy.length > 0 && <SubLabel text="Hoy" tone="warn" />}
-            {hoy.map((r) => <ReminderRowView key={r.id} r={r} onComplete={() => completeM.mutate(r.id)} onSnooze={() => snoozeM.mutate({ id: r.id, dueAt: tomorrow9() })} onOpen={() => openReminderEntity(r)} />)}
+            {hoy.map((r) => <ReminderRowView key={r.id} r={r} onComplete={() => completeM.mutate(r)} onSnooze={(dueAt) => snoozeM.mutate({ id: r.id, dueAt })} onOpen={() => openReminderEntity(r)} />)}
             {proximos.length > 0 && <SubLabel text="Próximos" tone="muted" />}
-            {proximos.map((r) => <ReminderRowView key={r.id} r={r} onComplete={() => completeM.mutate(r.id)} onSnooze={() => snoozeM.mutate({ id: r.id, dueAt: tomorrow9() })} onOpen={() => openReminderEntity(r)} />)}
+            {proximos.map((r) => <ReminderRowView key={r.id} r={r} onComplete={() => completeM.mutate(r)} onSnooze={(dueAt) => snoozeM.mutate({ id: r.id, dueAt })} onOpen={() => openReminderEntity(r)} />)}
           </Section>
 
           {/* SLA en riesgo */}
@@ -183,12 +192,52 @@ function Section({ title, icon, count, action, children }: { title: string; icon
   );
 }
 
+function snoozePresets(): { label: string; get: () => string }[] {
+  return [
+    { label: "En 1 hora", get: () => { const d = new Date(); d.setHours(d.getHours() + 1, d.getMinutes(), 0, 0); return d.toISOString(); } },
+    { label: "Esta tarde (17:00)", get: () => { const d = new Date(); d.setHours(17, 0, 0, 0); if (d.getTime() < Date.now()) d.setDate(d.getDate() + 1); return d.toISOString(); } },
+    { label: "Mañana (9:00)", get: () => { const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(9, 0, 0, 0); return d.toISOString(); } },
+    { label: "Próximo lunes (9:00)", get: () => { const d = new Date(); const add = ((1 - d.getDay() + 7) % 7) || 7; d.setDate(d.getDate() + add); d.setHours(9, 0, 0, 0); return d.toISOString(); } },
+  ];
+}
+
+function SnoozeControl({ onSnooze }: { onSnooze: (dueAt: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const onDoc = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button className="btn btn--ghost btn--sm" title="Posponer" onClick={() => setOpen((o) => !o)}><Clock size={14} /></button>
+      {open && (
+        <div style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 50, background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--radius-m)", boxShadow: "var(--shadow-elev)", padding: 4, width: 210 }}>
+          {snoozePresets().map((p) => (
+            <button key={p.label} type="button" onClick={() => { onSnooze(p.get()); setOpen(false); }}
+              style={{ width: "100%", textAlign: "left", border: 0, background: "transparent", padding: "8px 10px", borderRadius: "var(--radius-s)", cursor: "pointer", fontSize: 13 }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gray-50)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
+              {p.label}
+            </button>
+          ))}
+          <div style={{ borderTop: "1px solid var(--border)", marginTop: 4, padding: "8px 10px" }}>
+            <div className="text-xs muted" style={{ marginBottom: 4 }}>Otra fecha</div>
+            <input className="input" type="datetime-local" onChange={(e) => { if (e.target.value) { onSnooze(new Date(e.target.value).toISOString()); setOpen(false); } }} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SubLabel({ text, tone }: { text: string; tone: "bad" | "warn" | "muted" }) {
   const color = tone === "bad" ? "var(--danger)" : tone === "warn" ? "var(--amber-900, var(--warning))" : "var(--fg-tertiary)";
   return <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color, marginTop: 4 }}>{text}</div>;
 }
 
-function ReminderRowView({ r, overdue, onComplete, onSnooze, onOpen }: { r: ReminderRow; overdue?: boolean; onComplete: () => void; onSnooze: () => void; onOpen: () => void }) {
+function ReminderRowView({ r, overdue, onComplete, onSnooze, onOpen }: { r: ReminderRow; overdue?: boolean; onComplete: () => void; onSnooze: (dueAt: string) => void; onOpen: () => void }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: "var(--gray-50)", borderRadius: 10 }}>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -201,7 +250,7 @@ function ReminderRowView({ r, overdue, onComplete, onSnooze, onOpen }: { r: Remi
           {r.note && <span>· {r.note}</span>}
         </div>
       </div>
-      <button className="btn btn--ghost btn--sm" title="Posponer a mañana" onClick={onSnooze}><Clock size={14} /></button>
+      <SnoozeControl onSnooze={onSnooze} />
       <button className="btn btn--ghost btn--sm" title="Marcar hecho" onClick={onComplete}><Check size={14} /></button>
     </div>
   );
