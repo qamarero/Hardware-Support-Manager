@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Bell, Loader2, Ticket, RotateCcw, Package, Clock, ArrowRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Bell, Loader2, Ticket, RotateCcw, Package, Clock, ArrowRight, ClipboardList } from "lucide-react";
 import { fetchAlertItems } from "@/server/actions/alerts";
 import { useDrawers } from "@/components/shell/drawers-provider";
 import type { AlertItem } from "@/server/queries/alerts";
@@ -12,11 +13,13 @@ const TYPE_META: Record<AlertItem["type"], { icon: typeof Ticket; label: string 
   rma_stuck_provider: { icon: RotateCcw, label: "RMA en proveedor" },
   rma_warehouse: { icon: Package, label: "RMA en almacén" },
   sla_warning: { icon: Clock, label: "SLA en riesgo" },
+  support_submission: { icon: ClipboardList, label: "Soporte: nueva entrada" },
 };
 
 /** Campana de la topbar → centro de avisos. Reutiliza getAlertItems. */
 export function NotificationsBell() {
   const { openByUrl } = useDrawers();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
 
@@ -40,7 +43,9 @@ export function NotificationsBell() {
 
   function go(url: string) {
     setOpen(false);
-    openByUrl(url);
+    // Incidencias y RMA abren su drawer; el resto (p.ej. /submissions) navega.
+    if (/\/(incidents|rmas)\//.test(url)) openByUrl(url);
+    else router.push(url);
   }
 
   return (

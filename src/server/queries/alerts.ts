@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { incidents, rmas, providers, clients } from "@/lib/db/schema";
+import { incidents, rmas, providers, clients, supportSubmissions } from "@/lib/db/schema";
 import { sql, not, inArray, and, eq } from "drizzle-orm";
 import { incidentDateConds, rmaDateConds } from "@/lib/utils/date-conditions";
 import { getAlertThresholds, getSlaThresholds } from "./settings";
@@ -18,7 +18,7 @@ import { CLOSED_INCIDENT_STATUSES, WAREHOUSE_RMA_STATUSES } from "@/lib/constant
 
 export interface AlertItem {
   id: string;
-  type: "incident_stale" | "rma_stuck_provider" | "rma_warehouse" | "sla_warning";
+  type: "incident_stale" | "rma_stuck_provider" | "rma_warehouse" | "sla_warning" | "support_submission";
   number: string;
   title?: string | null;
   status: string;
@@ -35,6 +35,7 @@ export interface AlertSummary {
     stuckRmas: number;
     warehouseRmas: number;
     slaWarnings: number;
+    pendingSubmissions: number;
   };
 }
 
@@ -57,7 +58,7 @@ export async function getAlertItems(
   const emptyResult: AlertSummary = {
     totalCount: 0,
     items: [],
-    counts: { staleIncidents: 0, stuckRmas: 0, warehouseRmas: 0, slaWarnings: 0 },
+    counts: { staleIncidents: 0, stuckRmas: 0, warehouseRmas: 0, slaWarnings: 0, pendingSubmissions: 0 },
   };
 
   try {
@@ -79,7 +80,7 @@ export async function getAlertItems(
       thresholds.slaWarningPercent,
     );
 
-    const [staleIncidents, stuckRmas, warehouseRmas, slaWarnings] =
+    const [staleIncidents, stuckRmas, warehouseRmas, slaWarnings, pendingSubmissions] =
       await Promise.all([
         // 1. Stale incidents: no state change > N days
         db
@@ -164,6 +165,19 @@ export async function getAlertItems(
             ),
           )
           .orderBy(incidents.createdAt),
+
+        // 5. Sumisiones del formulario público /submit pendientes de triar
+        db
+          .select({
+            id: supportSubmissions.id,
+            clientName: supportSubmissions.clientName,
+            title: supportSubmissions.title,
+            priority: supportSubmissions.priority,
+            createdAt: supportSubmissions.createdAt,
+          })
+          .from(supportSubmissions)
+          .where(eq(supportSubmissions.status, "pendiente"))
+          .orderBy(supportSubmissions.createdAt),
       ]);
 
     const items: AlertItem[] = [
@@ -215,6 +229,18 @@ export async function getAlertItems(
         ),
         entityUrl: `/incidents/${i.id}`,
       })),
+      ...pendingSubmissions.map((s) => ({
+        id: s.id,
+        type: "support_submission" as const,
+        number: s.clientName,
+        title: s.title,
+        status: "pendiente",
+        priority: s.priority,
+        daysSinceChange: Math.floor(
+          (Date.now() - new Date(s.createdAt).getTime()) / (1000 * 60 * 60 * 24),
+        ),
+        entityUrl: "/submissions",
+      })),
     ];
 
     return {
@@ -225,6 +251,7 @@ export async function getAlertItems(
         stuckRmas: stuckRmas.length,
         warehouseRmas: warehouseRmas.length,
         slaWarnings: slaWarnings.length,
+        pendingSubmissions: pendingSubmissions.length,
       },
     };
   } catch {
