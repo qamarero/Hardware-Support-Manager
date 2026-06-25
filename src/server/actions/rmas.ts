@@ -146,6 +146,8 @@ export async function updateRma(
     values.logistics = parsed.data.logistics || null;
   if (parsed.data.repairPath !== undefined)
     values.repairPath = parsed.data.repairPath || null;
+  if (parsed.data.shipping !== undefined)
+    values.shipping = parsed.data.shipping;
 
   // Auto-fill clientName from client record if clientId changed
   if (values.clientId) {

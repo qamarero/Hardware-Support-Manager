@@ -25,6 +25,33 @@ const rmaBaseFields = {
   outcome: z.enum(["reparado", "sustituido", "abono", "rechazado", "sin_solucion", "sustitucion_directa"]).optional().or(z.literal("")),
   logistics: z.enum(["proveedor_gestiona", "nosotros_intermediamos"]).optional().or(z.literal("")),
   repairPath: z.enum(["interna_hwtool", "proveedor"]).optional().or(z.literal("")),
+  // Datos de recogida/envío (cliente + destino).
+  shipping: z
+    .object({
+      locationName: z.string().max(255).optional(),
+      contactName: z.string().max(255).optional(),
+      contactEmail: z.string().max(255).optional(),
+      contactPhone: z.string().max(50).optional(),
+      address: z.string().optional(),
+      postalCode: z.string().max(20).optional(),
+      city: z.string().max(255).optional(),
+      province: z.string().max(255).optional(),
+      reference: z.string().max(500).optional(),
+      instructions: z.string().max(2000).optional(),
+      destination: z
+        .object({
+          type: z.enum(["oficina", "sat", "cliente"]).or(z.literal("")).optional(),
+          name: z.string().max(255).optional(),
+          address: z.string().optional(),
+          postalCode: z.string().max(20).optional(),
+          city: z.string().max(255).optional(),
+          province: z.string().max(255).optional(),
+          contact: z.string().max(255).optional(),
+          phone: z.string().max(50).optional(),
+        })
+        .optional(),
+    })
+    .optional(),
 };
 
 export const createRmaSchema = z.object(rmaBaseFields);

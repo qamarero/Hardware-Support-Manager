@@ -1,5 +1,30 @@
-import { uuid, varchar, text, timestamp, bigint } from "drizzle-orm/pg-core";
+import { uuid, varchar, text, timestamp, bigint, jsonb } from "drizzle-orm/pg-core";
 import { hsmSchema } from "./hsm-schema";
+
+/** Datos de recogida/envío del RMA: cliente (origen) + destino. Para el correo
+ *  al proveedor y para preparar el envío (TIPSA, de momento manual). */
+export interface RmaShipping {
+  locationName?: string;
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  address?: string;
+  postalCode?: string;
+  city?: string;
+  province?: string;
+  reference?: string;
+  instructions?: string;
+  destination?: {
+    type?: "oficina" | "sat" | "cliente" | "";
+    name?: string;
+    address?: string;
+    postalCode?: string;
+    city?: string;
+    province?: string;
+    contact?: string;
+    phone?: string;
+  };
+}
 import { incidents } from "./incidents";
 import { providers } from "./providers";
 import { clients } from "./clients";
@@ -45,6 +70,8 @@ export const rmas = hsmSchema.table("rmas", {
   outcome: varchar("outcome", { length: 30 }), // reparado|sustituido|abono|rechazado|sin_solucion|sustitucion_directa
   logistics: varchar("logistics", { length: 30 }), // proveedor_gestiona|nosotros_intermediamos
   repairPath: varchar("repair_path", { length: 30 }), // interna_hwtool|proveedor
+  // Datos de recogida/envío (cliente + destino) capturados en el pop-up.
+  shipping: jsonb("shipping").$type<RmaShipping>().default({}),
   deviceValueCents: bigint("device_value_cents", { mode: "number" }),
   repairCostCents: bigint("repair_cost_cents", { mode: "number" }),
   shippingCostCents: bigint("shipping_cost_cents", { mode: "number" }),
