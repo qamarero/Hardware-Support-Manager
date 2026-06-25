@@ -11,7 +11,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Palette, Clock, Settings2, Loader2, MessageSquareText } from "lucide-react";
-import { ThemeSelector } from "./theme-selector";
 import { updateSetting } from "@/server/actions/settings";
 import { SLA_PRIORITY_LABELS, type SlaThresholds } from "@/lib/constants/sla";
 import { AlertThresholdsCard } from "./alert-thresholds-card";
@@ -80,7 +79,9 @@ export function SettingsContent({
           <CardDescription>Personaliza el aspecto de la aplicación</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <ThemeSelector />
+          <p className="text-sm text-muted-foreground">
+            La aplicación usa un tema claro fijo: barra lateral oscura con el contenido en claro.
+          </p>
         </CardContent>
       </Card>
 
