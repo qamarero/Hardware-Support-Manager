@@ -8,6 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Card,
   CardContent,
@@ -47,6 +55,16 @@ export function ProviderForm({
       rmaUrl: defaultValues?.rmaUrl ?? "",
       contacts: defaultValues?.contacts ?? [],
       notes: defaultValues?.notes ?? "",
+      rmaProcess: {
+        method: defaultValues?.rmaProcess?.method ?? "",
+        emailTo: defaultValues?.rmaProcess?.emailTo ?? "",
+        emailCc: defaultValues?.rmaProcess?.emailCc ?? "",
+        requiresForm: defaultValues?.rmaProcess?.requiresForm ?? false,
+        formType: defaultValues?.rmaProcess?.formType ?? "",
+        formUrl: defaultValues?.rmaProcess?.formUrl ?? "",
+        allowsDirectToClient: defaultValues?.rmaProcess?.allowsDirectToClient ?? false,
+        steps: defaultValues?.rmaProcess?.steps ?? "",
+      },
     },
   });
 
@@ -54,6 +72,8 @@ export function ProviderForm({
     control: form.control,
     name: "contacts",
   });
+
+  const requiresForm = form.watch("rmaProcess.requiresForm");
 
   return (
     <Form {...form}>
@@ -112,15 +132,147 @@ export function ProviderForm({
         {/* Seccion 2: Proceso RMA */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Proceso RMA</h3>
+          <p className="text-sm text-muted-foreground">
+            Cómo se tramita un RMA con este proveedor. Se mostrará al crear/gestionar el RMA.
+          </p>
           <Separator />
+          <div className="grid gap-4 md:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="rmaProcess.method"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Cómo se abre el RMA</FormLabel>
+                  <Select value={field.value || ""} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger><SelectValue placeholder="Selecciona método" /></SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="email">Solo email</SelectItem>
+                      <SelectItem value="portal">Solo portal web</SelectItem>
+                      <SelectItem value="portal_y_email">Portal + email de aviso</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="rmaUrl"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>URL Portal / Ticket RMA</FormLabel>
+                  <FormControl>
+                    <Input placeholder="https://portal.proveedor.com/rma" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="rmaProcess.emailTo"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email RMA (destino)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="sat@proveedor.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="rmaProcess.emailCc"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email CC</FormLabel>
+                  <FormControl>
+                    <Input placeholder="hardware@qamarero.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
           <FormField
             control={form.control}
-            name="rmaUrl"
+            name="rmaProcess.requiresForm"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center gap-2 space-y-0">
+                <FormControl>
+                  <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
+                </FormControl>
+                <FormLabel className="font-normal">Requiere rellenar un formulario / PDF</FormLabel>
+              </FormItem>
+            )}
+          />
+
+          {requiresForm && (
+            <div className="grid gap-4 md:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="rmaProcess.formType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo de formulario</FormLabel>
+                    <Select value={field.value || ""} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger><SelectValue placeholder="Web o PDF" /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="web">Formulario web</SelectItem>
+                        <SelectItem value="pdf">PDF a rellenar</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="rmaProcess.formUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Enlace al formulario / plantilla PDF</FormLabel>
+                    <FormControl>
+                      <Input placeholder="https://..." {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          )}
+
+          <FormField
+            control={form.control}
+            name="rmaProcess.allowsDirectToClient"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center gap-2 space-y-0">
+                <FormControl>
+                  <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
+                </FormControl>
+                <FormLabel className="font-normal">Permite recogida/envío directo al cliente</FormLabel>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="rmaProcess.steps"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>URL Portal RMA</FormLabel>
+                <FormLabel>Pasos / notas del procedimiento</FormLabel>
                 <FormControl>
-                  <Input placeholder="https://portal.proveedor.com/rma" {...field} />
+                  <Textarea
+                    rows={4}
+                    placeholder="Ej: 1) Enviar email a sat@... 2) Aprueban y envían PDF con el nº de RMA 3) ..."
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>

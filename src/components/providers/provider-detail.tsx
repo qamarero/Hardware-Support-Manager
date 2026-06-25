@@ -21,6 +21,12 @@ import type { ProviderRow } from "@/server/queries/providers";
 import type { CreateProviderInput } from "@/lib/validators/provider";
 import type { ProviderContact } from "@/types";
 
+const RMA_METHOD_LABELS: Record<string, string> = {
+  email: "Solo email",
+  portal: "Solo portal web",
+  portal_y_email: "Portal + email de aviso",
+};
+
 interface ProviderDetailProps {
   provider: ProviderRow;
 }
@@ -62,6 +68,7 @@ export function ProviderDetail({ provider }: ProviderDetailProps) {
                 rmaUrl: provider.rmaUrl ?? "",
                 contacts: contacts,
                 notes: provider.notes ?? "",
+                rmaProcess: provider.rmaProcess ?? {},
               }}
               onSubmit={(data) => updateMutation.mutate(data)}
               isSubmitting={updateMutation.isPending}
@@ -156,6 +163,69 @@ export function ProviderDetail({ provider }: ProviderDetailProps) {
           )}
         </CardContent>
       </Card>
+
+      {provider.rmaProcess && Object.keys(provider.rmaProcess).some((k) => {
+        const v = (provider.rmaProcess as Record<string, unknown>)[k];
+        return v !== "" && v !== false && v != null;
+      }) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Procedimiento RMA</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              {provider.rmaProcess.method && (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Cómo se abre</p>
+                  <p className="text-sm">{RMA_METHOD_LABELS[provider.rmaProcess.method] ?? provider.rmaProcess.method}</p>
+                </div>
+              )}
+              {provider.rmaProcess.emailTo && (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Email RMA</p>
+                  <p className="text-sm">
+                    {provider.rmaProcess.emailTo}
+                    {provider.rmaProcess.emailCc ? ` · cc: ${provider.rmaProcess.emailCc}` : ""}
+                  </p>
+                </div>
+              )}
+              {provider.rmaProcess.requiresForm && (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Formulario</p>
+                  <p className="text-sm">
+                    {provider.rmaProcess.formType === "pdf" ? "PDF a rellenar" : "Formulario web"}
+                    {provider.rmaProcess.formUrl ? (
+                      <>
+                        {" · "}
+                        <a
+                          href={provider.rmaProcess.formUrl.startsWith("http") ? provider.rmaProcess.formUrl : `https://${provider.rmaProcess.formUrl}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline inline-flex items-center gap-1"
+                        >
+                          abrir <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </>
+                    ) : null}
+                  </p>
+                </div>
+              )}
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Envío directo al cliente</p>
+                <p className="text-sm">
+                  {provider.rmaProcess.allowsDirectToClient ? "Permitido" : "No (recogemos y enviamos nosotros)"}
+                </p>
+              </div>
+            </div>
+            {provider.rmaProcess.steps && (
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Pasos</p>
+                <p className="text-sm whitespace-pre-wrap">{provider.rmaProcess.steps}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
