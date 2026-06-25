@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getRequiredSession } from "@/lib/auth/get-session";
 import { createProviderSchema, updateProviderSchema } from "@/lib/validators/provider";
-import { getProviders } from "@/server/queries/providers";
+import { getProviders, getProviderById } from "@/server/queries/providers";
 import type { ActionResult, PaginationParams, PaginatedResult } from "@/types";
 import type { ProviderRow } from "@/server/queries/providers";
 
@@ -79,4 +79,11 @@ export async function fetchProviders(
 ): Promise<PaginatedResult<ProviderRow>> {
   await getRequiredSession();
   return getProviders(params);
+}
+
+/** Ficha completa de un proveedor (incluye rmaProcess) para mostrar el
+ *  procedimiento de RMA al crear/gestionar un RMA. */
+export async function fetchProviderById(id: string): Promise<ProviderRow | null> {
+  await getRequiredSession();
+  return getProviderById(id);
 }

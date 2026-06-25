@@ -7,6 +7,7 @@ import { Loader2, Check, Clock, Ticket, Pencil, X } from "lucide-react";
 import { Drawer, Field } from "@/components/proto/drawer";
 import { RmaStatusBadge } from "@/components/proto/badges";
 import { CopyId } from "@/components/proto/copy-id";
+import { ProviderRmaProcedure } from "@/components/providers/provider-rma-procedure";
 import { AttachmentSection } from "@/components/shared/attachment-section";
 import { EventLogTimeline } from "@/components/shared/event-log-timeline";
 import { ManualNoteForm } from "@/components/shared/manual-note-form";
@@ -309,6 +310,7 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
 
           {tab === "detalle" && (
             <div className="stack" style={{ gap: 20 }}>
+              {rma.providerId && <ProviderRmaProcedure providerId={rma.providerId} />}
               {/* Toggle editar datos */}
               <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: -8 }}>
                 {editing ? (

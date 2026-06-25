@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ArticleCombobox } from "@/components/proto/article-combobox";
+import { ProviderRmaProcedure } from "@/components/providers/provider-rma-procedure";
 import { fetchProvidersForSelect, createRma } from "@/server/actions/rmas";
 import { transitionIncident } from "@/server/actions/incidents";
 import { createReminder } from "@/server/actions/reminders";
@@ -232,6 +233,7 @@ export function RmaWizard({ open, onOpenChange, incident }: RmaWizardProps) {
                   </Select>
                 )}
               </div>
+              {providerId && <ProviderRmaProcedure providerId={providerId} />}
               <div className="space-y-2">
                 <Label>Equipo (catálogo)</Label>
                 <ArticleCombobox
