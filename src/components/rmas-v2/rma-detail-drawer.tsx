@@ -13,6 +13,8 @@ import { RmaProviderEmail } from "./rma-provider-email";
 import { AttachmentSection } from "@/components/shared/attachment-section";
 import { EventLogTimeline } from "@/components/shared/event-log-timeline";
 import { ManualNoteForm } from "@/components/shared/manual-note-form";
+import { ConversationThread } from "@/components/intercom/conversation-thread";
+import { extractConversationId } from "@/lib/intercom/sync";
 import { ReminderSection } from "@/components/reminders/reminder-section";
 import { createReminder } from "@/server/actions/reminders";
 
@@ -40,7 +42,7 @@ const STAGES: RmaStatus[] = [
 
 export function RmaDetailDrawer({ rmaId, onClose }: Props) {
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"detalle" | "timeline" | "adjuntos">("detalle");
+  const [tab, setTab] = useState<"detalle" | "conversacion" | "timeline" | "adjuntos">("detalle");
   const [providerRma, setProviderRma] = useState("");
   const [trackingOut, setTrackingOut] = useState("");
   const [trackingIn, setTrackingIn] = useState("");
@@ -162,6 +164,8 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
   if (!rmaId) return null;
 
   const transitions = rma ? getRmaAvailableTransitions(rma.status as RmaStatus, "admin") : [];
+  // Conversación de Intercom heredada de la incidencia al derivar (clientIntercomUrl).
+  const conversationId = rma ? extractConversationId(rma.clientIntercomUrl ?? "") : null;
   const isPaused = rma ? (PAUSED_RMA_STATES as readonly string[]).includes(rma.status) : false;
   const currentIdx = rma ? STAGES.indexOf(rma.status as RmaStatus) : -1;
   const nextStage = currentIdx >= 0 && currentIdx < STAGES.length - 1 ? STAGES[currentIdx + 1] : null;
@@ -306,6 +310,9 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
           {/* Tabs */}
           <div className="tabs">
             <button className={`tab ${tab === "detalle" ? "is-active" : ""}`} onClick={() => setTab("detalle")}>Detalle</button>
+            {conversationId && (
+              <button className={`tab ${tab === "conversacion" ? "is-active" : ""}`} onClick={() => setTab("conversacion")}>Conversación</button>
+            )}
             <button className={`tab ${tab === "timeline" ? "is-active" : ""}`} onClick={() => setTab("timeline")}>Timeline</button>
             <button className={`tab ${tab === "adjuntos" ? "is-active" : ""}`} onClick={() => setTab("adjuntos")}>Adjuntos</button>
           </div>
@@ -432,6 +439,10 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
               {/* Recordatorios / seguimientos */}
               <ReminderSection entityType="rma" entityId={rma.id} defaultTitle={`Seguimiento RMA ${rma.rmaNumber}`} />
             </div>
+          )}
+
+          {tab === "conversacion" && conversationId && (
+            <ConversationThread conversationId={conversationId} />
           )}
 
           {tab === "timeline" && <EventLogTimeline entityType="rma" entityId={rma.id} />}
