@@ -17,13 +17,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { updateRma } from "@/server/actions/rmas";
 import type { RmaRow } from "@/server/queries/rmas";
 import type { RmaShipping } from "@/lib/db/schema/rmas";
@@ -175,14 +168,16 @@ export function RmaShippingDialog({ rma }: { rma: RmaRow }) {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Destino del envío</Label>
-                <Select value={f.destType || ""} onValueChange={(v) => set("destType", v)}>
-                  <SelectTrigger><SelectValue placeholder="¿A dónde va?" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="oficina">Nuestra oficina</SelectItem>
-                    <SelectItem value="sat">SAT del proveedor</SelectItem>
-                    <SelectItem value="cliente">Directo al cliente</SelectItem>
-                  </SelectContent>
-                </Select>
+                <select
+                  className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+                  value={f.destType || ""}
+                  onChange={(e) => set("destType", e.target.value)}
+                >
+                  <option value="">¿A dónde va?</option>
+                  <option value="oficina">Nuestra oficina</option>
+                  <option value="sat">SAT del proveedor</option>
+                  <option value="cliente">Directo al cliente</option>
+                </select>
               </div>
               <div className="space-y-1.5 sm:col-span-2">
                 <Label className="text-xs">Instrucciones para el mensajero</Label>
