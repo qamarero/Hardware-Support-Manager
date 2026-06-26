@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Check, Clock, Ticket, Pencil, X } from "lucide-react";
+import { Loader2, Check, Clock, Ticket, Pencil, X, MessageSquare } from "lucide-react";
 import { Drawer, Field } from "@/components/proto/drawer";
 import { RmaStatusBadge } from "@/components/proto/badges";
 import { CopyId } from "@/components/proto/copy-id";
@@ -13,7 +13,7 @@ import { RmaProviderEmail } from "./rma-provider-email";
 import { AttachmentSection } from "@/components/shared/attachment-section";
 import { EventLogTimeline } from "@/components/shared/event-log-timeline";
 import { ManualNoteForm } from "@/components/shared/manual-note-form";
-import { ConversationThread } from "@/components/intercom/conversation-thread";
+import { ConversationPopup } from "@/components/proto/conversation-popup";
 import { extractConversationId } from "@/lib/intercom/sync";
 import { ReminderSection } from "@/components/reminders/reminder-section";
 import { createReminder } from "@/server/actions/reminders";
@@ -47,7 +47,7 @@ const SELECTABLE_RMA_STATUSES: RmaStatus[] = [
 
 export function RmaDetailDrawer({ rmaId, onClose }: Props) {
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"detalle" | "conversacion" | "timeline" | "adjuntos">("detalle");
+  const [tab, setTab] = useState<"detalle" | "timeline" | "adjuntos">("detalle");
   const [providerRma, setProviderRma] = useState("");
   const [trackingOut, setTrackingOut] = useState("");
   const [trackingIn, setTrackingIn] = useState("");
@@ -57,6 +57,7 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
   const [closingTo, setClosingTo] = useState<string | null>(null);
   const [closingOutcome, setClosingOutcome] = useState("");
   const [closingForce, setClosingForce] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
   // Edición de datos del RMA (equipo, proveedor, contacto).
   const [editing, setEditing] = useState(false);
@@ -322,9 +323,6 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
           {/* Tabs */}
           <div className="tabs">
             <button className={`tab ${tab === "detalle" ? "is-active" : ""}`} onClick={() => setTab("detalle")}>Detalle</button>
-            {conversationId && (
-              <button className={`tab ${tab === "conversacion" ? "is-active" : ""}`} onClick={() => setTab("conversacion")}>Conversación</button>
-            )}
             <button className={`tab ${tab === "timeline" ? "is-active" : ""}`} onClick={() => setTab("timeline")}>Timeline</button>
             <button className={`tab ${tab === "adjuntos" ? "is-active" : ""}`} onClick={() => setTab("adjuntos")}>Adjuntos</button>
           </div>
@@ -335,6 +333,11 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
               <div style={{ display: "flex", justifyContent: "flex-start", gap: 8, flexWrap: "wrap" }}>
                 <RmaShippingDialog rma={rma} />
                 <RmaProviderEmail rma={rma} />
+                {conversationId && (
+                  <button type="button" className="btn btn--outline btn--sm" onClick={() => setChatOpen(true)}>
+                    <MessageSquare size={14} /> Ver conversación
+                  </button>
+                )}
               </div>
               {/* Toggle editar datos */}
               <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: -8 }}>
@@ -453,8 +456,13 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
             </div>
           )}
 
-          {tab === "conversacion" && conversationId && (
-            <ConversationThread conversationId={conversationId} />
+          {conversationId && chatOpen && (
+            <ConversationPopup
+              conversationId={conversationId}
+              title={`Conversación · RMA ${rma.rmaNumber}`}
+              intercomUrl={rma.clientIntercomUrl}
+              onClose={() => setChatOpen(false)}
+            />
           )}
 
           {tab === "timeline" && <EventLogTimeline entityType="rma" entityId={rma.id} />}

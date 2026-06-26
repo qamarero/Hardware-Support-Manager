@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { X, Loader2, Shield, User, StickyNote, MessageSquare, ExternalLink } from "lucide-react";
 import { fetchIntercomConversation, type ConversationMessage } from "@/server/actions/intercom-inbox";
@@ -38,6 +39,10 @@ function formatTs(ts: number): string {
  */
 export function ConversationPopup({ conversationId, title, subtitle, intercomUrl, onClose }: Props) {
   const bodyRef = useRef<HTMLDivElement>(null);
+  // Portal a document.body para escapar del contexto de apilamiento del drawer
+  // (si no, el popup saldría DETRÁS de la ficha lateral). Se monta solo en cliente.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["intercom-conversation", conversationId],
@@ -59,16 +64,16 @@ export function ConversationPopup({ conversationId, title, subtitle, intercomUrl
     if (messages.length && bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
   }, [messages.length]);
 
-  if (!conversationId) return null;
+  if (!conversationId || !mounted) return null;
 
-  return (
+  return createPortal(
     <>
-      <div className="drawer-overlay" style={{ zIndex: 100 }} onClick={onClose} />
+      <div className="drawer-overlay" style={{ zIndex: 120 }} onClick={onClose} />
       <div
         role="dialog"
         aria-modal="true"
         style={{
-          position: "fixed", zIndex: 101, top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+          position: "fixed", zIndex: 121, top: "50%", left: "50%", transform: "translate(-50%, -50%)",
           width: "min(560px, 94vw)", maxHeight: "82vh", display: "flex", flexDirection: "column",
           background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--radius-l)",
           boxShadow: "var(--shadow-elev)", overflow: "hidden",
@@ -109,7 +114,8 @@ export function ConversationPopup({ conversationId, title, subtitle, intercomUrl
           </div>
         )}
       </div>
-    </>
+    </>,
+    document.body
   );
 }
 

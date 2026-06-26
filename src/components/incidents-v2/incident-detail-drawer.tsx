@@ -3,13 +3,13 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Check, RotateCcw, Clock, Pencil, X } from "lucide-react";
+import { Loader2, Check, RotateCcw, Clock, Pencil, X, MessageSquare } from "lucide-react";
 import { Drawer, Field } from "@/components/proto/drawer";
 import { Combobox } from "@/components/proto/combobox";
 import { ArticleCombobox } from "@/components/proto/article-combobox";
 import { CopyId } from "@/components/proto/copy-id";
 import { IncidentStatusBadge, PriorityPill, SlaBar, slaProgress } from "@/components/proto/badges";
-import { ConversationThread } from "@/components/intercom/conversation-thread";
+import { ConversationPopup } from "@/components/proto/conversation-popup";
 import { ManualNoteForm } from "@/components/shared/manual-note-form";
 import { AttachmentSection } from "@/components/shared/attachment-section";
 import { EventLogTimeline } from "@/components/shared/event-log-timeline";
@@ -53,6 +53,7 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
   const [tab, setTab] = useState<"detalle" | "timeline" | "adjuntos">("detalle");
   const [diagnosis, setDiagnosis] = useState("");
   const [resolution, setResolution] = useState("");
+  const [chatOpen, setChatOpen] = useState(false);
 
   // Edición de datos del caso (título, descripción, cliente, contacto, equipo, SLA).
   const [editing, setEditing] = useState(false);
@@ -412,11 +413,13 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
               {/* Recordatorios / seguimientos */}
               <ReminderSection entityType="incident" entityId={inc.id} defaultTitle={`Seguimiento ${inc.incidentNumber}`} />
 
-              {/* Intercom (conservado) */}
+              {/* Intercom (conservado) — en popup para no alargar el scroll del drawer */}
               {conversationId && (
-                <div className="stack" style={{ gap: 12 }}>
+                <div className="stack" style={{ gap: 8 }}>
                   <div className="field__label">Conversación Intercom</div>
-                  <ConversationThread conversationId={conversationId} />
+                  <button type="button" className="btn btn--outline" style={{ justifyContent: "flex-start", gap: 8 }} onClick={() => setChatOpen(true)}>
+                    <MessageSquare size={16} /> Ver conversación de Intercom
+                  </button>
                 </div>
               )}
               <div className="stack" style={{ gap: 8 }}>
@@ -432,6 +435,15 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
             <div className="stack">
               <AttachmentSection entityType="incident" entityId={inc.id} />
             </div>
+          )}
+
+          {conversationId && chatOpen && (
+            <ConversationPopup
+              conversationId={conversationId}
+              title={`Conversación · ${inc.incidentNumber}`}
+              intercomUrl={intercomConversationUrl(conversationId)}
+              onClose={() => setChatOpen(false)}
+            />
           )}
         </div>
       )}
