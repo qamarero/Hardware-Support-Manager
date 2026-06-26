@@ -169,19 +169,25 @@ docs/proyecto_log.md    # changelog histórico
 
 ---
 
-## Sesión en curso (2026-06-26)
+## Sesión 2026-06-26 (resumen para retomar en teletrabajo)
 
-**Conexión del MCP de Supabase** (read-only, ref `thkrkubkiasfqmiiwfbj`) en `.mcp.json` (gitignored) para que el asistente consulte la BD directamente.
+> Todo lo de abajo está **commiteado y desplegado en `main`** (commits `94a18ff`, `37f00ff`, `297187a`). La migración `sql/019` está **aplicada** en Supabase. Build + lint en verde en cada commit.
 
-**① Transiciones de estado LIBRES / no lineales** (Kanban + ficha incidencia + ficha RMA). El estado pasa a entenderse como "situación actual", no como flujo rígido:
-- Servidor: `transitionIncident` y `transitionRma` aceptan un flag `force` que **omite la validación del grafo** pero **conserva** la pausa de SLA, el auto-cierre de la incidencia al cerrar el RMA y el outcome obligatorio. El auto-cierre interno ahora va con `force` para no quedar bloqueado por el grafo.
-- Validadores: `transitionIncidentSchema` añade `esperando_pieza` + `force`; `transitionRmaSchema` añade `force`.
-- UI: los selectores "Cambiar estado…" de ambas fichas listan **todos** los estados vivos; el Kanban permite **soltar en cualquier columna** (fuerza el salto si no es natural).
-- **Arreglado de paso el error del Kanban**: la columna "Esperando resolución del RMA" (`esperando_pieza`) faltaba en el validador → daba "Datos inválidos". **Sin migración SQL** (el valor ya existía en el enum).
+**MCP de Supabase** en `.mcp.json` (ref `thkrkubkiasfqmiiwfbj`, features `database,docs,debugging`). Ahora en **lectura-escritura** (se quitó `--read-only`) → el asistente puede aplicar migraciones/SQL directamente, mostrándolas antes y sin SQL destructivo sin confirmación. ⚠️ **`.mcp.json` es local y gitignored** (contiene el PAT de Supabase): al teletrabajar desde otro equipo hay que **recrearlo** (copiar el bloque `supabase` con un PAT). Cambios en `.mcp.json` solo surten efecto al **reiniciar** Claude Code.
 
-**② Visibilidad del enlace Incidencia → RMA** (antes solo se veía desde el lado RMA y en Casos):
-- `getIncidents` trae `rmaCount` + último RMA (subconsultas correlacionadas).
-- **Badge clicable** "RMA-…" en la lista de incidencias (abre el drawer del RMA).
-- Sección **"RMA(s) vinculados"** en el drawer de la incidencia + el botón "Crear RMA" pasa a **"Ver RMA-…"** cuando ya existe. Reutiliza `useDrawers().openRma`.
+**① Estados NO lineales** (Kanban + ficha incidencia + ficha RMA): `transitionIncident`/`transitionRma` aceptan un flag `force` que omite el grafo pero conserva pausa de SLA, auto-cierre de la incidencia al cerrar el RMA y outcome obligatorio. Los selectores "Cambiar estado…" listan todos los estados y el Kanban deja soltar en cualquier columna. Arreglado de paso el error del Kanban (`esperando_pieza` faltaba en el validador). Sin migración. → memoria `estados-no-lineales`.
 
-Pendiente: validar en runtime tras el deploy; (opcional) guard de duplicados en `createRma`.
+**② Enlace Incidencia → RMA visible**: `getIncidents` trae `rmaCount` + último RMA; **badge clicable "RMA-…"** en la lista; sección **"RMAs vinculados"** + botón **"Ver RMA-…"** en el drawer de la incidencia (vía `useDrawers().openRma`).
+
+**③ Conversación de Intercom en POPUP** (no desplegable): `ConversationThread` (acordeón que crecía sin fin) → botón **"Ver conversación"** que abre `ConversationPopup` (portado a `document.body`, z-index por encima del drawer). En la ficha de RMA se retiró la pestaña "Conversación".
+
+**④ Prioridad BINARIA**: 4 niveles → 2 — **"Cliente puede operar"** (`media`) y **"Cliente no puede operar"** (`critica`). Selectores/filtros/badge binarios; los datos antiguos se mapean con `priorityBucket()`. La migración `sql/019` colapsó los datos (baja→media, alta→critica). Los RMA no tienen prioridad. → memoria `prioridad-binaria`.
+
+**⑤ Formulario público `/submit`**: email permitido solo `@qamarero.com` (quitado `qami.es`); URL de Intercom **opcional**; botón **"Enviar formulario"**.
+
+**Para retomar (pendiente):**
+- Si trabajas desde otro equipo: recrear `.mcp.json` (token Supabase) y `.env.local`.
+- Validar en runtime tras el deploy (estados libres, popup, prioridad binaria, formulario) + repaso rápido de Intercom (convertir desde la bandeja).
+- **Rotar el PAT de Supabase** (se pegó en el chat al conectar el MCP).
+- Opcional: guard de duplicados en `createRma`; simplificar los ajustes de SLA al modelo binario (hoy `/settings` aún muestra 4 prioridades).
+- Del plan ④ (pendientes mayores): A6.2 filtro fino del webhook, A7 email/Resend + Vercel Cron, A8 métricas big-data por `articleId`.

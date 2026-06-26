@@ -1502,7 +1502,13 @@ Ninguna nueva en este entregable.
 - **⑧ Formulario público `/submit` + Bandeja Soporte `/submissions`**: badges de pendientes, avisos en campana, URL Intercom obligatoria, adjuntar fotos (endpoint público `/api/submit-upload/sign`).
 - **⑨ Procedimientos de proveedor + correo RMA + datos de recogida**: `provider.rma_process` (jsonb), panel "Cómo tramitar con {proveedor}" en wizard y drawer, pop-up de datos de recogida/envío (`rma.shipping` jsonb), generar correo al proveedor (mailto/copiar). Extras: fix z-index de pop-ups, chat de Intercom embebido en el drawer de RMA.
 
-### 2026-06-26 — Flujo: estados no lineales + enlace Incidencia↔RMA visible
-- **Transiciones de estado libres** en las 3 superficies (Kanban + ficha incidencia + ficha RMA): `transitionIncident`/`transitionRma` aceptan `force` (omite el grafo, conserva pausa SLA, auto-cierre y outcome). Validadores ampliados (`esperando_pieza` + `force`). Selectores de las fichas listan todos los estados; el Kanban admite soltar en cualquier columna. **Arregla el error del Kanban** (faltaba `esperando_pieza` en el validador). Sin migración.
+### 2026-06-26 — Flujo: estados no lineales, enlace RMA visible, popup Intercom, prioridad binaria
+
+Commits en `main` (desplegados): `94a18ff`, `37f00ff`, `297187a`. Migración `sql/019` aplicada. Build + lint en verde por commit.
+
+- **Estados no lineales** en las 3 superficies (Kanban + ficha incidencia + ficha RMA): `transitionIncident`/`transitionRma` aceptan `force` (omite el grafo, conserva pausa SLA, auto-cierre y outcome). Validadores ampliados (`esperando_pieza` + `force`). Selectores listan todos los estados; el Kanban admite soltar en cualquier columna. **Arregla el error del Kanban** (faltaba `esperando_pieza` en el validador). Sin migración.
 - **Enlace Incidencia→RMA visible**: `getIncidents` trae `rmaCount` + último RMA; badge clicable en la lista; sección "RMAs vinculados" + botón "Ver RMA-…" en el drawer de la incidencia (vía `useDrawers().openRma`).
-- Documentos: creado `ONBOARDING.md` (handoff operativo) y actualizado este log.
+- **Conversación de Intercom en popup**: `ConversationThread` (desplegable que crecía sin fin) → `ConversationPopup` (portal a `document.body`, z-index por encima del drawer) lanzado con un botón en ambas fichas; se retiró la pestaña "Conversación" del drawer de RMA.
+- **Prioridad binaria**: 4 niveles → 2 ("Cliente puede operar" = `media`, "Cliente no puede operar" = `critica`). Etiquetas/colores/selectores/filtros binarios; `priorityBucket()` mapea los datos antiguos. Migración `sql/019` (baja→media, alta→critica). Los RMA no tienen prioridad propia.
+- **Formulario público `/submit`**: email permitido solo `@qamarero.com` (quitado `qami.es`); URL de Intercom opcional; botón "Enviar formulario".
+- **Infra**: MCP de Supabase conectado (primero read-only, luego read-write); creado `ONBOARDING.md` como handoff operativo. Reglas/decisiones nuevas en memoria: `estados-no-lineales`, `prioridad-binaria`.
