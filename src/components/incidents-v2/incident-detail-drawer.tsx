@@ -15,7 +15,8 @@ import { AttachmentSection } from "@/components/shared/attachment-section";
 import { EventLogTimeline } from "@/components/shared/event-log-timeline";
 import { ReminderSection } from "@/components/reminders/reminder-section";
 import { ClientContext } from "./client-context";
-import { fetchIncidentById, updateIncident, transitionIncident, fetchUsersForSelect } from "@/server/actions/incidents";
+import { useDrawers } from "@/components/shell/drawers-provider";
+import { fetchIncidentById, updateIncident, transitionIncident, fetchUsersForSelect, fetchLinkedRmas } from "@/server/actions/incidents";
 import { fetchClientsForSelect } from "@/server/actions/clients";
 import { createReminder } from "@/server/actions/reminders";
 
@@ -31,8 +32,14 @@ import { extractConversationId } from "@/lib/intercom/sync";
 import { intercomConversationUrl } from "@/lib/utils/intercom-url";
 import { incidentMissingFields } from "@/lib/utils/incident-completeness";
 import { INCIDENT_STATUS_LABELS, type IncidentStatus } from "@/lib/constants/incidents";
+import { RMA_STATUS_LABELS, type RmaStatus } from "@/lib/constants/rmas";
 import { PAUSED_INCIDENT_STATES } from "@/lib/constants/statuses";
 import { formatDateTime } from "@/lib/utils/date-format";
+
+/** Estados seleccionables en transición libre (sin en_triaje, legacy). */
+const SELECTABLE_STATUSES: IncidentStatus[] = [
+  "nuevo", "en_gestion", "esperando_cliente", "esperando_proveedor", "esperando_pieza", "resuelto", "cerrado", "cancelado",
+];
 
 interface Props {
   incidentId: string | null;
@@ -42,6 +49,7 @@ interface Props {
 
 export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props) {
   const qc = useQueryClient();
+  const { openRma } = useDrawers();
   const [tab, setTab] = useState<"detalle" | "timeline" | "adjuntos">("detalle");
   const [diagnosis, setDiagnosis] = useState("");
   const [resolution, setResolution] = useState("");
@@ -67,6 +75,11 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
     queryKey: ["clients", "select"],
     queryFn: () => fetchClientsForSelect(),
     enabled: !!incidentId && editing,
+  });
+  const { data: linkedRmas = [] } = useQuery({
+    queryKey: ["linked-rmas", incidentId],
+    queryFn: () => fetchLinkedRmas(incidentId!),
+    enabled: !!incidentId,
   });
 
   useEffect(() => {
@@ -124,8 +137,10 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
   });
 
   const transitionM = useMutation({
-    mutationFn: (toStatus: string) => transitionIncident({ incidentId: incidentId!, toStatus }),
-    onSuccess: (r, toStatus) => {
+    mutationFn: (vars: { toStatus: string; force?: boolean }) =>
+      transitionIncident({ incidentId: incidentId!, toStatus: vars.toStatus, force: vars.force }),
+    onSuccess: (r, vars) => {
+      const toStatus = vars.toStatus;
       if (!r.success) { toast.error(r.error); return; }
       invalidate();
       // Al pasar a un estado de espera, sugerir un recordatorio de seguimiento.
@@ -168,22 +183,32 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
         className="select"
         style={{ width: "auto" }}
         value=""
-        onChange={(e) => e.target.value && transitionM.mutate(e.target.value)}
+        onChange={(e) => {
+          const v = e.target.value;
+          if (v) transitionM.mutate({ toStatus: v, force: !transitions.some((t) => t.to === v) });
+        }}
         disabled={transitionM.isPending}
+        title="Cambiar a cualquier estado (libre)"
       >
         <option value="">Cambiar estado…</option>
-        {transitions.map((t) => (
-          <option key={t.to} value={t.to}>{t.label}</option>
+        {SELECTABLE_STATUSES.filter((s) => s !== inc.status).map((s) => (
+          <option key={s} value={s}>{INCIDENT_STATUS_LABELS[s]}</option>
         ))}
       </select>
       <div style={{ flex: 1 }} />
-      {!isClosed && onDeriveRma && (
-        <button className="btn btn--outline btn--sm" onClick={() => onDeriveRma(inc.id)}>
-          <RotateCcw size={14} /> Crear RMA
+      {linkedRmas.length > 0 ? (
+        <button className="btn btn--outline btn--sm" onClick={() => openRma(linkedRmas[0].id)}>
+          <RotateCcw size={14} /> Ver {linkedRmas[0].rmaNumber}
         </button>
+      ) : (
+        !isClosed && onDeriveRma && (
+          <button className="btn btn--outline btn--sm" onClick={() => onDeriveRma(inc.id)}>
+            <RotateCcw size={14} /> Crear RMA
+          </button>
+        )
       )}
       {!isClosed && (
-        <button className="btn btn--secondary btn--sm" onClick={() => transitionM.mutate("resuelto")} disabled={transitionM.isPending}>
+        <button className="btn btn--secondary btn--sm" onClick={() => transitionM.mutate({ toStatus: "resuelto", force: !transitions.some((t) => t.to === "resuelto") })} disabled={transitionM.isPending}>
           <Check size={14} /> Marcar resuelta
         </button>
       )}
@@ -232,6 +257,20 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
 
           {tab === "detalle" && (
             <div className="stack" style={{ gap: 20 }}>
+              {/* RMA(s) vinculados — visible y navegable desde la propia ficha */}
+              {linkedRmas.length > 0 && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "10px 14px", background: "var(--purple-50)", border: "1px solid var(--purple-500)", borderRadius: 10 }}>
+                  <RotateCcw size={14} style={{ color: "var(--purple-900)", flexShrink: 0 }} />
+                  <span className="text-xs fw-700" style={{ color: "var(--purple-900)" }}>
+                    {linkedRmas.length > 1 ? "RMAs vinculados:" : "RMA vinculado:"}
+                  </span>
+                  {linkedRmas.map((r) => (
+                    <button key={r.id} className="badge badge--outline" style={{ cursor: "pointer" }} onClick={() => openRma(r.id)}>
+                      {r.rmaNumber} · {RMA_STATUS_LABELS[r.status as RmaStatus] ?? r.status}
+                    </button>
+                  ))}
+                </div>
+              )}
               {/* Toggle editar datos */}
               <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: -8 }}>
                 {editing ? (

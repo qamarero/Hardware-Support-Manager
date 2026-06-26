@@ -40,6 +40,11 @@ const STAGES: RmaStatus[] = [
   "borrador", "solicitado", "aprobado", "enviado_proveedor", "en_proveedor", "devuelto", "recibido_oficina", "entregado_cliente", "cerrado",
 ];
 
+// Todos los estados seleccionables en transición libre (incluye rechazado/cancelado).
+const SELECTABLE_RMA_STATUSES: RmaStatus[] = [
+  "borrador", "solicitado", "aprobado", "enviado_proveedor", "en_proveedor", "devuelto", "recibido_oficina", "entregado_cliente", "rechazado", "cerrado", "cancelado",
+];
+
 export function RmaDetailDrawer({ rmaId, onClose }: Props) {
   const qc = useQueryClient();
   const [tab, setTab] = useState<"detalle" | "conversacion" | "timeline" | "adjuntos">("detalle");
@@ -51,6 +56,7 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
   // Captura de resultado obligatoria al cerrar/entregar el RMA.
   const [closingTo, setClosingTo] = useState<string | null>(null);
   const [closingOutcome, setClosingOutcome] = useState("");
+  const [closingForce, setClosingForce] = useState(false);
 
   // Edición de datos del RMA (equipo, proveedor, contacto).
   const [editing, setEditing] = useState(false);
@@ -127,12 +133,13 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
   });
 
   const transitionM = useMutation({
-    mutationFn: (vars: { toStatus: string; outcome?: string }) =>
-      transitionRma({ rmaId: rmaId!, toStatus: vars.toStatus, ...(vars.outcome ? { outcome: vars.outcome } : {}) }),
+    mutationFn: (vars: { toStatus: string; outcome?: string; force?: boolean }) =>
+      transitionRma({ rmaId: rmaId!, toStatus: vars.toStatus, ...(vars.outcome ? { outcome: vars.outcome } : {}), ...(vars.force ? { force: true } : {}) }),
     onSuccess: (r, vars) => {
       if (!r.success) { toast.error(r.error); return; }
       setClosingTo(null);
       setClosingOutcome("");
+      setClosingForce(false);
       invalidate();
       const toStatus = vars.toStatus;
       // Al enviar el equipo al proveedor, sugerir recordatorio de seguimiento.
@@ -172,19 +179,20 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
   const canAdvance = nextStage ? transitions.some((t) => t.to === nextStage) : false;
 
   // Algunos cierres requieren registrar el resultado antes de confirmar.
-  function requestTransition(toStatus: string) {
+  function requestTransition(toStatus: string, force = false) {
     if (toStatus === "rechazado") {
       // El proveedor rechaza: el resultado es evidente, se fija automáticamente.
-      transitionM.mutate({ toStatus, outcome: "rechazado" });
+      transitionM.mutate({ toStatus, outcome: "rechazado", force });
       return;
     }
     const needsOutcome = toStatus === "entregado_cliente" || (toStatus === "cerrado" && !rma?.outcome);
     if (needsOutcome) {
+      setClosingForce(force);
       setClosingOutcome(rma?.outcome ?? "");
       setClosingTo(toStatus);
       return;
     }
-    transitionM.mutate({ toStatus });
+    transitionM.mutate({ toStatus, force });
   }
 
   const footer = rma ? (
@@ -204,13 +212,13 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
           {Object.entries(RMA_OUTCOME_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
         <div style={{ flex: 1 }} />
-        <button className="btn btn--ghost btn--sm" onClick={() => { setClosingTo(null); setClosingOutcome(""); }} disabled={transitionM.isPending}>
+        <button className="btn btn--ghost btn--sm" onClick={() => { setClosingTo(null); setClosingOutcome(""); setClosingForce(false); }} disabled={transitionM.isPending}>
           Cancelar
         </button>
         <button
           className="btn btn--primary btn--sm"
           disabled={!closingOutcome || transitionM.isPending}
-          onClick={() => transitionM.mutate({ toStatus: closingTo, outcome: closingOutcome })}
+          onClick={() => transitionM.mutate({ toStatus: closingTo, outcome: closingOutcome, force: closingForce })}
         >
           {transitionM.isPending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Confirmar
         </button>
@@ -221,12 +229,16 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
           className="select"
           style={{ width: "auto" }}
           value=""
-          onChange={(e) => e.target.value && requestTransition(e.target.value)}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v) requestTransition(v, !transitions.some((t) => t.to === v));
+          }}
           disabled={transitionM.isPending}
+          title="Cambiar a cualquier estado (libre)"
         >
           <option value="">Cambiar estado…</option>
-          {transitions.map((t) => (
-            <option key={t.to} value={t.to}>{RMA_STATUS_LABELS[t.to as RmaStatus]}</option>
+          {SELECTABLE_RMA_STATUSES.filter((s) => s !== rma.status).map((s) => (
+            <option key={s} value={s}>{RMA_STATUS_LABELS[s]}</option>
           ))}
         </select>
         <div style={{ flex: 1 }} />

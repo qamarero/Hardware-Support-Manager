@@ -1483,3 +1483,26 @@ Ninguna nueva en este entregable.
    - Ejecutar `npm run db:seed` si se desean datos demo
 6. El build pasa sin necesidad de DATABASE_URL gracias a la inicialización lazy del DB client
 7. **Importante**: Tras cambiar variables de entorno, siempre hacer Redeploy manual
+
+---
+
+## Resumen 2026-05 → 2026-06 (proyectos ③–⑨)
+
+> Esta sección recupera el histórico que faltaba: el changelog anterior terminaba en 2026-05-13. La fuente de verdad del estado de proyectos es el plan en `.claude/plans/`; aquí queda el resumen cronológico.
+
+### Infra / rewrite
+- **③ Rewrite TOTAL del frontend** desde el prototipo Qamarero (fases W0–W5): nuevo sistema de UI "proto" (CSS plano `src/app/proto-tokens.css` + `proto-app.css`; componentes en `src/components/{incidents-v2,rmas-v2,proto,shell}`, drawers laterales en vez de páginas `[id]`, marca Qamarero, DM Sans + Space Mono). Los componentes shadcn antiguos quedan como posible código muerto. **Modo claro forzado** en toda la app (sin dark mode). MCP de Supabase conectado en read-only.
+- Migraciones aplicadas hasta `sql/018` (recordatorios, adjuntos de submissions, `provider.rma_process`, `rma.shipping`, seed de procedimientos de 6 proveedores).
+
+### Proyectos de producto
+- **④ HSM como asistente diario** (EN CURSO): A1 badges en sidebar + buscador global + centro de avisos; A2 recordatorios (`sql/012`/`014`); A3 vista "Mi día"; A4 contexto de cliente + registro progresivo + equipo desde catálogo `articles`; A5 redefinición de estados (triaje fuera; RMA con outcome/logistics/repairPath + auto-cierre de incidencia); A6.1 reglas de captura Intercom configurables. **Pendientes**: A6.2 (filtro fino del webhook), A7 (email/Resend + Vercel Cron), A8 (métricas big-data por `articleId` + base de conocimiento de proveedores).
+- **⑤ QoL de uso diario**: copiar nº al portapapeles, adjuntos drag&drop/pegar/múltiples, triage en lista (Mías + asignar/prioridad inline + selección masiva), agenda potente (snooze flexible, delegar, recurrencia, auto-recordatorio al derivar a RMA, deshacer).
+- **⑥ Bandeja Intercom**: botón "Descartar" en cabecera + descarte en bloque + checkbox por fila (solo UI).
+- **⑦ Pulir RMA**: columna Resultado en la lista + indicador "SLA en pausa" + captura obligatoria de outcome al cerrar.
+- **⑧ Formulario público `/submit` + Bandeja Soporte `/submissions`**: badges de pendientes, avisos en campana, URL Intercom obligatoria, adjuntar fotos (endpoint público `/api/submit-upload/sign`).
+- **⑨ Procedimientos de proveedor + correo RMA + datos de recogida**: `provider.rma_process` (jsonb), panel "Cómo tramitar con {proveedor}" en wizard y drawer, pop-up de datos de recogida/envío (`rma.shipping` jsonb), generar correo al proveedor (mailto/copiar). Extras: fix z-index de pop-ups, chat de Intercom embebido en el drawer de RMA.
+
+### 2026-06-26 — Flujo: estados no lineales + enlace Incidencia↔RMA visible
+- **Transiciones de estado libres** en las 3 superficies (Kanban + ficha incidencia + ficha RMA): `transitionIncident`/`transitionRma` aceptan `force` (omite el grafo, conserva pausa SLA, auto-cierre y outcome). Validadores ampliados (`esperando_pieza` + `force`). Selectores de las fichas listan todos los estados; el Kanban admite soltar en cualquier columna. **Arregla el error del Kanban** (faltaba `esperando_pieza` en el validador). Sin migración.
+- **Enlace Incidencia→RMA visible**: `getIncidents` trae `rmaCount` + último RMA; badge clicable en la lista; sección "RMAs vinculados" + botón "Ver RMA-…" en el drawer de la incidencia (vía `useDrawers().openRma`).
+- Documentos: creado `ONBOARDING.md` (handoff operativo) y actualizado este log.

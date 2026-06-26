@@ -50,7 +50,8 @@ export function KanbanScreen() {
   );
 
   const transitionM = useMutation({
-    mutationFn: ({ id, to }: { id: string; to: string }) => transitionIncident({ incidentId: id, toStatus: to }),
+    mutationFn: ({ id, to, force }: { id: string; to: string; force?: boolean }) =>
+      transitionIncident({ incidentId: id, toStatus: to, force }),
     onSuccess: (r, vars) => {
       if (!r.success) { toast.error(r.error); return; }
       const paused = (PAUSED_INCIDENT_STATES as readonly string[]).includes(vars.to);
@@ -68,12 +69,10 @@ export function KanbanScreen() {
     if (!id) return;
     const inc = all.find((i) => i.id === id);
     if (!inc || inc.status === toStatus) return;
-    const allowed = getAvailableTransitions(inc.status as IncidentStatus, "admin").some((t) => t.to === toStatus);
-    if (!allowed) {
-      toast.error(`No se puede pasar de "${INCIDENT_STATUS_LABELS[inc.status as IncidentStatus]}" a "${INCIDENT_STATUS_LABELS[toStatus]}"`);
-      return;
-    }
-    transitionM.mutate({ id, to: toStatus });
+    // Modelo no lineal: se permite mover a cualquier columna. Si el salto no está
+    // en el flujo natural, se fuerza (force) para que el servidor no lo rechace.
+    const natural = getAvailableTransitions(inc.status as IncidentStatus, "admin").some((t) => t.to === toStatus);
+    transitionM.mutate({ id, to: toStatus, force: !natural });
   }
 
   return (

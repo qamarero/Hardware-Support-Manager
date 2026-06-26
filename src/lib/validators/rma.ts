@@ -74,6 +74,9 @@ export const transitionRmaSchema = z.object({
   // Resultado capturado en el cierre (entregado/cerrado/rechazado). Aditivo: se
   // guarda en la misma transición para no dejar la ficha sin resultado.
   outcome: z.enum(["reparado", "sustituido", "abono", "rechazado", "sin_solucion", "sustitucion_directa"]).optional(),
+  // Salto libre: omite la validación del grafo (modelo "estado = situación").
+  // La pausa de SLA, el auto-cierre de la incidencia y el outcome se aplican igual.
+  force: z.boolean().optional(),
 });
 
 export type CreateRmaInput = z.infer<typeof createRmaSchema>;

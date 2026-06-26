@@ -12,7 +12,9 @@ import { CopyId } from "@/components/proto/copy-id";
 import { IncidentDetailDrawer } from "./incident-detail-drawer";
 import { IncidentFormDrawer } from "./incident-form-drawer";
 import { RmaWizard } from "@/components/incidents/rma-wizard";
+import { useDrawers } from "@/components/shell/drawers-provider";
 import { INCIDENT_STATUS_LABELS, type IncidentStatus } from "@/lib/constants/incidents";
+import { RMA_STATUS_LABELS, type RmaStatus } from "@/lib/constants/rmas";
 import { extractConversationId } from "@/lib/intercom/sync";
 import { intercomConversationUrl } from "@/lib/utils/intercom-url";
 import { incidentMissingFields } from "@/lib/utils/incident-completeness";
@@ -34,6 +36,7 @@ const isClosed = (s: IncidentStatus) => CLOSED_STATUSES.has(s);
 
 export function IncidentsScreen() {
   const qc = useQueryClient();
+  const { openRma } = useDrawers();
   const { data: session } = useSession();
   const meId = (session?.user as { id?: string } | undefined)?.id;
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -306,6 +309,16 @@ export function IncidentsScreen() {
                           style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, borderRadius: 7, border: "1px solid var(--border)", background: "var(--orange-50)", color: "var(--primary)", cursor: "pointer" }}
                         >
                           <MessageSquare size={14} />
+                        </button>
+                      )}
+                      {(i.rmaCount ?? 0) > 0 && i.latestRmaId && (
+                        <button
+                          className="badge badge--outline"
+                          style={{ fontSize: 10, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap" }}
+                          title={`RMA vinculado: ${i.latestRmaNumber}${i.latestRmaStatus ? ` · ${RMA_STATUS_LABELS[i.latestRmaStatus as RmaStatus] ?? i.latestRmaStatus}` : ""}${(i.rmaCount ?? 0) > 1 ? ` (+${(i.rmaCount ?? 1) - 1} más)` : ""}`}
+                          onClick={(e) => { e.stopPropagation(); openRma(i.latestRmaId!); }}
+                        >
+                          {i.latestRmaNumber}{(i.rmaCount ?? 0) > 1 ? ` ×${i.rmaCount}` : ""}
                         </button>
                       )}
                     </div>

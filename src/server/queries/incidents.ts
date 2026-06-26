@@ -8,6 +8,12 @@ export type IncidentRow = typeof incidents.$inferSelect & {
   assignedUserName: string | null;
   clientCompanyName: string | null;
   clientLocationName?: string | null;
+  /** Nº de RMAs vinculados a la incidencia (para indicador en la lista). */
+  rmaCount?: number;
+  /** RMA más reciente vinculado (para abrir su drawer desde la lista). */
+  latestRmaId?: string | null;
+  latestRmaNumber?: string | null;
+  latestRmaStatus?: string | null;
 };
 
 export async function getIncidents(
@@ -96,6 +102,11 @@ export async function getIncidents(
         quickDurationMinutes: incidents.quickDurationMinutes,
         assignedUserName: users.name,
         clientCompanyName: clients.name,
+        // RMA vinculado (subconsultas correlacionadas; la FK no es unique → puede haber varios).
+        rmaCount: sql<number>`(select count(*)::int from hsm.rmas r where r.incident_id = ${incidents.id})`,
+        latestRmaId: sql<string | null>`(select r.id from hsm.rmas r where r.incident_id = ${incidents.id} order by r.created_at desc limit 1)`,
+        latestRmaNumber: sql<string | null>`(select r.rma_number from hsm.rmas r where r.incident_id = ${incidents.id} order by r.created_at desc limit 1)`,
+        latestRmaStatus: sql<string | null>`(select r.status::text from hsm.rmas r where r.incident_id = ${incidents.id} order by r.created_at desc limit 1)`,
       })
       .from(incidents)
       .leftJoin(users, eq(incidents.assignedUserId, users.id))

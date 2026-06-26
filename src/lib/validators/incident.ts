@@ -35,10 +35,14 @@ export const transitionIncidentSchema = z.object({
   incidentId: z.string().uuid(),
   toStatus: z.enum([
     "nuevo", "en_triaje", "en_gestion", "esperando_cliente",
-    "esperando_proveedor", "resuelto", "cerrado", "cancelado",
+    "esperando_proveedor", "esperando_pieza", "resuelto", "cerrado", "cancelado",
   ]),
   comment: z.string().optional(),
   resolutionType: z.enum(["standard", "derivado_rma"]).optional(),
+  // Salto libre: cuando es true, se omite la validación del grafo de estados
+  // (modelo "estado = situación", no flujo rígido). El resto de efectos
+  // (pausa SLA, resolvedAt, log, nota a Intercom) se aplican igual.
+  force: z.boolean().optional(),
 });
 
 /**

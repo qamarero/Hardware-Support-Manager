@@ -205,7 +205,7 @@ export async function transitionRma(
     return { success: false, error: "Datos inválidos" };
   }
 
-  const { rmaId, toStatus, comment, outcome } = parsed.data;
+  const { rmaId, toStatus, comment, outcome, force } = parsed.data;
 
   const result = await db.transaction(async (tx) => {
     const [current] = await tx
@@ -225,7 +225,9 @@ export async function transitionRma(
 
     const fromStatus = current.status as RmaStatus;
 
-    if (!isValidRmaTransition(fromStatus, toStatus as RmaStatus, userRole)) {
+    // Modelo no lineal: con `force` el operador puede saltar a cualquier estado
+    // (estado = situación actual). Sin `force` se respeta el grafo.
+    if (!force && !isValidRmaTransition(fromStatus, toStatus as RmaStatus, userRole)) {
       return { success: false as const, error: "Transición de estado no permitida" };
     }
 
@@ -289,6 +291,9 @@ export async function transitionRma(
           incidentId: link.incidentId,
           toStatus: "resuelto",
           comment: `Resuelta automáticamente al ${toStatus === "cerrado" ? "cerrar" : "entregar"} el RMA ${link.rmaNumber}.`,
+          // force: el auto-cierre no debe quedar bloqueado por el grafo si la
+          // incidencia está en un estado sin transición directa a "resuelto".
+          force: true,
         });
       }
     } catch (err) {

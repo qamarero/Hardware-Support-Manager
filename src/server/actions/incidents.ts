@@ -200,7 +200,7 @@ export async function transitionIncident(
     return { success: false, error: "Datos inválidos" };
   }
 
-  const { incidentId, toStatus, comment, resolutionType } = parsed.data;
+  const { incidentId, toStatus, comment, resolutionType, force } = parsed.data;
 
 
   const result = await db.transaction(async (tx) => {
@@ -221,7 +221,9 @@ export async function transitionIncident(
 
     const fromStatus = current.status as IncidentStatus;
 
-    if (!isValidTransition(fromStatus, toStatus as IncidentStatus, userRole)) {
+    // Modelo no lineal: con `force` el operador puede saltar a cualquier estado
+    // (estado = situación actual, no flujo rígido). Sin `force` se respeta el grafo.
+    if (!force && !isValidTransition(fromStatus, toStatus as IncidentStatus, userRole)) {
       return { success: false as const, error: "Transición de estado no permitida" };
     }
 
