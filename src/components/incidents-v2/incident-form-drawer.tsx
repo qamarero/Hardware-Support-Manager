@@ -141,10 +141,8 @@ export function IncidentFormDrawer({ open, onClose, onCreated, users }: Props) {
         <div className="row row--3">
           <Field label="Prioridad">
             <select className="select" value={priority} onChange={(e) => setPriority(e.target.value)}>
-              <option value="critica">Crítica</option>
-              <option value="alta">Alta</option>
-              <option value="media">Media</option>
-              <option value="baja">Baja</option>
+              <option value="critica">Cliente no puede operar</option>
+              <option value="media">Cliente puede operar</option>
             </select>
           </Field>
           <Field label="Técnico asignado">

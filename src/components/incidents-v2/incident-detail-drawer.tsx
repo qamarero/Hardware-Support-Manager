@@ -31,7 +31,7 @@ import { getAvailableTransitions } from "@/lib/state-machines/incident";
 import { extractConversationId } from "@/lib/intercom/sync";
 import { intercomConversationUrl } from "@/lib/utils/intercom-url";
 import { incidentMissingFields } from "@/lib/utils/incident-completeness";
-import { INCIDENT_STATUS_LABELS, type IncidentStatus } from "@/lib/constants/incidents";
+import { INCIDENT_STATUS_LABELS, priorityBucket, type IncidentStatus } from "@/lib/constants/incidents";
 import { RMA_STATUS_LABELS, type RmaStatus } from "@/lib/constants/rmas";
 import { PAUSED_INCIDENT_STATES } from "@/lib/constants/statuses";
 import { formatDateTime } from "@/lib/utils/date-format";
@@ -367,11 +367,9 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
                       </select>
                     </Field>
                     <Field label="Prioridad">
-                      <select className="select" value={inc.priority} onChange={(e) => updateM.mutate({ priority: e.target.value })}>
-                        <option value="critica">Crítica</option>
-                        <option value="alta">Alta</option>
-                        <option value="media">Media</option>
-                        <option value="baja">Baja</option>
+                      <select className="select" value={priorityBucket(inc.priority)} onChange={(e) => updateM.mutate({ priority: e.target.value })}>
+                        <option value="critica">Cliente no puede operar</option>
+                        <option value="media">Cliente puede operar</option>
                       </select>
                     </Field>
                   </div>

@@ -36,12 +36,32 @@ export const INCIDENT_PRIORITIES = {
 
 export type IncidentPriority = (typeof INCIDENT_PRIORITIES)[keyof typeof INCIDENT_PRIORITIES];
 
+// Modelo binario de prioridad: operatividad del cliente. Los 4 valores del enum
+// se conservan en BD, pero la app solo usa `media` ("Cliente puede operar") y
+// `critica` ("Cliente no puede operar"); los antiguos baja/alta se muestran
+// mapeados a ese binario.
 export const INCIDENT_PRIORITY_LABELS: Record<IncidentPriority, string> = {
-  baja: "Baja",
-  media: "Media",
-  alta: "Alta",
-  critica: "Crítica",
+  baja: "Cliente puede operar",
+  media: "Cliente puede operar",
+  alta: "Cliente no puede operar",
+  critica: "Cliente no puede operar",
 };
+
+/** Opciones canónicas del selector binario de prioridad. */
+export const PRIORITY_OPTIONS: { value: IncidentPriority; label: string }[] = [
+  { value: "media", label: "Cliente puede operar" },
+  { value: "critica", label: "Cliente no puede operar" },
+];
+
+/** ¿La incidencia bloquea la operativa del cliente? (alta/crítica). */
+export function isBlockingPriority(p: string): boolean {
+  return p === "critica" || p === "alta";
+}
+
+/** Valor canónico binario para cualquier prioridad (incluye datos antiguos). */
+export function priorityBucket(p: string): IncidentPriority {
+  return isBlockingPriority(p) ? "critica" : "media";
+}
 
 export const INCIDENT_CATEGORIES = {
   ESCALADO: "escalado",

@@ -1,6 +1,6 @@
 import {
   INCIDENT_STATUS_LABELS,
-  INCIDENT_PRIORITY_LABELS,
+  PRIORITY_OPTIONS,
   INCIDENT_CATEGORY_LABELS,
   HARDWARE_ORIGIN_LABELS,
 } from "./incidents";
@@ -34,7 +34,7 @@ const INCIDENT_STATIC_FILTERS: FilterConfig[] = [
     key: "priority",
     label: "Prioridad",
     type: "multi-select",
-    options: labelsToOptions(INCIDENT_PRIORITY_LABELS),
+    options: PRIORITY_OPTIONS.map((o) => ({ value: o.value, label: o.label })),
   },
   {
     key: "category",

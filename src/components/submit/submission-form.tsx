@@ -225,12 +225,12 @@ export function SubmissionForm() {
                   name="intercomUrl"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>URL de la conversación Intercom *</FormLabel>
+                      <FormLabel>URL de la conversación Intercom</FormLabel>
                       <FormControl>
                         <Input placeholder="https://app.intercom.com/..." {...field} />
                       </FormControl>
                       <FormDescription className="text-xs">
-                        Obligatorio — la necesitamos para abrir la conversación y no perder el contexto
+                        Opcional — si la tienes pégala; si no, se puede añadir después
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -291,10 +291,8 @@ export function SubmissionForm() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="baja">Baja — no urge</SelectItem>
-                          <SelectItem value="media">Media — en horario laboral</SelectItem>
-                          <SelectItem value="alta">Alta — el cliente está bloqueado</SelectItem>
-                          <SelectItem value="critica">Crítica — pérdida de ventas inmediata</SelectItem>
+                          <SelectItem value="media">Cliente puede operar</SelectItem>
+                          <SelectItem value="critica">Cliente no puede operar — urge</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -470,7 +468,7 @@ export function SubmissionForm() {
                 ) : (
                   <>
                     <Send className="mr-2 h-4 w-4" />
-                    Enviar sumisión
+                    Enviar formulario
                   </>
                 )}
               </Button>

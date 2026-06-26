@@ -14,7 +14,7 @@ export const SUPPORT_SUBMISSION_STATUS_LABELS: Record<SupportSubmissionStatus, s
 };
 
 /** Allowed email domains for submitters */
-export const ALLOWED_SUBMITTER_DOMAINS = ["qamarero.com", "qami.es"];
+export const ALLOWED_SUBMITTER_DOMAINS = ["qamarero.com"];
 
 /** Max submissions per IP per window */
 export const RATE_LIMIT_MAX_REQUESTS = 5;

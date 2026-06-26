@@ -219,10 +219,8 @@ export function SubmissionDetail({ item, onConvert, onDismiss }: SubmissionDetai
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="baja">Baja</SelectItem>
-                    <SelectItem value="media">Media</SelectItem>
-                    <SelectItem value="alta">Alta</SelectItem>
-                    <SelectItem value="critica">Crítica</SelectItem>
+                    <SelectItem value="media">Cliente puede operar</SelectItem>
+                    <SelectItem value="critica">Cliente no puede operar</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -49,8 +49,10 @@ export function RmaStatusBadge({ status }: { status: string }) {
 }
 
 export function PriorityPill({ priority }: { priority: string }) {
+  // Binario: bloquea operativa (alta/crítica) → rojo; puede operar (baja/media) → neutro.
+  const blocking = priority === "critica" || priority === "alta";
   return (
-    <span className={`priority priority--${priority}`}>
+    <span className={`priority ${blocking ? "priority--critica" : "priority--baja"}`}>
       <span className="priority__dot" />
       {INCIDENT_PRIORITY_LABELS[priority as IncidentPriority] ?? priority}
     </span>

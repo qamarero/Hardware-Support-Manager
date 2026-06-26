@@ -34,14 +34,16 @@ export const createSubmissionSchema = z.object({
 
   // Contact (optional)
   contactPhone: z.string().max(50).optional().or(z.literal("")),
+  // Opcional: el técnico puede añadir la URL de Intercom a posteriori.
   intercomUrl: z
     .string()
-    .min(1, "La URL de la conversación de Intercom es obligatoria")
     .max(1000)
     .refine(
-      (val) => val.startsWith("http"),
+      (val) => !val || val.startsWith("http"),
       "Debe ser una URL válida (https://app.intercom.com/...)"
-    ),
+    )
+    .optional()
+    .or(z.literal("")),
 
   // Adjuntos (imágenes) subidos desde el formulario público.
   attachments: z

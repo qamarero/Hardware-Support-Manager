@@ -13,7 +13,7 @@ import { IncidentDetailDrawer } from "./incident-detail-drawer";
 import { IncidentFormDrawer } from "./incident-form-drawer";
 import { RmaWizard } from "@/components/incidents/rma-wizard";
 import { useDrawers } from "@/components/shell/drawers-provider";
-import { INCIDENT_STATUS_LABELS, type IncidentStatus } from "@/lib/constants/incidents";
+import { INCIDENT_STATUS_LABELS, priorityBucket, type IncidentStatus } from "@/lib/constants/incidents";
 import { RMA_STATUS_LABELS, type RmaStatus } from "@/lib/constants/rmas";
 import { extractConversationId } from "@/lib/intercom/sync";
 import { intercomConversationUrl } from "@/lib/utils/intercom-url";
@@ -108,7 +108,7 @@ export function IncidentsScreen() {
   const filtered = useMemo(() => {
     let arr = all.slice();
     if (status !== "all") arr = arr.filter((i) => i.status === status);
-    if (priority !== "all") arr = arr.filter((i) => i.priority === priority);
+    if (priority !== "all") arr = arr.filter((i) => priorityBucket(i.priority) === priority);
     if (assignee !== "all") arr = arr.filter((i) => i.assignedUserId === assignee);
     if (query.trim()) {
       const q = query.toLowerCase();
@@ -169,10 +169,8 @@ export function IncidentsScreen() {
         )}
         <select className="select" style={{ width: "auto" }} value={priority} onChange={(e) => setPriority(e.target.value)}>
           <option value="all">Toda prioridad</option>
-          <option value="critica">Crítica</option>
-          <option value="alta">Alta</option>
-          <option value="media">Media</option>
-          <option value="baja">Baja</option>
+          <option value="critica">Cliente no puede operar</option>
+          <option value="media">Cliente puede operar</option>
         </select>
         <select className="select" style={{ width: "auto" }} value={assignee} onChange={(e) => setAssignee(e.target.value)}>
           <option value="all">Todos los técnicos</option>
@@ -213,10 +211,8 @@ export function IncidentsScreen() {
           <select className="select" style={{ width: "auto" }} value="" disabled={bulkBusy}
             onChange={(e) => { if (e.target.value) bulkPriorityM.mutate(e.target.value); }}>
             <option value="">Prioridad…</option>
-            <option value="critica">Crítica</option>
-            <option value="alta">Alta</option>
-            <option value="media">Media</option>
-            <option value="baja">Baja</option>
+            <option value="critica">Cliente no puede operar</option>
+            <option value="media">Cliente puede operar</option>
           </select>
           {bulkBusy && <Loader2 size={14} className="animate-spin" />}
           <div style={{ flex: 1 }} />
@@ -344,14 +340,12 @@ export function IncidentsScreen() {
                     <select
                       className="select"
                       style={{ width: "auto", maxWidth: 110, fontSize: 12, padding: "4px 8px" }}
-                      value={i.priority}
+                      value={priorityBucket(i.priority)}
                       onChange={(e) => priorityM.mutate({ id: i.id, priority: e.target.value })}
                       title="Cambiar prioridad"
                     >
-                      <option value="critica">Crítica</option>
-                      <option value="alta">Alta</option>
-                      <option value="media">Media</option>
-                      <option value="baja">Baja</option>
+                      <option value="critica">Cliente no puede operar</option>
+                      <option value="media">Cliente puede operar</option>
                     </select>
                   </td>
                   <td><SlaBar incident={i} /></td>

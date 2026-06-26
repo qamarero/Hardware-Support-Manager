@@ -149,10 +149,10 @@ function detectCategory(_text: string, _categoria2?: string | null): IncidentCat
   return "escalado";
 }
 
-function mapPriority(urgency: string): "baja" | "media" | "alta" | "critica" {
-  if (/urgente|critica|cr[ií]tico/.test(urgency)) return "critica";
-  if (/alta|high/.test(urgency)) return "alta";
-  if (/baja|low|sin prisa/.test(urgency)) return "baja";
+// Mapea la urgencia de Intercom al modelo binario de prioridad
+// (no puede operar = crítica; puede operar = media).
+function mapPriority(urgency: string): "media" | "critica" {
+  if (/urgente|critica|cr[ií]tico|alta|high|bloque/.test(urgency)) return "critica";
   return "media";
 }
 
@@ -564,10 +564,8 @@ export function ConversationDetail({ item, onConvert, onDismiss }: ConversationD
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="baja">Baja</SelectItem>
-                    <SelectItem value="media">Media</SelectItem>
-                    <SelectItem value="alta">Alta</SelectItem>
-                    <SelectItem value="critica">Crítica</SelectItem>
+                    <SelectItem value="media">Cliente puede operar</SelectItem>
+                    <SelectItem value="critica">Cliente no puede operar</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
