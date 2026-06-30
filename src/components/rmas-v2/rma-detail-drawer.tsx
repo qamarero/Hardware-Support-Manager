@@ -331,13 +331,6 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
             <div className="stack" style={{ gap: 20 }}>
               {rma.providerId && <ProviderRmaProcedure providerId={rma.providerId} />}
               <div style={{ display: "flex", justifyContent: "flex-start", gap: 8, flexWrap: "wrap" }}>
-                <RmaShippingDialog rma={rma} />
-                <RmaProviderEmail rma={rma} />
-                {conversationId && (
-                  <button type="button" className="btn btn--outline btn--sm" onClick={() => setChatOpen(true)}>
-                    <MessageSquare size={14} /> Ver conversación
-                  </button>
-                )}
                 <a
                   href={`/etiqueta/rma/${rma.id}`}
                   target="_blank"
@@ -347,9 +340,16 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
                 >
                   <Printer size={14} /> Etiqueta
                 </a>
+                <RmaShippingDialog rma={rma} />
+                <RmaProviderEmail rma={rma} />
+                {conversationId && (
+                  <button type="button" className="btn btn--outline btn--sm" onClick={() => setChatOpen(true)}>
+                    <MessageSquare size={14} /> Ver conversación
+                  </button>
+                )}
               </div>
               {/* Toggle editar datos */}
-              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: -8 }}>
+              <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: -8 }}>
                 {editing ? (
                   <div style={{ display: "flex", gap: 8 }}>
                     <button className="btn btn--ghost btn--sm" onClick={() => setEditing(false)}><X size={14} /> Cancelar</button>
