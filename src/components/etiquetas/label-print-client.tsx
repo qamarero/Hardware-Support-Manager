@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import QRCode from "react-qr-code";
 import { Printer } from "lucide-react";
+import { QamareroLogo } from "@/components/layout/qamarero-logo";
 
 export interface LabelData {
   kind: "RMA" | "Equipo";
@@ -19,14 +20,24 @@ export interface LabelData {
 
 export type LabelFormat = "etiqueta" | "envio";
 
-/** Condiciones de recepción para la hoja A4 de envío (borrador editable). */
+/** Condiciones de recepción para la hoja A4 de envío. */
 const NORMAS = [
-  "El envío debe llevar un nº de RMA autorizado (RMA-AAAA-NNNNN) visible en el exterior del bulto. Sin nº de RMA no se acepta la recepción.",
-  "Pega la etiqueta recortable de esta hoja en el propio equipo.",
-  "Envía el equipo en su embalaje original o uno equivalente que evite daños durante el transporte.",
-  "Incluye todos los accesorios (cargador, cables, soportes, etc.).",
-  "Indica el nº de seguimiento del envío para poder localizarlo.",
+  "No envíes ningún equipo sin un nº de RMA autorizado por Qamarero. Los envíos sin RMA no se aceptarán y se devolverán a su origen.",
+  "El nº de RMA (RMA-AAAA-NNNNN) debe figurar visible en el exterior del bulto.",
+  "Recorta y pega en el equipo la etiqueta de esta hoja (zona superior).",
+  "Envía el equipo en su embalaje original o uno equivalente que lo proteja de golpes durante el transporte.",
+  "Incluye todos los accesorios relacionados con la avería (cargador, cables, soportes, etc.).",
+  "Conserva e indícanos el nº de seguimiento del envío para poder localizarlo.",
 ];
+
+/** Datos de recepción de Qamarero (rellenar con la dirección real). */
+const RECEPCION = {
+  empresa: "Qamarero — Hardware Support",
+  direccion: "[Dirección de recepción]",
+  cpCiudad: "[CP y ciudad]",
+  horario: "[Horario de recepción]",
+  contacto: "hardware@qamarero.com",
+};
 
 function tabStyle(active: boolean): React.CSSProperties {
   return {
@@ -104,8 +115,10 @@ function Label100x150({ data, qrUrl }: { data: LabelData; qrUrl: string }) {
       }}
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo-qamarero.svg" alt="Qamarero" style={{ height: "8mm" }} />
+        <div style={{ display: "flex", alignItems: "center", gap: "2mm", color: "#212121" }}>
+          <QamareroLogo size={24} />
+          <span style={{ fontSize: "4.5mm", fontWeight: 800, letterSpacing: "-0.3px" }}>Qamarero</span>
+        </div>
         <span style={{ fontSize: "3.2mm", fontWeight: 700, padding: "1mm 2.5mm", borderRadius: "2mm", background: "#111", color: "#fff" }}>
           {data.kind}
         </span>
@@ -147,11 +160,11 @@ function ShippingSheet({ data, qrUrl }: { data: LabelData; qrUrl: string }) {
       {/* Cabecera */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "2px solid #111", paddingBottom: "5mm" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "4mm" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo-qamarero.svg" alt="Qamarero" style={{ height: "12mm" }} />
+          <div style={{ color: "#212121", display: "flex" }}><QamareroLogo size={46} /></div>
           <div>
-            <div style={{ fontSize: "6mm", fontWeight: 800 }}>Autorización de devolución (RMA)</div>
-            <div style={{ fontSize: "3.5mm", color: "#555" }}>Hardware Support · Qamarero</div>
+            <div style={{ fontSize: "6.5mm", fontWeight: 800, letterSpacing: "-0.3px" }}>Qamarero</div>
+            <div style={{ fontSize: "5mm", fontWeight: 700 }}>Autorización de devolución (RMA)</div>
+            <div style={{ fontSize: "3.5mm", color: "#555" }}>Hardware Support</div>
           </div>
         </div>
         <div style={{ textAlign: "right" }}>
@@ -193,8 +206,12 @@ function ShippingSheet({ data, qrUrl }: { data: LabelData; qrUrl: string }) {
             <li key={n} style={{ marginBottom: "1.5mm" }}>{n}</li>
           ))}
         </ol>
-        <div style={{ marginTop: "5mm", fontSize: "3.6mm", background: "#f5f5f5", borderRadius: "2mm", padding: "4mm" }}>
-          <strong>Recepción:</strong> [Dirección de Qamarero] · Horario: [—] · Contacto: hardware@qamarero.com
+        <div style={{ marginTop: "5mm", fontSize: "3.6mm", background: "#f5f5f5", borderRadius: "2mm", padding: "4mm", lineHeight: 1.6 }}>
+          <div style={{ fontWeight: 700, marginBottom: "1mm" }}>Dirección de recepción</div>
+          <div>{RECEPCION.empresa}</div>
+          <div>{RECEPCION.direccion}</div>
+          <div>{RECEPCION.cpCiudad}</div>
+          <div style={{ marginTop: "1.5mm", color: "#555" }}>Horario: {RECEPCION.horario} · Contacto: {RECEPCION.contacto}</div>
         </div>
       </div>
     </div>
