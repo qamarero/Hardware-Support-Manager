@@ -39,6 +39,7 @@ export function IncidentFormDrawer({ open, onClose, onCreated, users }: Props) {
   const [hardwareOrigin, setHardwareOrigin] = useState("qamarero");
   const [slaHours, setSlaHours] = useState(72);
   const [clientId, setClientId] = useState("");
+  const [clientName, setClientName] = useState("");
   const [intercomUrl, setIntercomUrl] = useState("");
 
   const { data: clients = [] } = useQuery({
@@ -51,7 +52,7 @@ export function IncidentFormDrawer({ open, onClose, onCreated, users }: Props) {
     setTitle(""); setDescription(""); setArticleId(""); setDeviceType(""); setDeviceBrand(""); setDeviceModel("");
     setDeviceSerial(""); setReporter(""); setPriority("media"); setAssignedUserId("");
     setHardwareOrigin("qamarero"); setSlaHours(72);
-    setClientId(""); setIntercomUrl("");
+    setClientId(""); setClientName(""); setIntercomUrl("");
   }
 
   const mutation = useMutation({
@@ -65,6 +66,7 @@ export function IncidentFormDrawer({ open, onClose, onCreated, users }: Props) {
         slaHours,
         assignedUserId,
         clientId,
+        clientName,
         intercomUrl,
         articleId,
         deviceType,
@@ -110,7 +112,16 @@ export function IncidentFormDrawer({ open, onClose, onCreated, users }: Props) {
         </Field>
         <div className="row row--2">
           <Field label="Cliente">
-            <Combobox options={clients} value={clientId} onChange={setClientId} placeholder="Buscar cliente…" emptyLabel="Ningún cliente coincide" />
+            <Combobox
+              options={clients}
+              value={clientId}
+              onChange={(id) => { setClientId(id); if (id) setClientName(""); }}
+              placeholder="Buscar cliente…"
+              emptyLabel="Ningún cliente coincide — escribe para usarlo como texto"
+              allowFreeText
+              freeText={clientName}
+              onFreeText={(t) => { setClientName(t); setClientId(""); }}
+            />
           </Field>
           <Field label="URL Intercom" hint="Enlace a la conversación abierta">
             <input className="input" placeholder="https://app.intercom.com/…/conversation/…" value={intercomUrl} onChange={(e) => setIntercomUrl(e.target.value)} />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
-import { Search, Check, X } from "lucide-react";
+import { Search, Check, X, Plus } from "lucide-react";
 
 export interface ComboOption {
   id: string;
@@ -14,18 +14,28 @@ interface ComboboxProps {
   onChange: (id: string) => void;
   placeholder?: string;
   emptyLabel?: string;
+  /** Permite usar texto libre cuando no hay coincidencia (p.ej. cliente sin registrar). */
+  allowFreeText?: boolean;
+  /** Texto libre actual (cuando no hay id seleccionado). */
+  freeText?: string;
+  /** Callback al elegir un texto libre. */
+  onFreeText?: (text: string) => void;
 }
 
 /**
  * Combobox con búsqueda de texto (estilo prototipo). Filtra en cliente —
- * adecuado para listas grandes (p.ej. 1500 clientes) cargadas como id+name.
+ * adecuado para listas grandes (p.ej. ~3700 clientes) cargadas como id+name.
+ * Con `allowFreeText`, si lo escrito no coincide con ninguna opción se puede
+ * usar como texto libre (`onFreeText`) en vez de obligar a elegir de la lista.
  */
-export function Combobox({ options, value, onChange, placeholder = "Buscar…", emptyLabel = "Sin resultados" }: ComboboxProps) {
+export function Combobox({ options, value, onChange, placeholder = "Buscar…", emptyLabel = "Sin resultados", allowFreeText = false, freeText = "", onFreeText }: ComboboxProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const ref = useRef<HTMLDivElement>(null);
 
   const selected = options.find((o) => o.id === value) ?? null;
+  const displayName = selected ? selected.name : (freeText || "");
+  const hasValue = !!selected || !!freeText;
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
@@ -63,14 +73,15 @@ export function Combobox({ options, value, onChange, placeholder = "Buscar…", 
           style={{ textAlign: "left", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}
           onClick={() => setOpen(true)}
         >
-          <span style={{ color: selected ? "var(--fg-primary)" : "var(--fg-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {selected ? selected.name : placeholder}
+          <span style={{ color: hasValue ? "var(--fg-primary)" : "var(--fg-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {hasValue ? displayName : placeholder}
+            {!selected && freeText && <span className="muted" style={{ fontStyle: "italic" }}> · sin registrar</span>}
           </span>
-          {selected && (
+          {hasValue && (
             <X
               size={14}
               style={{ color: "var(--fg-tertiary)", flexShrink: 0 }}
-              onClick={(e) => { e.stopPropagation(); onChange(""); }}
+              onClick={(e) => { e.stopPropagation(); onChange(""); onFreeText?.(""); }}
             />
           )}
         </button>
@@ -84,8 +95,24 @@ export function Combobox({ options, value, onChange, placeholder = "Buscar…", 
             boxShadow: "var(--shadow-elev)", maxHeight: 260, overflowY: "auto", padding: 4,
           }}
         >
+          {allowFreeText && query.trim() && !options.some((o) => o.name.toLowerCase() === query.trim().toLowerCase()) && (
+            <button
+              type="button"
+              onClick={() => { onFreeText?.(query.trim()); onChange(""); setOpen(false); setQuery(""); }}
+              style={{
+                width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8,
+                padding: "8px 10px", border: 0, background: "transparent", borderRadius: "var(--radius-s)",
+                cursor: "pointer", fontSize: 13, color: "var(--primary)", fontWeight: 600,
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--orange-50)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+            >
+              <Plus size={14} style={{ flexShrink: 0 }} />
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Usar «{query.trim()}» (sin registrar)</span>
+            </button>
+          )}
           {filtered.length === 0 ? (
-            <div className="muted text-sm" style={{ padding: "10px 12px" }}>{emptyLabel}</div>
+            (allowFreeText && query.trim()) ? null : <div className="muted text-sm" style={{ padding: "10px 12px" }}>{emptyLabel}</div>
           ) : (
             filtered.map((o) => (
               <button

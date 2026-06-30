@@ -58,7 +58,7 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
   // Edición de datos del caso (título, descripción, cliente, contacto, equipo, SLA).
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
-    title: "", description: "", clientId: "", intercomUrl: "",
+    title: "", description: "", clientId: "", clientName: "", intercomUrl: "",
     contactName: "", articleId: "", deviceType: "", deviceBrand: "", deviceModel: "", deviceSerialNumber: "", slaHours: 0,
   });
 
@@ -96,6 +96,7 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
       title: inc.title ?? "",
       description: inc.description ?? "",
       clientId: inc.clientId ?? "",
+      clientName: inc.clientId ? "" : (inc.clientName ?? ""),
       intercomUrl: inc.intercomUrl ?? "",
       contactName: inc.contactName ?? "",
       articleId: inc.articleId ?? "",
@@ -113,6 +114,7 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
       title: form.title.trim(),
       description: form.description,
       clientId: form.clientId,
+      clientName: form.clientName,
       intercomUrl: form.intercomUrl,
       contactName: form.contactName,
       articleId: form.articleId,
@@ -306,7 +308,16 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
                   </Field>
                   <div className="row row--2">
                     <Field label="Cliente">
-                      <Combobox options={clients} value={form.clientId} onChange={(id) => setForm({ ...form, clientId: id })} placeholder="Buscar cliente…" emptyLabel="Ningún cliente coincide" />
+                      <Combobox
+                        options={clients}
+                        value={form.clientId}
+                        onChange={(id) => setForm({ ...form, clientId: id, clientName: id ? "" : form.clientName })}
+                        placeholder="Buscar cliente…"
+                        emptyLabel="Ningún cliente coincide — escribe para usarlo como texto"
+                        allowFreeText
+                        freeText={form.clientName}
+                        onFreeText={(t) => setForm({ ...form, clientName: t, clientId: "" })}
+                      />
                     </Field>
                     <Field label="URL Intercom" hint="Enlace a la conversación">
                       <input className="input" value={form.intercomUrl} onChange={(e) => setForm({ ...form, intercomUrl: e.target.value })} />
