@@ -3,7 +3,33 @@
 import { useEffect, useState } from "react";
 import QRCode from "react-qr-code";
 import { Printer } from "lucide-react";
-import { QamareroLogo } from "@/components/layout/qamarero-logo";
+
+/**
+ * Logo de marca para el documento impreso. Lienzo holgado (0 0 48 48) para que
+ * el círculo naranja (cx=33 r=15 → llega a x=48) NO se recorte como ocurre con
+ * el componente compartido (viewBox 0 0 42 48). Mark en #212121 sobre fondo blanco.
+ */
+function BrandMark({ size = 32 }: { size?: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 48 48"
+      fill="none"
+      aria-label="Qamarero"
+      style={{ overflow: "visible", flexShrink: 0 }}
+    >
+      <circle cx="33" cy="15" r="15" fill="#F4532B" />
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M36.4541 10.4241C37.688 10.4241 38.6528 11.4903 38.5293 12.718L35.167 46.1243C35.0596 47.1893 34.1632 48.0003 33.0927 48.0003H5.65719C4.59162 48.0003 3.69731 47.1965 3.58395 46.137L0.0126591 12.7307C-0.11906 11.4988 0.846 10.4243 2.08492 10.4241H36.4541ZM7.67965 35.4153L8.46774 42.7884H30.2646L31.0068 35.4153H7.67965ZM7.12203 30.2034H31.5312L32.997 15.636H5.56442L7.12203 30.2034Z"
+        fill="#212121"
+      />
+    </svg>
+  );
+}
 
 export interface LabelData {
   kind: "RMA" | "Equipo";
@@ -30,14 +56,19 @@ const NORMAS = [
   "Conserva e indícanos el nº de seguimiento del envío para poder localizarlo.",
 ];
 
-/** Datos de recepción de Qamarero (rellenar con la dirección real). */
+/** Datos de recepción de Qamarero. */
 const RECEPCION = {
   empresa: "Qamarero — Hardware Support",
-  direccion: "[Dirección de recepción]",
-  cpCiudad: "[CP y ciudad]",
-  horario: "[Horario de recepción]",
+  direccion: "P.º Alcalde Marqués del Contadero, s/n, Casco Antiguo",
+  cpCiudad: "41001 Sevilla",
+  horario: "9:00 – 18:00",
+  telefono: "602 687 553",
   contacto: "hardware@qamarero.com",
 };
+
+/** Aviso destacado (negrita) sobre el incumplimiento de las condiciones. */
+const AVISO_INCUMPLIMIENTO =
+  "Todo envío que no cumpla estas condiciones será rechazado y devuelto a su origen.";
 
 function tabStyle(active: boolean): React.CSSProperties {
   return {
@@ -116,7 +147,7 @@ function Label100x150({ data, qrUrl }: { data: LabelData; qrUrl: string }) {
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "2mm", color: "#212121" }}>
-          <QamareroLogo size={24} />
+          <BrandMark size={22} />
           <span style={{ fontSize: "4.5mm", fontWeight: 800, letterSpacing: "-0.3px" }}>Qamarero</span>
         </div>
         <span style={{ fontSize: "3.2mm", fontWeight: 700, padding: "1mm 2.5mm", borderRadius: "2mm", background: "#111", color: "#fff" }}>
@@ -160,7 +191,7 @@ function ShippingSheet({ data, qrUrl }: { data: LabelData; qrUrl: string }) {
       {/* Cabecera */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "2px solid #111", paddingBottom: "5mm" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "4mm" }}>
-          <div style={{ color: "#212121", display: "flex" }}><QamareroLogo size={46} /></div>
+          <div style={{ color: "#212121", display: "flex" }}><BrandMark size={42} /></div>
           <div>
             <div style={{ fontSize: "6.5mm", fontWeight: 800, letterSpacing: "-0.3px" }}>Qamarero</div>
             <div style={{ fontSize: "5mm", fontWeight: 700 }}>Autorización de devolución (RMA)</div>
@@ -182,18 +213,18 @@ function ShippingSheet({ data, qrUrl }: { data: LabelData; qrUrl: string }) {
       </div>
 
       {/* Zona recortable */}
-      <div style={{ marginTop: "8mm", border: "2px dashed #888", borderRadius: "3mm", padding: "5mm", position: "relative" }}>
+      <div style={{ marginTop: "8mm", border: "2px dashed #888", borderRadius: "3mm", padding: "7mm", position: "relative" }}>
         <div style={{ position: "absolute", top: "-3mm", left: "6mm", background: "#fff", padding: "0 2mm", fontSize: "3mm", color: "#888", fontWeight: 600 }}>
           ✂ Recortar y pegar en el equipo
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "6mm" }}>
-          <div className="qr-box" style={{ width: "32mm", height: "32mm", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "9mm" }}>
+          <div className="qr-box" style={{ width: "42mm", height: "42mm", flexShrink: 0 }}>
             {qrUrl && <QRCode value={qrUrl} size={256} style={{ width: "100%", height: "100%" }} />}
           </div>
           <div>
-            <div style={{ fontSize: "7mm", fontWeight: 800, fontFamily: "ui-monospace, monospace" }}>{data.code}</div>
-            <div style={{ fontSize: "4mm", fontWeight: 600 }}>{data.device}</div>
-            {data.serial && <div style={{ fontSize: "3.5mm", fontFamily: "ui-monospace, monospace" }}>S/N: {data.serial}</div>}
+            <div style={{ fontSize: "9mm", fontWeight: 800, fontFamily: "ui-monospace, monospace", letterSpacing: "0.3px" }}>{data.code}</div>
+            <div style={{ fontSize: "5mm", fontWeight: 700, marginTop: "1mm" }}>{data.device}</div>
+            {data.serial && <div style={{ fontSize: "4mm", fontFamily: "ui-monospace, monospace", marginTop: "0.5mm" }}>S/N: {data.serial}</div>}
           </div>
         </div>
       </div>
@@ -206,12 +237,15 @@ function ShippingSheet({ data, qrUrl }: { data: LabelData; qrUrl: string }) {
             <li key={n} style={{ marginBottom: "1.5mm" }}>{n}</li>
           ))}
         </ol>
+        <div style={{ marginTop: "4mm", fontSize: "4mm", fontWeight: 800, lineHeight: 1.4, borderLeft: "3px solid #ff592f", paddingLeft: "3mm" }}>
+          {AVISO_INCUMPLIMIENTO}
+        </div>
         <div style={{ marginTop: "5mm", fontSize: "3.6mm", background: "#f5f5f5", borderRadius: "2mm", padding: "4mm", lineHeight: 1.6 }}>
           <div style={{ fontWeight: 700, marginBottom: "1mm" }}>Dirección de recepción</div>
           <div>{RECEPCION.empresa}</div>
           <div>{RECEPCION.direccion}</div>
           <div>{RECEPCION.cpCiudad}</div>
-          <div style={{ marginTop: "1.5mm", color: "#555" }}>Horario: {RECEPCION.horario} · Contacto: {RECEPCION.contacto}</div>
+          <div style={{ marginTop: "1.5mm", color: "#555" }}>Horario: {RECEPCION.horario} · Tel.: {RECEPCION.telefono} · {RECEPCION.contacto}</div>
         </div>
       </div>
     </div>
