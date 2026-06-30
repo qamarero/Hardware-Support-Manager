@@ -14,6 +14,7 @@ import {
   Inbox,
   ClipboardList,
   Boxes,
+  Tag,
   Building2,
   Store,
   UserCog,
@@ -59,6 +60,7 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
     title: "Catálogo",
     items: [
       { href: "/inventario", label: "Inventario", icon: Boxes },
+      { href: "/equipos", label: "Equipos", icon: Tag },
       { href: "/providers", label: "Proveedores", icon: Building2 },
       { href: "/clients", label: "Clientes", icon: Store },
     ],

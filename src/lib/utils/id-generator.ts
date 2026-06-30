@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { sequences } from "@/lib/db/schema";
 import { sql } from "drizzle-orm";
 
-export async function generateSequentialId(prefix: "INC" | "RMA"): Promise<string> {
+export async function generateSequentialId(prefix: "INC" | "RMA" | "EQ"): Promise<string> {
   const year = new Date().getFullYear();
 
   const result = await db

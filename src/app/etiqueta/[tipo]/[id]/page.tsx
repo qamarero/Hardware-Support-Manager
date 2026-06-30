@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getRmaById } from "@/server/queries/rmas";
+import { getAssetById } from "@/server/queries/assets";
 import { RMA_STATUS_LABELS, type RmaStatus } from "@/lib/constants/rmas";
 import { LabelPrintClient, type LabelData, type LabelFormat } from "@/components/etiquetas/label-print-client";
 
@@ -43,6 +44,24 @@ export default async function EtiquetaPage({
     return <LabelPrintClient data={data} formato={formato} />;
   }
 
-  // tipo === "equipo" → Fase 2 (registro de equipos sin RMA)
+  if (tipo === "equipo") {
+    const asset = await getAssetById(id);
+    if (!asset) notFound();
+
+    const device = [asset.deviceBrand, asset.deviceModel].filter(Boolean).join(" ") || "Equipo sin especificar";
+    const data: LabelData = {
+      kind: "Equipo",
+      code: asset.assetCode,
+      device: asset.deviceType ? `${device} · ${asset.deviceType}` : device,
+      serial: asset.deviceSerialNumber ?? null,
+      client: asset.clientName ?? null,
+      provider: null,
+      statusLabel: asset.status,
+      date: fmtDate(asset.createdAt),
+      recordPath: `/equipos/${asset.id}`,
+    };
+    return <LabelPrintClient data={data} formato={formato} />;
+  }
+
   notFound();
 }

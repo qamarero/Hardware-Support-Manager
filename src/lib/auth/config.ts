@@ -27,6 +27,7 @@ export const authConfig: NextAuthConfig = {
         nextUrl.pathname.startsWith("/warehouse") ||
         nextUrl.pathname.startsWith("/analytics") ||
         nextUrl.pathname.startsWith("/submissions") ||
+        nextUrl.pathname.startsWith("/equipos") ||
         nextUrl.pathname.startsWith("/etiqueta");
 
       if (isOnDashboard) {
