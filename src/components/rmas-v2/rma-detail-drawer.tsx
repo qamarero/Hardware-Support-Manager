@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Check, Clock, Ticket, Pencil, X, MessageSquare } from "lucide-react";
+import { Loader2, Check, Clock, Ticket, Pencil, X, MessageSquare, Printer } from "lucide-react";
 import { Drawer, Field } from "@/components/proto/drawer";
 import { RmaStatusBadge } from "@/components/proto/badges";
 import { CopyId } from "@/components/proto/copy-id";
@@ -27,7 +27,7 @@ function rmaFollowUpInDays(n: number): string {
 import { fetchRmaById, updateRma, transitionRma, fetchProvidersForSelect } from "@/server/actions/rmas";
 import { getRmaAvailableTransitions } from "@/lib/state-machines/rma";
 import { RMA_STATUS_LABELS, RMA_OUTCOME_LABELS, RMA_LOGISTICS_LABELS, RMA_REPAIR_PATH_LABELS, type RmaStatus } from "@/lib/constants/rmas";
-import { PAUSED_RMA_STATES } from "@/lib/constants/statuses";
+import { PAUSED_RMA_STATES, WAREHOUSE_RMA_STATUSES } from "@/lib/constants/statuses";
 import { formatDateTime } from "@/lib/utils/date-format";
 
 interface Props {
@@ -338,6 +338,15 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
                     <MessageSquare size={14} /> Ver conversación
                   </button>
                 )}
+                <a
+                  href={`/etiqueta/rma/${rma.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`btn btn--sm ${(WAREHOUSE_RMA_STATUSES as readonly string[]).includes(rma.status) ? "btn--primary" : "btn--outline"}`}
+                  title="Imprimir etiqueta física (100×150) u hoja A4 de envío"
+                >
+                  <Printer size={14} /> Etiqueta
+                </a>
               </div>
               {/* Toggle editar datos */}
               <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: -8 }}>

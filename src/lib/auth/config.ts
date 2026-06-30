@@ -26,7 +26,8 @@ export const authConfig: NextAuthConfig = {
         nextUrl.pathname.startsWith("/intercom") ||
         nextUrl.pathname.startsWith("/warehouse") ||
         nextUrl.pathname.startsWith("/analytics") ||
-        nextUrl.pathname.startsWith("/submissions");
+        nextUrl.pathname.startsWith("/submissions") ||
+        nextUrl.pathname.startsWith("/etiqueta");
 
       if (isOnDashboard) {
         if (isLoggedIn) return true;
