@@ -1,8 +1,8 @@
 # ONBOARDING — Hardware Support Manager (HSM)
 
 > Documento operativo para teletrabajar desde otro terminal sin perder contexto.
-> Mantener en español, UTF-8. Última revisión: **2026-06-26**.
-> Fuentes de verdad: este doc (operativa) · `docs/proyecto_log.md` (changelog histórico) · el plan de proyectos en `C:/Users/Qamarero/.claude/plans/de-la-ficha-de-binary-conway.md` (estado actual ①-⑨).
+> Mantener en español, UTF-8. Última revisión: **2026-06-30**.
+> Fuentes de verdad: este doc (operativa) · `docs/proyecto_log.md` (changelog histórico) · el plan de proyectos en `C:/Users/Qamarero/.claude/plans/de-la-ficha-de-binary-conway.md` (estado actual ①-⑩).
 
 ---
 
@@ -97,13 +97,13 @@ src/
   lib/intercom/         # 🔒 INTOCABLE (client.ts, sync.ts, notes vía actions, types, detectores)
   lib/validators/ · lib/state-machines/ · lib/constants/statuses.ts · lib/query-keys.ts
   server/actions/ · server/queries/
-sql/                    # 18 migraciones aditivas (se aplican A MANO en Supabase)
+sql/                    # 20 migraciones aditivas (se aplican A MANO en Supabase)
 docs/proyecto_log.md    # changelog histórico
 ```
 
 ---
 
-## 5. Estado de proyectos (①-⑨)
+## 5. Estado de proyectos (①-⑩)
 
 > Fuente de verdad del estado: el plan en `C:/Users/Qamarero/.claude/plans/de-la-ficha-de-binary-conway.md`. Changelog histórico: `docs/proyecto_log.md`.
 
@@ -118,6 +118,7 @@ docs/proyecto_log.md    # changelog histórico
 | ⑦ | Pulir RMA: resultado (`outcome`) visible + captura obligatoria al cerrar | **COMPLETADO** |
 | ⑧ | Formulario público `/submit` + Bandeja Soporte (+ adjuntos en el form) | **COMPLETADO** |
 | ⑨ | Procedimientos de proveedor + correo de RMA + datos de recogida (P1-P4) | **COMPLETADO** |
+| ⑩ | **Etiquetas físicas con QR** (RMA + equipos sin RMA) | **COMPLETADO** — ruta `/etiqueta/[tipo]/[id]` (QR SVG `react-qr-code`); formatos **100×150** (etiquetadora) y **hoja A4** (recortable + normas + recepción); tabla **`hsm.assets`** + `/equipos`; acceso desde ficha y tabla de RMA. Pendiente menor: A4 también para equipos. |
 
 ---
 
@@ -127,13 +128,13 @@ docs/proyecto_log.md    # changelog histórico
 
 - **INTERCOM INTOCABLE.** No tocar `src/lib/intercom/*`, las server actions `notes.ts` ni `intercom-inbox.ts`, ni el webhook `src/app/api/webhooks/intercom/route.ts`. **Gate de 6 puntos** antes de cualquier commit que toque la bandeja o las transiciones: (1) `/intercom` carga y sus 3 pestañas funcionan · (2) abrir conversación carga el hilo · (3) importar por URL entra en bandeja · (4) convertir crea incidencia y queda "convertida" · (5) nota manual aparece e Intercom la recibe · (6) transición de estado postea la nota con el label nuevo.
 - **Modo claro forzado.** No introducir dark mode; las pantallas proto no lo soportan.
-- **Migraciones ADITIVAS, aplicadas A MANO por el propietario** en el **SQL Editor de Supabase como rol `postgres`** (el rol `hsm_app` no tiene DDL). Carpeta `sql/` (**18** ficheros numerados `001`-`018`, más auxiliares). Reglas: `ALTER TYPE ... ADD VALUE` / `RENAME VALUE` van en **sentencia separada** de su uso (no en la misma transacción; el editor no soporta BEGIN/COMMIT explícito). **Backup/export de `incidents` + `event_logs` antes de cualquier migración de enum.** Nunca DROP destructivo.
+- **Migraciones ADITIVAS, aplicadas A MANO por el propietario** en el **SQL Editor de Supabase como rol `postgres`** (el rol `hsm_app` no tiene DDL). Carpeta `sql/` (**20** ficheros numerados `001`-`020`, más auxiliares). Reglas: `ALTER TYPE ... ADD VALUE` / `RENAME VALUE` van en **sentencia separada** de su uso (no en la misma transacción; el editor no soporta BEGIN/COMMIT explícito). **Backup/export de `incidents` + `event_logs` antes de cualquier migración de enum.** Nunca DROP destructivo.
 - **Pooler `prepare: false`**; rol `hsm_app` sin DDL.
 - **Proto vivo vs shadcn legacy** (ver §4): verifica el `page.tsx` antes de editar un componente.
 - **IGNORAR directorios de referencia del prototipo**: `prototipo-referencia/`, `Codigo-rediseño/`, `docs/design/qamarero-handoff/`. Son fuentes visuales, no código de la app.
 - **UTF-8 / español** en todos los textos de UI.
 - **Para `dev` antes de `build`** (Turbopack corrompe `.next` → 500 RSC; borrar `.next`).
-- **MCP Supabase conectado READ-ONLY** (proyecto ref `thkrkubkiasfqmiiwfbj`, esquema `hsm`). Sirve para consultar, no para escribir.
+- **MCP Supabase conectado READ-WRITE** (proyecto ref `thkrkubkiasfqmiiwfbj`, esquema `hsm`). Permite `execute_sql`/`apply_migration` directos → **mostrar siempre el SQL antes de aplicar** y **nunca** DELETE/DROP/TRUNCATE sin confirmación. `.mcp.json` es local y gitignored (lleva el PAT) → recrearlo al teletrabajar; los cambios solo surten efecto al **reiniciar** Claude Code.
 
 ---
 
@@ -191,3 +192,36 @@ docs/proyecto_log.md    # changelog histórico
 - **Rotar el PAT de Supabase** (se pegó en el chat al conectar el MCP).
 - Opcional: guard de duplicados en `createRma`; simplificar los ajustes de SLA al modelo binario (hoy `/settings` aún muestra 4 prioridades).
 - Del plan ④ (pendientes mayores): A6.2 filtro fino del webhook, A7 email/Resend + Vercel Cron, A8 métricas big-data por `articleId`.
+
+---
+
+## Sesión 2026-06-30 (PROYECTO ⑩ — etiquetas físicas con QR)
+
+> Todo **commiteado y desplegado en `main`** (commits `de0ca81`, `b5793bd`, `dc1f98c`, `104d4ee`, `67026ea`, `98f80fc`, `e8bb33e`). Migración `sql/020` **aplicada** en Supabase. Build + lint en verde por commit. Dependencia nueva: **`react-qr-code`**.
+
+**Idea:** identificar físicamente cada equipo con una etiqueta **QR + datos**. El QR apunta a una ruta protegida; con sesión iniciada en el dispositivo (JWT persistente) se abre directo al escanear, sin pedir login.
+
+**Fase 1 — Etiqueta de RMA (`b5793bd`):**
+- Ruta limpia `src/app/etiqueta/[tipo]/[id]/page.tsx` (server, `auth()`, `tipo` = `rma`|`equipo`, formato `?f=etiqueta|envio`). Auth: `/etiqueta` y `/equipos` añadidos a `isOnDashboard` en `src/lib/auth/config.ts`.
+- `src/components/etiquetas/label-print-client.tsx`: **dos formatos** — `Label100x150` (`@page 100mm 150mm`, etiquetadora) y `ShippingSheet` (A4 para cliente/fabricante: cabecera, datos, **zona recortable** ✂ con QR, **normas** + **recepción**). QR = `window.location.origin + recordPath`. Botón "Etiqueta" en el drawer de RMA.
+
+**Fase 2 — Equipos sin RMA (`dc1f98c`):**
+- Tabla **`hsm.assets`** (`sql/020`): `asset_code` `EQ-YYYY-NNNNN` (`generateSequentialId("EQ")`), datos de equipo, `client_name`, `status`/`location`, FK opcionales a article/rma/incident. Schema/validator/queries/actions nuevos (`fetchAssets` tolera tabla ausente → `[]`).
+- Página `/equipos` (`equipos-v2`) + ficha `/equipos/[id]` (objetivo del QR de equipo). Sidebar: "Equipos" (icono `Tag`) en Catálogo.
+
+**Oficialización A4 (`104d4ee`, `67026ea`):**
+- Logo: `BrandMark` local (viewBox `0 0 48 48`) porque el `QamareroLogo` compartido (42×48) recortaba el círculo naranja.
+- Recepción real: **P.º Alcalde Marqués del Contadero, s/n, Casco Antiguo, 41001 Sevilla** · 9:00–18:00 · tel. **602 687 553** · hardware@qamarero.com.
+- 6 normas + **aviso en negrita** ("Todo envío que no cumpla estas condiciones será rechazado y devuelto"). Recortable agrandado (QR 40 mm).
+
+**Acceso + consistencia (`98f80fc`, `e8bb33e`):**
+- Tabla de RMA: columna "Etiqueta" con icono 🖨 por fila → `/etiqueta/rma/{id}` en pestaña nueva (`stopPropagation`).
+- Ficha de RMA: botón "Etiqueta" **siempre naranja** (se quitó la condición por `WAREHOUSE_RMA_STATUSES`), movido al inicio de la fila; "Editar datos" debajo a la izquierda.
+
+**Texto libre de cliente (`de0ca81`):** `Combobox` de cliente (crear/editar incidencia) con `allowFreeText` → permite usar un cliente no registrado escribiéndolo (`clientName`).
+
+**Para retomar (pendiente):**
+- A4 también para equipos (hoy A4 solo RMA; 100×150 para ambos).
+- Revisar la redacción final de las normas con uso real.
+- Sigue pendiente: **rotar el PAT de Supabase** (se expuso en chat); simplificar `/settings` al modelo binario de prioridad; guard de duplicados en `createRma`.
+- ⚠️ **Trampa de ruta**: el `cwd` es el worktree pero el repo raíz tiene su propia copia de cada archivo. Editar SIEMPRE por la ruta del worktree (`…/.claude/worktrees/<nombre>/src/…`); si no, el commit sale vacío y el build compila código viejo.

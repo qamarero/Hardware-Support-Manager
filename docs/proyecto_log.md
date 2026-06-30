@@ -1454,9 +1454,12 @@ Ninguna nueva en este entregable.
 | `sql/008-drop-location-and-remodel-category.sql` | Ejecutado | Drop client_location_id de incidents+rmas, remap category enum, homogenize pickup fields |
 | `sql/009-add-hardware-origin.sql` | Ejecutado | Add hardware_origin enum + nullable column en incidents |
 | `sql/010-quick-consultations.sql` | Ejecutado | Add 'consulta_rapida' enum value + quick_duration_minutes column |
-| `sql/011-support-submissions.sql` | **Pendiente** | Nueva tabla `support_submissions` + enums status/priority |
+| `sql/011-support-submissions.sql` | Ejecutado | Nueva tabla `support_submissions` + enums status/priority |
+| `sql/012`–`sql/018` | Ejecutado | Recordatorios (`sql/012`/`014`), adjuntos de submissions, `provider.rma_process` (jsonb), `rma.shipping` (jsonb), seed de procedimientos de 6 proveedores |
+| `sql/019-priority-binary.sql` | Ejecutado | Prioridad binaria: colapsa `baja`→`media`, `alta`→`critica` |
+| `sql/020-assets.sql` | Ejecutado | Nueva tabla `hsm.assets` (registro de equipos físicos; `asset_code` EQ-YYYY-NNNNN; FK opcionales a article/rma/incident) |
 
-> **Nota**: Las migraciones se ejecutan manualmente en el SQL Editor de Supabase porque el usuario `hsm_app` no tiene permisos DDL. Los ALTER TYPE deben ejecutarse separados de los UPDATE (Supabase no soporta BEGIN/COMMIT explícitos).
+> **Nota**: Las migraciones se ejecutan manualmente en el SQL Editor de Supabase porque el usuario `hsm_app` no tiene permisos DDL. Los ALTER TYPE deben ejecutarse separados de los UPDATE (Supabase no soporta BEGIN/COMMIT explícitos). El MCP de Supabase está conectado en **read-write** (`apply_migration`/`execute_sql`) — usar con cautela, mostrar siempre el SQL antes de aplicar y nunca DELETE/DROP/TRUNCATE sin confirmación.
 
 ## Errores Conocidos y Soluciones
 
@@ -1512,3 +1515,35 @@ Commits en `main` (desplegados): `94a18ff`, `37f00ff`, `297187a`. Migración `sq
 - **Prioridad binaria**: 4 niveles → 2 ("Cliente puede operar" = `media`, "Cliente no puede operar" = `critica`). Etiquetas/colores/selectores/filtros binarios; `priorityBucket()` mapea los datos antiguos. Migración `sql/019` (baja→media, alta→critica). Los RMA no tienen prioridad propia.
 - **Formulario público `/submit`**: email permitido solo `@qamarero.com` (quitado `qami.es`); URL de Intercom opcional; botón "Enviar formulario".
 - **Infra**: MCP de Supabase conectado (primero read-only, luego read-write); creado `ONBOARDING.md` como handoff operativo. Reglas/decisiones nuevas en memoria: `estados-no-lineales`, `prioridad-binaria`.
+
+### 2026-06-30 — PROYECTO ⑩: Etiquetas físicas con QR (RMA + equipos) + texto libre de cliente
+
+Commits en `main` (desplegados): `de0ca81`, `b5793bd`, `dc1f98c`, `104d4ee`, `67026ea`, `98f80fc`, `e8bb33e`. Migración `sql/020` aplicada por el usuario. Build + lint en verde por commit. Dependencia nueva: **`react-qr-code`** (QR como SVG, nítido al imprimir).
+
+**Objetivo (Domi):** cuando un equipo vuelve físicamente a la oficina (vía RMA) o ya está aquí sin RMA (equipos previos a la herramienta), poder pegarle una **etiqueta con QR + datos** que, al escanearla con sesión iniciada (el login persiste por dispositivo, JWT), abre su ficha en la plataforma.
+
+**Texto libre de cliente (`de0ca81`):** el `Combobox` de cliente (crear/editar incidencia) admite `allowFreeText` — si el cliente no existe en la base (3.741 reales, traídos de Supabase), se puede escribir a mano y queda como `clientName`.
+
+**Fase 1 — Etiqueta de RMA (`b5793bd`):**
+- Ruta limpia protegida `src/app/etiqueta/[tipo]/[id]/page.tsx` (server, `auth()`, `tipo` = `rma` | `equipo`, formato por `?f=etiqueta|envio`). Auth: añadidos `/etiqueta` y `/equipos` a `isOnDashboard` en `src/lib/auth/config.ts`.
+- Cliente `src/components/etiquetas/label-print-client.tsx`: barra de control (toggle de formato + Imprimir, ocultos al imprimir) + `@page` dinámico. **Dos formatos:**
+  - `Label100x150` — `@page size: 100mm 150mm` para la etiquetadora local: marca, nº grande (mono), QR central, equipo, S/N, cliente/proveedor, estado+fecha.
+  - `ShippingSheet` — A4 para enviar a cliente/fabricante: cabecera oficial, datos del equipo, **zona recortable** (✂ QR + nº + equipo/serie, a pegar), **normas** y **bloque de recepción**.
+- El QR codifica `window.location.origin + recordPath` (`/rmas/{id}` o `/equipos/{id}`).
+- Botón "Etiqueta" en el drawer de RMA (`rma-detail-drawer.tsx`).
+
+**Fase 2 — Registro de equipos sin RMA (`dc1f98c`):**
+- Tabla **`hsm.assets`** (`sql/020-assets.sql`): `asset_code` único `EQ-YYYY-NNNNN` (vía `generateSequentialId("EQ")`), tipo/marca/modelo/serie, `client_name`, `status` (`en_oficina`…), `location`, `notes`, FK opcionales `article_id`/`rma_id`/`incident_id`. Schema `src/lib/db/schema/assets.ts`; validador `src/lib/validators/asset.ts`; queries `src/server/queries/assets.ts`; actions `src/server/actions/assets.ts` (`fetchAssets` tolerante: `try/catch` → `[]` si la tabla aún no existe).
+- Página `/equipos` (`src/components/equipos-v2/equipos-screen.tsx`): lista + búsqueda + alta rápida (reusa `ArticleCombobox`) + botón etiqueta por fila. Ficha `/equipos/[id]` (objetivo del QR de equipo). Sidebar: ítem "Equipos" (icono `Tag`) en Catálogo.
+- Misma ruta/componentes de etiqueta reutilizados para `tipo=equipo`.
+
+**Oficialización de la hoja A4 (`104d4ee`, `67026ea`):**
+- **Logo**: el componente compartido `QamareroLogo` (viewBox `0 0 42 48`) recortaba el círculo naranja (llega a x=48). Se usa un `BrandMark` **local** (viewBox `0 0 48 48`, marca `#212121` + círculo `#F4532B`) en la etiqueta para que no se corte, sin tocar el componente global.
+- **Dirección de recepción real**: P.º Alcalde Marqués del Contadero, s/n, Casco Antiguo, 41001 Sevilla · horario 9:00–18:00 · tel. 602 687 553 · hardware@qamarero.com.
+- **Normas** (6 puntos formales) + **aviso en negrita**: "Todo envío que no cumpla estas condiciones será rechazado y devuelto a su origen". Zona recortable agrandada (QR 40 mm).
+
+**Acceso y consistencia del botón (`98f80fc`, `e8bb33e`):**
+- **Tabla de RMA** (`rmas-screen.tsx`): nueva columna "Etiqueta" con icono de impresora por fila → abre `/etiqueta/rma/{id}` en pestaña nueva (`stopPropagation` para no abrir el drawer). Pensado para etiquetar lotes de devoluciones sin entrar en cada ficha.
+- **Ficha de RMA**: el botón "Etiqueta" dejó de cambiar de color según estado (confundía: dependía de `WAREHOUSE_RMA_STATUSES`) → ahora **siempre naranja** (`btn--primary`). Reordenado al **inicio** de la fila de acciones; "Editar datos" pasa **debajo, a la izquierda**.
+
+**Pendiente / siguiente:** A4 también para equipos (hoy 100×150 para ambos, A4 solo RMA); revisar redacción final de normas con uso real.
