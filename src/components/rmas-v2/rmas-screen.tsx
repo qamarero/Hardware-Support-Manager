@@ -3,7 +3,7 @@
 import { Fragment, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Plus, Loader2, RotateCcw, Laptop } from "lucide-react";
+import { Search, Plus, Loader2, RotateCcw, Laptop, Printer } from "lucide-react";
 import { fetchRmas } from "@/server/actions/rmas";
 import { RmaStatusBadge } from "@/components/proto/badges";
 import { CopyId } from "@/components/proto/copy-id";
@@ -135,6 +135,7 @@ export function RmasScreen() {
                 <th>Resultado</th>
                 <th>Incidencia</th>
                 <th>Actualizado</th>
+                <th>Etiqueta</th>
               </tr>
             </thead>
             <tbody>
@@ -142,7 +143,7 @@ export function RmasScreen() {
                 <Fragment key={r.id}>
                 {showDivider && idx === firstClosedIdx && (
                   <tr className="row-divider" aria-hidden>
-                    <td colSpan={9} style={{ padding: 0 }}>
+                    <td colSpan={10} style={{ padding: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px 6px", color: "var(--gray-500)" }}>
                         <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
                           Finalizados
@@ -195,6 +196,17 @@ export function RmasScreen() {
                   </td>
                   <td className="id-cell">{r.incidentNumber ? <CopyId value={r.incidentNumber} /> : "—"}</td>
                   <td className="text-sm muted">{formatRelativeTime(r.updatedAt)}</td>
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <a
+                      href={`/etiqueta/rma/${r.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn--primary btn--icon btn--sm"
+                      title="Imprimir etiqueta física (100×150) u hoja A4 de envío"
+                    >
+                      <Printer size={14} />
+                    </a>
+                  </td>
                 </tr>
                 </Fragment>
               ))}

@@ -27,7 +27,7 @@ function rmaFollowUpInDays(n: number): string {
 import { fetchRmaById, updateRma, transitionRma, fetchProvidersForSelect } from "@/server/actions/rmas";
 import { getRmaAvailableTransitions } from "@/lib/state-machines/rma";
 import { RMA_STATUS_LABELS, RMA_OUTCOME_LABELS, RMA_LOGISTICS_LABELS, RMA_REPAIR_PATH_LABELS, type RmaStatus } from "@/lib/constants/rmas";
-import { PAUSED_RMA_STATES, WAREHOUSE_RMA_STATUSES } from "@/lib/constants/statuses";
+import { PAUSED_RMA_STATES } from "@/lib/constants/statuses";
 import { formatDateTime } from "@/lib/utils/date-format";
 
 interface Props {
@@ -342,7 +342,7 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
                   href={`/etiqueta/rma/${rma.id}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`btn btn--sm ${(WAREHOUSE_RMA_STATUSES as readonly string[]).includes(rma.status) ? "btn--primary" : "btn--outline"}`}
+                  className="btn btn--primary btn--sm"
                   title="Imprimir etiqueta física (100×150) u hoja A4 de envío"
                 >
                   <Printer size={14} /> Etiqueta
