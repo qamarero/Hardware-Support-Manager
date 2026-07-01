@@ -24,3 +24,43 @@ export function accentInsensitiveLike(
   const pattern = `%${normalizedTerm}%`;
   return sql`lower(translate(${column}, ${FROM_CHARS}, ${TO_CHARS})) ILIKE ${pattern}`;
 }
+
+/**
+ * Builds ONE normalized text expression from several columns:
+ * `lower(translate(concat_ws(' ', col1, col2, …), …))`. `concat_ws` ignores
+ * NULLs. Used as the haystack for trigram fuzzy matching below.
+ */
+export function accentNormalizedConcat(columns: (AnyColumn | SQL)[]): SQL {
+  const list = sql.join(
+    columns.map((c) => sql`${c}`),
+    sql`, `,
+  );
+  return sql`lower(translate(concat_ws(' ', ${list}), ${FROM_CHARS}, ${TO_CHARS}))`;
+}
+
+/**
+ * Trigram fuzzy match (pg_trgm `word_similarity`): true when `normalizedTerm`
+ * is similar enough to some word in the (already normalized) haystack. This is
+ * what tolerates typos like "txoco" → "Txoko".
+ *
+ * pg_trgm is installed and reachable via the Supabase pooler (the `hsm_app`
+ * role's search_path includes `public`), unlike `unaccent`. On real data a
+ * 1-char typo scores ~0.5 while unrelated rows score ≤0.17, so the default
+ * threshold 0.4 separates them cleanly.
+ */
+export function fuzzyWordMatch(
+  normalizedHaystack: SQL,
+  normalizedTerm: string,
+  threshold = 0.4,
+): SQL {
+  return sql`word_similarity(${normalizedTerm}, ${normalizedHaystack}) >= ${threshold}`;
+}
+
+/** Relevance score for ORDER BY: best word_similarity across all tokens. */
+export function relevanceScore(normalizedHaystack: SQL, tokens: string[]): SQL {
+  const sims = sql.join(
+    tokens.map((t) => sql`word_similarity(${t}, ${normalizedHaystack})`),
+    sql`, `,
+  );
+  return sql`greatest(${sims}, 0)`;
+}

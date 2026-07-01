@@ -5,20 +5,34 @@ import {
   clients,
   providers,
 } from "@/lib/db/schema";
-import { eq, or, desc } from "drizzle-orm";
+import { eq, or, desc, sql, type AnyColumn, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
-import { accentInsensitiveLike } from "@/lib/utils/sql-search";
+import {
+  accentInsensitiveLike,
+  accentNormalizedConcat,
+  fuzzyWordMatch,
+  relevanceScore,
+} from "@/lib/utils/sql-search";
 
 /**
  * Cross-entity global search used by the sidebar search bar.
  *
  * Each call accepts an array of pre-normalized tokens (lowercased, accent
- * stripped). The tokens are combined with OR so a query like
- * "cafe cantina" returns rows matching either of the two — per user spec.
+ * stripped). Tokens are combined with OR so a query like "cafe cantina"
+ * returns rows matching either — per user spec.
  *
- * SQL uses `accentInsensitiveLike()` to lookup against case + accent
- * insensitive column values, sidestepping the Supabase unaccent limitation.
+ * Two matchers per token:
+ *   1. `accentInsensitiveLike` — case + accent insensitive substring (exact).
+ *   2. `fuzzyWordMatch` — pg_trgm trigram similarity, for typos (e.g.
+ *      "txoco" → "Txoko"). Only applied to tokens ≥ 4 chars to avoid noise.
+ *
+ * Results are ordered by trigram relevance (best match first), then recency,
+ * so the closest match surfaces even with the 5-row limit.
  */
+
+// Solo se aplica el emparejamiento aproximado a tokens de 4+ caracteres:
+// en tokens muy cortos el trigrama produce ruido.
+const FUZZY_MIN_LEN = 4;
 
 export interface IncidentSearchResult {
   id: string;
@@ -43,49 +57,70 @@ export interface RmaSearchResult {
   incidentNumber: string | null;
 }
 
-/** Columns to search across in incidents (joined with clients). */
+/** Text columns searched for incidents (joined with clients). */
+const incidentTextColumns: (AnyColumn | SQL)[] = [
+  incidents.incidentNumber,
+  incidents.title,
+  incidents.description,
+  incidents.clientName,
+  incidents.deviceType,
+  incidents.deviceBrand,
+  incidents.deviceModel,
+  incidents.deviceSerialNumber,
+  incidents.contactName,
+  incidents.pickupCity,
+  incidents.pickupAddress,
+  incidents.intercomEscalationId,
+  clients.name,
+  clients.city,
+];
+
+/** Text columns searched for RMAs (joined with providers, incidents, clients). */
+function rmaTextColumns(
+  linkedIncident: ReturnType<typeof alias>,
+): (AnyColumn | SQL)[] {
+  return [
+    rmas.rmaNumber,
+    rmas.clientName,
+    rmas.deviceType,
+    rmas.deviceBrand,
+    rmas.deviceModel,
+    rmas.deviceSerialNumber,
+    rmas.providerRmaNumber,
+    rmas.trackingNumberOutgoing,
+    rmas.trackingNumberReturn,
+    rmas.contactName,
+    rmas.pickupCity,
+    rmas.pickupAddress,
+    rmas.notes,
+    providers.name,
+    clients.name,
+    clients.city,
+    linkedIncident.incidentNumber,
+  ];
+}
+
+/** Per-token WHERE for incidents: exact substring on each column + fuzzy fallback. */
 function buildIncidentTokenWhere(token: string) {
   return or(
-    accentInsensitiveLike(incidents.incidentNumber, token),
-    accentInsensitiveLike(incidents.title, token),
-    accentInsensitiveLike(incidents.description, token),
-    accentInsensitiveLike(incidents.clientName, token),
-    accentInsensitiveLike(incidents.deviceType, token),
-    accentInsensitiveLike(incidents.deviceBrand, token),
-    accentInsensitiveLike(incidents.deviceModel, token),
-    accentInsensitiveLike(incidents.deviceSerialNumber, token),
-    accentInsensitiveLike(incidents.contactName, token),
-    accentInsensitiveLike(incidents.pickupCity, token),
-    accentInsensitiveLike(incidents.pickupAddress, token),
-    accentInsensitiveLike(incidents.intercomEscalationId, token),
-    accentInsensitiveLike(clients.name, token),
-    accentInsensitiveLike(clients.city, token),
+    ...incidentTextColumns.map((c) => accentInsensitiveLike(c, token)),
+    token.length >= FUZZY_MIN_LEN
+      ? fuzzyWordMatch(accentNormalizedConcat(incidentTextColumns), token)
+      : undefined,
   );
 }
 
-/** Columns to search across in RMAs (joined with providers, incidents, clients). */
+/** Per-token WHERE for RMAs: exact substring on each column + fuzzy fallback. */
 function buildRmaTokenWhere(
   token: string,
-  linkedIncidentNumber: ReturnType<typeof alias>,
+  linkedIncident: ReturnType<typeof alias>,
 ) {
+  const cols = rmaTextColumns(linkedIncident);
   return or(
-    accentInsensitiveLike(rmas.rmaNumber, token),
-    accentInsensitiveLike(rmas.clientName, token),
-    accentInsensitiveLike(rmas.deviceType, token),
-    accentInsensitiveLike(rmas.deviceBrand, token),
-    accentInsensitiveLike(rmas.deviceModel, token),
-    accentInsensitiveLike(rmas.deviceSerialNumber, token),
-    accentInsensitiveLike(rmas.providerRmaNumber, token),
-    accentInsensitiveLike(rmas.trackingNumberOutgoing, token),
-    accentInsensitiveLike(rmas.trackingNumberReturn, token),
-    accentInsensitiveLike(rmas.contactName, token),
-    accentInsensitiveLike(rmas.pickupCity, token),
-    accentInsensitiveLike(rmas.pickupAddress, token),
-    accentInsensitiveLike(rmas.notes, token),
-    accentInsensitiveLike(providers.name, token),
-    accentInsensitiveLike(clients.name, token),
-    accentInsensitiveLike(clients.city, token),
-    accentInsensitiveLike(linkedIncidentNumber.incidentNumber, token),
+    ...cols.map((c) => accentInsensitiveLike(c, token)),
+    token.length >= FUZZY_MIN_LEN
+      ? fuzzyWordMatch(accentNormalizedConcat(cols), token)
+      : undefined,
   );
 }
 
@@ -97,6 +132,7 @@ export async function searchIncidentsByTokens(
 
   // OR between tokens — user wants UNION of matches.
   const whereCondition = or(...tokens.map((t) => buildIncidentTokenWhere(t)));
+  const score = relevanceScore(accentNormalizedConcat(incidentTextColumns), tokens);
 
   try {
     const rows = await db
@@ -113,7 +149,7 @@ export async function searchIncidentsByTokens(
       .from(incidents)
       .leftJoin(clients, eq(incidents.clientId, clients.id))
       .where(whereCondition)
-      .orderBy(desc(incidents.createdAt))
+      .orderBy(sql`${score} desc`, desc(incidents.createdAt))
       .limit(limit);
     return rows as IncidentSearchResult[];
   } catch (err) {
@@ -134,6 +170,10 @@ export async function searchRmasByTokens(
   const whereCondition = or(
     ...tokens.map((t) => buildRmaTokenWhere(t, linkedIncident)),
   );
+  const score = relevanceScore(
+    accentNormalizedConcat(rmaTextColumns(linkedIncident)),
+    tokens,
+  );
 
   try {
     const rows = await db
@@ -153,7 +193,7 @@ export async function searchRmasByTokens(
       .leftJoin(linkedIncident, eq(rmas.incidentId, linkedIncident.id))
       .leftJoin(clients, eq(rmas.clientId, clients.id))
       .where(whereCondition)
-      .orderBy(desc(rmas.createdAt))
+      .orderBy(sql`${score} desc`, desc(rmas.createdAt))
       .limit(limit);
     return rows as RmaSearchResult[];
   } catch (err) {
