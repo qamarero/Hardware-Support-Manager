@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Check, Clock, Ticket, Pencil, X, MessageSquare, Printer } from "lucide-react";
+import { Loader2, Check, Clock, Ticket, Pencil, X, MessageSquare, Printer, ExternalLink } from "lucide-react";
 import { Drawer, Field } from "@/components/proto/drawer";
 import { RmaStatusBadge } from "@/components/proto/badges";
 import { CopyId } from "@/components/proto/copy-id";
@@ -15,6 +15,7 @@ import { EventLogTimeline } from "@/components/shared/event-log-timeline";
 import { ManualNoteForm } from "@/components/shared/manual-note-form";
 import { ConversationPopup } from "@/components/proto/conversation-popup";
 import { extractConversationId } from "@/lib/intercom/sync";
+import { intercomConversationUrl } from "@/lib/utils/intercom-url";
 import { ReminderSection } from "@/components/reminders/reminder-section";
 import { createReminder } from "@/server/actions/reminders";
 
@@ -420,6 +421,21 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
                     <dt>Proveedor</dt><dd>{rma.providerName ?? "—"}</dd>
                     <dt>Cliente</dt><dd>{rma.clientCompanyName ?? rma.clientName ?? "—"}</dd>
                     <dt>Persona de contacto</dt><dd>{rma.contactName ?? "—"}</dd>
+                    {conversationId && (
+                      <>
+                        <dt>Conversación</dt>
+                        <dd>
+                          <a
+                            href={intercomConversationUrl(conversationId) ?? "#"}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#ff592f", fontWeight: 600 }}
+                          >
+                            Abrir en Intercom <ExternalLink size={12} />
+                          </a>
+                        </dd>
+                      </>
+                    )}
                     {rma.logistics && (<><dt>Logística</dt><dd>{RMA_LOGISTICS_LABELS[rma.logistics as keyof typeof RMA_LOGISTICS_LABELS] ?? rma.logistics}</dd></>)}
                     {rma.repairPath && (<><dt>Vía de reparación</dt><dd>{RMA_REPAIR_PATH_LABELS[rma.repairPath as keyof typeof RMA_REPAIR_PATH_LABELS] ?? rma.repairPath}</dd></>)}
                     {rma.outcome && (<><dt>Resultado</dt><dd>{RMA_OUTCOME_LABELS[rma.outcome as keyof typeof RMA_OUTCOME_LABELS] ?? rma.outcome}</dd></>)}
