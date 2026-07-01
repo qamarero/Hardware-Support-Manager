@@ -16,6 +16,7 @@ import { ManualNoteForm } from "@/components/shared/manual-note-form";
 import { ConversationPopup } from "@/components/proto/conversation-popup";
 import { extractConversationId } from "@/lib/intercom/sync";
 import { intercomConversationUrl } from "@/lib/utils/intercom-url";
+import { useDrawers } from "@/components/shell/drawers-provider";
 import { ReminderSection } from "@/components/reminders/reminder-section";
 import { createReminder } from "@/server/actions/reminders";
 
@@ -48,6 +49,7 @@ const SELECTABLE_RMA_STATUSES: RmaStatus[] = [
 
 export function RmaDetailDrawer({ rmaId, onClose }: Props) {
   const qc = useQueryClient();
+  const { openIncident } = useDrawers();
   const [tab, setTab] = useState<"detalle" | "timeline" | "adjuntos">("detalle");
   const [providerRma, setProviderRma] = useState("");
   const [trackingOut, setTrackingOut] = useState("");
@@ -273,9 +275,21 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
             <span className="id-cell"><CopyId value={rma.rmaNumber} /></span>
             <RmaStatusBadge status={rma.status} />
             {rma.incidentNumber && (
-              <span className="badge badge--outline">
-                <Ticket size={12} /> Incidencia {rma.incidentNumber}
-              </span>
+              rma.incidentId ? (
+                <button
+                  type="button"
+                  className="badge badge--outline"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => openIncident(rma.incidentId!)}
+                  title="Abrir la incidencia vinculada"
+                >
+                  <Ticket size={12} /> Incidencia {rma.incidentNumber}
+                </button>
+              ) : (
+                <span className="badge badge--outline">
+                  <Ticket size={12} /> Incidencia {rma.incidentNumber}
+                </span>
+              )
             )}
           </div>
 
