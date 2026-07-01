@@ -72,6 +72,29 @@ export function RmaProviderEmail({ rma }: { rma: RmaRow }) {
 
   const tpl = providerTemplates.find((t) => t.id === templateId) ?? null;
 
+  // Bloque de recogida/envío: se incluye SIEMPRE — en el mensaje por defecto y
+  // también como apéndice tras una plantilla de proveedor (que no suele llevar
+  // estos campos). Así el proveedor siempre recibe dónde recoger el equipo.
+  const dest = ship.destination;
+  const recogidaBlock = [
+    "Datos de recogida:",
+    `- ${ship.locationName || clientName || "—"}${context.contactName ? " · " + context.contactName : ""}`,
+    `- ${[context.pickupAddress, [context.pickupPostalCode, context.pickupCity].filter(Boolean).join(" "), ship.province].filter(Boolean).join(", ") || "—"}`,
+    `- Tel: ${context.contactPhone || "—"}${context.contactEmail ? " · " + context.contactEmail : ""}`,
+    ...(ship.instructions ? [`- Instrucciones: ${ship.instructions}`] : []),
+    ...(dest && (dest.address || dest.name)
+      ? [
+          "",
+          "Destino del envío:",
+          ...(dest.name || dest.contact ? [`- ${[dest.name, dest.contact].filter(Boolean).join(" · ")}`] : []),
+          ...(dest.address || dest.city || dest.postalCode
+            ? [`- ${[dest.address, [dest.postalCode, dest.city].filter(Boolean).join(" "), dest.province].filter(Boolean).join(", ")}`]
+            : []),
+          ...(dest.phone ? [`- Tel: ${dest.phone}`] : []),
+        ]
+      : []),
+  ].join("\n");
+
   const defaultSubject = `RMA ${rma.rmaNumber} — ${device}`;
   const defaultBody = [
     "Buenos días,",
@@ -80,23 +103,18 @@ export function RmaProviderEmail({ rma }: { rma: RmaRow }) {
     `- Equipo: ${device}`,
     `- Nº de serie: ${rma.deviceSerialNumber || "—"}`,
     `- Cliente: ${clientName || "—"}`,
-    rma.notes ? `- Motivo: ${rma.notes}` : "",
+    ...(rma.notes ? [`- Motivo: ${rma.notes}`] : []),
     "",
-    "Datos de recogida:",
-    `- ${ship.locationName || clientName || ""}${context.contactName ? " · " + context.contactName : ""}`,
-    `- ${context.pickupAddress || ""}, ${context.pickupPostalCode || ""} ${context.pickupCity || ""}${ship.province ? " (" + ship.province + ")" : ""}`,
-    `- Tel: ${context.contactPhone || "—"}`,
+    recogidaBlock,
     "",
     "Quedamos a la espera de la autorización y del número de RMA.",
     "",
     "Un saludo,",
     "Soporte Hardware — Qamarero",
-  ]
-    .filter((l) => l !== "")
-    .join("\n");
+  ].join("\n");
 
   const subject = tpl?.subject ? renderTemplate(tpl.subject, context) : defaultSubject;
-  const body = tpl ? renderTemplate(tpl.body, context) : defaultBody;
+  const body = tpl ? `${renderTemplate(tpl.body, context)}\n\n${recogidaBlock}` : defaultBody;
 
   function openMail() {
     const mailto = `mailto:${encodeURIComponent(emailTo)}?cc=${encodeURIComponent(emailCc)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;

@@ -426,6 +426,28 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
                     <dt>Abierto</dt><dd>{formatDateTime(rma.createdAt)}</dd>
                     <dt>Última actualización</dt><dd>{formatDateTime(rma.updatedAt)}</dd>
                   </dl>
+
+                  {/* Datos de recogida/envío guardados (solo lectura). Se editan con el botón "Datos de recogida/envío". */}
+                  {rma.shipping && (rma.shipping.locationName || rma.shipping.contactName || rma.shipping.contactPhone || rma.shipping.contactEmail || rma.shipping.address || rma.shipping.destination?.address || rma.shipping.destination?.name) ? (
+                    <div>
+                      <div className="field__label" style={{ marginBottom: 8 }}>Datos de recogida y envío</div>
+                      <div className="card" style={{ padding: 16 }}>
+                        <dl className="dl" style={{ margin: 0 }}>
+                          {rma.shipping.locationName && (<><dt>Local</dt><dd>{rma.shipping.locationName}</dd></>)}
+                          {rma.shipping.contactName && (<><dt>Contacto</dt><dd>{rma.shipping.contactName}</dd></>)}
+                          {rma.shipping.contactPhone && (<><dt>Teléfono</dt><dd className="mono">{rma.shipping.contactPhone}</dd></>)}
+                          {rma.shipping.contactEmail && (<><dt>Email</dt><dd>{rma.shipping.contactEmail}</dd></>)}
+                          {(rma.shipping.address || rma.shipping.city || rma.shipping.postalCode) && (
+                            <><dt>Dirección</dt><dd>{[rma.shipping.address, [rma.shipping.postalCode, rma.shipping.city].filter(Boolean).join(" "), rma.shipping.province].filter(Boolean).join(", ")}</dd></>
+                          )}
+                          {rma.shipping.instructions && (<><dt>Instrucciones</dt><dd>{rma.shipping.instructions}</dd></>)}
+                          {rma.shipping.destination && (rma.shipping.destination.address || rma.shipping.destination.name) && (
+                            <><dt>Destino</dt><dd>{[rma.shipping.destination.name, rma.shipping.destination.address, [rma.shipping.destination.postalCode, rma.shipping.destination.city].filter(Boolean).join(" ")].filter(Boolean).join(", ")}</dd></>
+                          )}
+                        </dl>
+                      </div>
+                    </div>
+                  ) : null}
                 </>
               )}
 
