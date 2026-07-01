@@ -15,7 +15,7 @@ import type { RmaRow } from "@/server/queries/rmas";
 
 // Estados activos arriba; cerrados (entregado/rechazado/cerrado/cancelado) en su sección.
 const STATUS_ORDER: RmaStatus[] = [
-  "borrador", "solicitado", "aprobado", "enviado_proveedor", "en_proveedor", "devuelto", "recibido_oficina", "entregado_cliente", "rechazado", "cerrado", "cancelado",
+  "borrador", "solicitado", "aprobado", "enviado_proveedor", "en_proveedor", "devuelto", "recibido_oficina", "esperando_cliente", "entregado_cliente", "rechazado", "cerrado", "cancelado",
 ];
 
 const CLOSED_RMA = new Set<string>(CLOSED_RMA_STATUSES);

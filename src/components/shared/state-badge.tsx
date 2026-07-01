@@ -24,6 +24,7 @@ const RMA_STATUS_COLORS: Record<RmaStatus, string> = {
   en_proveedor: "bg-orange-500/15 text-orange-700 hover:bg-orange-500/15 dark:bg-orange-500/25 dark:text-orange-300",
   devuelto: "bg-yellow-500/15 text-yellow-700 hover:bg-yellow-500/15 dark:bg-yellow-500/25 dark:text-yellow-300",
   recibido_oficina: "bg-teal-500/15 text-teal-700 hover:bg-teal-500/15 dark:bg-teal-500/25 dark:text-teal-300",
+  esperando_cliente: "bg-amber-500/15 text-amber-700 hover:bg-amber-500/15 dark:bg-amber-500/25 dark:text-amber-300",
   entregado_cliente: "bg-green-500/15 text-green-700 hover:bg-green-500/15 dark:bg-green-500/25 dark:text-green-300",
   rechazado: "bg-red-500/15 text-red-700 hover:bg-red-500/15 dark:bg-red-500/25 dark:text-red-300",
   cerrado: "bg-gray-500/15 text-gray-700 hover:bg-gray-500/15 dark:bg-gray-500/25 dark:text-gray-300",

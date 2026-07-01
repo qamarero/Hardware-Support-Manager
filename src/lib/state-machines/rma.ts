@@ -30,6 +30,11 @@ export const RMA_TRANSITIONS: RmaStateTransition[] = [
   { from: "devuelto", to: "entregado_cliente", label: "Entregado al Cliente (envío directo)", requiredRole: ["admin", "technician"] },
   // From recibido_oficina (lo tenemos nosotros, pendiente de devolver al cliente)
   { from: "recibido_oficina", to: "entregado_cliente", label: "Entregar al Cliente", requiredRole: ["admin", "technician"] },
+  { from: "recibido_oficina", to: "esperando_cliente", label: "Esperando al Cliente", requiredRole: ["admin", "technician"] },
+  // From esperando_cliente (a la espera de que el cliente confirme/recoja — SLA en pausa)
+  { from: "esperando_cliente", to: "entregado_cliente", label: "Entregar al Cliente", requiredRole: ["admin", "technician"] },
+  { from: "esperando_cliente", to: "recibido_oficina", label: "Corregir: volver a Recibido", requiredRole: ["admin"] },
+  { from: "esperando_cliente", to: "cancelado", label: "Cancelar", requiredRole: ["admin"] },
   // From entregado_cliente
   { from: "entregado_cliente", to: "cerrado", label: "Cerrar RMA", requiredRole: ["admin", "technician"] },
   // From rechazado
