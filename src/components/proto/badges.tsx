@@ -59,14 +59,14 @@ export function PriorityPill({ priority }: { priority: string }) {
   );
 }
 
-export function Avatar({ name, size, src }: { name: string; size?: "sm" | "lg"; src?: string | null }) {
+export function Avatar({ name, size, src }: { name: string; size?: "sm" | "lg" | "xl"; src?: string | null }) {
   const initials = name
     .split(" ")
     .map((w) => w[0])
     .slice(0, 2)
     .join("")
     .toUpperCase();
-  const cls = `avatar ${size === "sm" ? "avatar--sm" : size === "lg" ? "avatar--lg" : ""}`;
+  const cls = `avatar ${size === "sm" ? "avatar--sm" : size === "lg" ? "avatar--lg" : size === "xl" ? "avatar--xl" : ""}`;
   if (src) {
     // eslint-disable-next-line @next/next/no-img-element
     return <img className={cls} src={src} alt={name} style={{ objectFit: "cover" }} />;

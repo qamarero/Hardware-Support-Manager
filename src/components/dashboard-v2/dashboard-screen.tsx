@@ -146,10 +146,10 @@ export function DashboardScreen() {
           {/* Avatar grande del técnico conectado */}
           {userName && (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-              <div style={{ width: 72, height: 72, borderRadius: "50%", boxShadow: "0 0 0 3px rgba(255,255,255,0.25)", overflow: "hidden", display: "grid", placeItems: "center" }}>
-                <Avatar name={userName} size="lg" src={me?.avatarUrl ?? undefined} />
+              <div style={{ width: 104, height: 104, borderRadius: "50%", boxShadow: "0 0 0 3px rgba(255,255,255,0.25)", overflow: "hidden", display: "grid", placeItems: "center" }}>
+                <Avatar name={userName} size="xl" src={me?.avatarUrl ?? undefined} />
               </div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.9)" }}>{firstName}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.9)" }}>{firstName}</div>
             </div>
           )}
         </div>
