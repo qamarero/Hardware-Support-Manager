@@ -83,6 +83,15 @@ export function LabelPrintClient({ data, formato }: { data: LabelData; formato: 
   useEffect(() => setOrigin(window.location.origin), []);
   const qrUrl = origin ? `${origin}${data.recordPath}` : "";
 
+  // El nombre sugerido al "Guardar como PDF" (Chrome) es el document.title.
+  // Lo fijamos a "{local} - {nº}" para que el archivo salga identificado.
+  useEffect(() => {
+    const name = [data.client, data.code].filter(Boolean).join(" - ") || data.code;
+    const prev = document.title;
+    document.title = name;
+    return () => { document.title = prev; };
+  }, [data.client, data.code]);
+
   const pageCss =
     formato === "envio" ? "@page { size: A4; margin: 0; }" : "@page { size: 100mm 150mm; margin: 0; }";
 
