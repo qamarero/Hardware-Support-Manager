@@ -305,23 +305,23 @@ function ReminderRowView({ r, overdue, onComplete, onSnooze, onReassign, users, 
       onClick={hasEntity ? onOpen : undefined}
       onKeyDown={hasEntity ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } } : undefined}
       title={hasEntity ? "Abrir ficha vinculada" : undefined}
-      style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: "var(--gray-50)", borderRadius: 10, cursor: hasEntity ? "pointer" : "default" }}
+      style={{ display: "flex", flexDirection: "column", gap: 8, padding: "10px 12px", background: "var(--gray-50)", borderRadius: 10, cursor: hasEntity ? "pointer" : "default" }}
       onMouseEnter={hasEntity ? (e) => { e.currentTarget.style.background = "var(--gray-100)"; } : undefined}
       onMouseLeave={hasEntity ? (e) => { e.currentTarget.style.background = "var(--gray-50)"; } : undefined}
     >
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div className="text-sm fw-600" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</div>
-        <div className="text-xs muted" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <div style={{ minWidth: 0 }}>
+        <div className="text-sm fw-600" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{r.title}</div>
+        <div className="text-xs muted" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "2px 6px", marginTop: 2 }}>
           <span style={{ color: overdue ? "var(--danger)" : undefined }}>{formatDateTime(r.dueAt)}</span>
           {r.entityNumber && <span className="mono" style={{ color: "var(--primary)" }}>· {r.entityNumber}</span>}
-          {r.note && <span>· {r.note}</span>}
+          {r.note && <span style={{ width: "100%" }}>{r.note}</span>}
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }} onClick={(e) => e.stopPropagation()}>
         {users.length > 0 && (
           <select
             className="select"
-            style={{ width: "auto", fontSize: 12, padding: "4px 6px" }}
+            style={{ flex: 1, minWidth: 0, fontSize: 12, padding: "4px 6px" }}
             value=""
             onChange={(e) => { if (e.target.value) onReassign(e.target.value); }}
             title="Delegar a otro técnico"
