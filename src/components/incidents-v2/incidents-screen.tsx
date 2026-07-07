@@ -4,7 +4,7 @@ import { Fragment, useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
-import { Search, Plus, Loader2, Ticket, MessageSquare } from "lucide-react";
+import { Search, Plus, Loader2, Ticket, MessageSquare, Check } from "lucide-react";
 import { fetchIncidents, fetchUsersForSelect, quickAssignIncident, updateIncident } from "@/server/actions/incidents";
 import { IncidentStatusBadge, SlaBar, Avatar } from "@/components/proto/badges";
 import { ConversationPopup } from "@/components/proto/conversation-popup";
@@ -13,6 +13,8 @@ import { IncidentDetailDrawer } from "./incident-detail-drawer";
 import { IncidentFormDrawer } from "./incident-form-drawer";
 import { RmaWizard } from "@/components/incidents/rma-wizard";
 import { useDrawers } from "@/components/shell/drawers-provider";
+import { useDailyReview } from "@/hooks/use-daily-review";
+import { ContactButton, NextStepButton, reviewKeyOf, type RoundItem } from "@/components/mi-dia/ronda-actions";
 import { INCIDENT_STATUS_LABELS, priorityBucket, type IncidentStatus } from "@/lib/constants/incidents";
 import { RMA_STATUS_LABELS, type RmaStatus } from "@/lib/constants/rmas";
 import { extractConversationId } from "@/lib/intercom/sync";
@@ -26,6 +28,36 @@ function conversationIdOf(i: IncidentRow): string | null {
   return extractConversationId(i.intercomUrl ?? "") ?? i.intercomEscalationId ?? null;
 }
 
+/** Adapta una fila de incidencia al item de ronda (reusa acciones de seguimiento). */
+function itemOf(i: IncidentRow): RoundItem {
+  return {
+    kind: "incident", id: i.id, number: i.incidentNumber, title: i.title,
+    client: i.clientCompanyName ?? i.clientName ?? null, status: i.status,
+    createdAt: i.createdAt, conversationId: conversationIdOf(i), lastContactedAt: i.lastContactedAt ?? null,
+  };
+}
+
+/** Celda "Seguimiento": marca revisada hoy (local) + Contacté + Siguiente paso. */
+function ReviewCell({ item, review }: { item: RoundItem; review: ReturnType<typeof useDailyReview> }) {
+  const k = reviewKeyOf(item);
+  const done = review.isReviewed(k);
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+      <span
+        role="checkbox"
+        aria-checked={done}
+        onClick={() => { if (done) review.unmark(k); else review.markReviewed(k); }}
+        title={done ? "Revisada hoy — clic para desmarcar" : "Marcar revisada hoy"}
+        style={{ display: "inline-grid", placeItems: "center", width: 22, height: 22, borderRadius: 6, border: `1.5px solid ${done ? "var(--primary)" : "var(--border)"}`, background: done ? "var(--primary)" : "#fff", cursor: "pointer", flexShrink: 0 }}
+      >
+        {done && <Check size={13} color="#fff" />}
+      </span>
+      <ContactButton item={item} size="xs" />
+      <NextStepButton item={item} size="xs" />
+    </div>
+  );
+}
+
 const STATUS_ORDER: IncidentStatus[] = [
   "nuevo", "en_gestion", "esperando_cliente", "esperando_proveedor", "esperando_pieza", "resuelto", "cerrado",
 ];
@@ -37,6 +69,7 @@ const isClosed = (s: IncidentStatus) => CLOSED_STATUSES.has(s);
 export function IncidentsScreen() {
   const qc = useQueryClient();
   const { openRma } = useDrawers();
+  const review = useDailyReview();
   const { data: session } = useSession();
   const meId = (session?.user as { id?: string } | undefined)?.id;
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -47,7 +80,7 @@ export function IncidentsScreen() {
   const [priority, setPriority] = useState<string>("all");
   const [assignee, setAssignee] = useState<string>("all");
   const [query, setQuery] = useState("");
-  const [sortKey, setSortKey] = useState<"updatedAt" | "priority" | "sla">("updatedAt");
+  const [sortKey, setSortKey] = useState<"updatedAt" | "priority" | "sla" | "createdAtAsc">("updatedAt");
 
   const refreshList = () => qc.invalidateQueries({ queryKey: ["incidents-v2"] });
   const assignM = useMutation({
@@ -128,6 +161,7 @@ export function IncidentsScreen() {
         if (ga !== gb) return ga - gb;
       }
       if (sortKey === "priority") return (prioOrder[a.priority] ?? 9) - (prioOrder[b.priority] ?? 9);
+      if (sortKey === "createdAtAsc") return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
       // updatedAt y sla → por updatedAt desc (sla aproximado)
       return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
@@ -178,6 +212,7 @@ export function IncidentsScreen() {
         </select>
         <select className="select" style={{ width: "auto" }} value={sortKey} onChange={(e) => setSortKey(e.target.value as typeof sortKey)}>
           <option value="updatedAt">Ord: + recientes</option>
+          <option value="createdAtAsc">Ord: + antiguas</option>
           <option value="priority">Ord: prioridad</option>
         </select>
         <div style={{ flex: 1 }} />
@@ -246,6 +281,7 @@ export function IncidentsScreen() {
                 <th>SLA</th>
                 <th>Estado</th>
                 <th>Actualizada</th>
+                <th>Seguimiento</th>
               </tr>
             </thead>
             <tbody>
@@ -253,7 +289,7 @@ export function IncidentsScreen() {
                 <Fragment key={i.id}>
                 {showDivider && idx === firstClosedIdx && (
                   <tr className="row-divider" aria-hidden>
-                    <td colSpan={10} style={{ padding: 0 }}>
+                    <td colSpan={11} style={{ padding: 0 }}>
                       <div
                         style={{
                           display: "flex",
@@ -351,6 +387,7 @@ export function IncidentsScreen() {
                   <td><SlaBar incident={i} /></td>
                   <td><IncidentStatusBadge status={i.status} /></td>
                   <td className="text-sm muted">{formatRelativeTime(i.updatedAt)}</td>
+                  <td onClick={(e) => e.stopPropagation()}><ReviewCell item={itemOf(i)} review={review} /></td>
                 </tr>
                 </Fragment>
               ))}
