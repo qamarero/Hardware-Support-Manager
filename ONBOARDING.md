@@ -1,8 +1,8 @@
 # ONBOARDING — Hardware Support Manager (HSM)
 
 > Documento operativo para teletrabajar desde otro terminal sin perder contexto.
-> Mantener en español, UTF-8. Última revisión: **2026-06-30**.
-> Fuentes de verdad: este doc (operativa) · `docs/proyecto_log.md` (changelog histórico) · el plan de proyectos en `C:/Users/Qamarero/.claude/plans/de-la-ficha-de-binary-conway.md` (estado actual ①-⑩).
+> Mantener en español, UTF-8. Última revisión: **2026-07-07**.
+> Fuentes de verdad: este doc (operativa) · `docs/proyecto_log.md` (changelog histórico) · el plan de proyectos en `C:/Users/Qamarero/.claude/plans/de-la-ficha-de-binary-conway.md` (estado actual ①-⑪).
 
 ---
 
@@ -103,7 +103,7 @@ docs/proyecto_log.md    # changelog histórico
 
 ---
 
-## 5. Estado de proyectos (①-⑩)
+## 5. Estado de proyectos (①-⑪)
 
 > Fuente de verdad del estado: el plan en `C:/Users/Qamarero/.claude/plans/de-la-ficha-de-binary-conway.md`. Changelog histórico: `docs/proyecto_log.md`.
 
@@ -119,6 +119,7 @@ docs/proyecto_log.md    # changelog histórico
 | ⑧ | Formulario público `/submit` + Bandeja Soporte (+ adjuntos en el form) | **COMPLETADO** |
 | ⑨ | Procedimientos de proveedor + correo de RMA + datos de recogida (P1-P4) | **COMPLETADO** |
 | ⑩ | **Etiquetas físicas con QR** (RMA + equipos sin RMA) | **COMPLETADO** — ruta `/etiqueta/[tipo]/[id]` (QR SVG `react-qr-code`); formatos **100×150** (etiquetadora) y **hoja A4** (recortable + normas + recepción); tabla **`hsm.assets`** + `/equipos`; acceso desde ficha y tabla de RMA. Pendiente menor: A4 también para equipos. |
+| ⑪ | **Seguimiento diario ("Ronda")** en Mi día | **COMPLETADO** — Mi día a 2 columnas (Ronda principal + recordatorios lateral); vistas **Tarjetas** (gamify) y **Tabla** sobre incidencias mías + RMA activos (viejas→nuevas); marca "revisada hoy" (localStorage, `use-daily-review`), "Contacté" auditable (`event_logs`/`logContact`), hint de Intercom orientativo (`use-client-reply-status`, NO autoritativo), "Siguiente paso" (recordatorio). Fix: clic en recordatorio abre su ficha. Tabla de incidencias con orden "+ antiguas" + columna Seguimiento. |
 
 ---
 

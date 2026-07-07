@@ -1547,3 +1547,36 @@ Commits en `main` (desplegados): `de0ca81`, `b5793bd`, `dc1f98c`, `104d4ee`, `67
 - **Ficha de RMA**: el botón "Etiqueta" dejó de cambiar de color según estado (confundía: dependía de `WAREHOUSE_RMA_STATUSES`) → ahora **siempre naranja** (`btn--primary`). Reordenado al **inicio** de la fila de acciones; "Editar datos" pasa **debajo, a la izquierda**.
 
 **Pendiente / siguiente:** A4 también para equipos (hoy 100×150 para ambos, A4 solo RMA); revisar redacción final de normas con uso real.
+
+### 2026-07-07 — PROYECTO ⑪: Seguimiento diario ("Ronda") en Mi día
+
+Commits en `main` (desplegados): `90d617e`, `42d181e`, `f15b061` (fases 0-3, 4 y 5).
+Build + lint en verde por fase. **Sin migración** (`event_logs.action` es varchar
+libre; "revisada hoy" es localStorage). Subconsulta `lastContactedAt` verificada por MCP.
+
+Objetivo: dar memoria al recorrido diario de Domi (viejas→nuevas: estado → ¿contacté? →
+siguiente paso). Reutiliza recordatorios, event_logs, Mi día y `fetchIntercomConversation`.
+
+- **F0 — Fix clic recordatorio**: toda la fila del recordatorio abre su ficha vinculada
+  (antes solo el minitexto del nº); controles con `stopPropagation`. `mi-dia-screen.tsx`.
+- **F1 — "Contacté" (auditable)**: `src/server/actions/follow-up.ts` → `logContact` inserta
+  `event_logs` con `action:"contacted"` (sin sync a Intercom). `EventLogTimeline` muestra el
+  evento (icono teléfono). `getIncidents` trae `lastContactedAt` (subconsulta `max`).
+- **F2 — "Revisada hoy" (local)**: `src/hooks/use-daily-review.ts` — Set en localStorage con
+  clave `hsm:reviewed:{userId}:{YYYY-MM-DD}`; se resetea solo cada día.
+- **F3 — Hint de Intercom (orientativo)**: `src/hooks/use-client-reply-status.ts` — vía
+  `fetchIntercomConversation`, devuelve último mensaje del cliente y el nuestro. **NO
+  autoritativo** (que respondamos nosotros puede ser CX diciendo "mañana lo ve Hardware"
+  mientras el cliente pregunta algo pendiente): muestra ambos para que el operador juzgue;
+  la verdad la fija la marca manual "Contacté". Sin tocar `src/lib/intercom/*`.
+- **F4 — Ronda en Mi día**: layout a 2 columnas (Ronda principal + Recordatorios lateral).
+  Cola = incidencias mías abiertas + RMA activos, más antiguas primero, sin las revisadas
+  hoy. Dos vistas: **Tarjetas** (`ronda-tarjetas.tsx`, gamify, baraja + progreso + atajos
+  →/Enter/S) y **Tabla** (`ronda-tabla.tsx`). Acciones compartidas en `ronda-actions.tsx`
+  (`ContactButton`, `NextStepButton`, `IntercomHint`, `IntercomLink`, `RoundItem`). El hint
+  de Intercom solo se dispara en la tarjeta visible (1 llamada), no por fila.
+- **F5 — Tabla de incidencias**: orden "+ antiguas" (`createdAt` asc) + columna
+  "Seguimiento" (marca revisada hoy compartida con la ronda + Contacté + Siguiente paso).
+
+**Pendiente / siguiente:** si hiciera falta reporting de cadencia de contacto, migrar
+"revisada" de localStorage a una tabla `daily_reviews`; hoy local es suficiente.
