@@ -3,7 +3,7 @@
 import { Check } from "lucide-react";
 import { IncidentStatusBadge, RmaStatusBadge } from "@/components/proto/badges";
 import { formatRelativeTime } from "@/lib/utils/date-format";
-import { ContactButton, NextStepButton, IntercomLink, type RoundItem, reviewKeyOf } from "./ronda-actions";
+import { ContactButton, NextStepButton, IntercomLink, ConversationButton, type RoundItem, reviewKeyOf } from "./ronda-actions";
 
 /**
  * Vista "tabla" de la ronda: la misma cola de forma compacta, para ver de un
@@ -63,6 +63,7 @@ export function RondaTabla({
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     <ContactButton item={it} size="xs" />
                     <NextStepButton item={it} size="xs" />
+                    <ConversationButton item={it} size="xs" />
                     <IntercomLink conversationId={it.conversationId} size="xs" />
                   </div>
                 </td>

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { PartyPopper, SkipForward, Check, FileText } from "lucide-react";
 import { IncidentStatusBadge, RmaStatusBadge } from "@/components/proto/badges";
 import { formatRelativeTime } from "@/lib/utils/date-format";
-import { ContactButton, NextStepButton, IntercomHint, IntercomLink, type RoundItem } from "./ronda-actions";
+import { ContactButton, NextStepButton, IntercomHint, IntercomLink, ConversationButton, type RoundItem } from "./ronda-actions";
 
 /**
  * Vista "tarjetas" de la ronda diaria: baraja que muestra la incidencia/RMA
@@ -90,6 +90,7 @@ export function RondaTarjetas({
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
           <ContactButton item={current} />
           <NextStepButton item={current} />
+          <ConversationButton item={current} />
           <button className="btn btn--outline btn--sm" onClick={() => onOpen(current)} title="Abrir ficha (cambiar estado, notas…)"><FileText size={14} /> Abrir ficha</button>
           <IntercomLink conversationId={current.conversationId} />
         </div>

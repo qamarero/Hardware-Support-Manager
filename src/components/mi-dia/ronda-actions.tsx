@@ -9,6 +9,7 @@ import { createReminder } from "@/server/actions/reminders";
 import { useClientReplyStatus } from "@/hooks/use-client-reply-status";
 import { intercomConversationUrl } from "@/lib/utils/intercom-url";
 import { formatRelativeTime } from "@/lib/utils/date-format";
+import { ConversationPopup } from "@/components/proto/conversation-popup";
 
 /** Un elemento de la ronda diaria (incidencia o RMA), unificado. */
 export interface RoundItem {
@@ -152,6 +153,29 @@ export function IntercomLink({ conversationId, size = "sm" }: { conversationId: 
     <a href={url} target="_blank" rel="noopener noreferrer" className={`btn btn--outline btn--${size}`} title="Abrir la conversación en Intercom">
       <MessageSquare size={14} /> Intercom <ExternalLink size={12} />
     </a>
+  );
+}
+
+/** Botón "Ver conversación" → abre el hilo de Intercom en un modal (mismo popup
+ *  portado a document.body que las tablas). Complementa al enlace externo. */
+export function ConversationButton({ item, size = "sm" }: { item: RoundItem; size?: "sm" | "xs" }) {
+  const [open, setOpen] = useState(false);
+  if (!item.conversationId) return null;
+  return (
+    <>
+      <button className={`btn btn--outline btn--${size}`} onClick={() => setOpen(true)} title="Ver la conversación de Intercom aquí">
+        <MessageSquare size={14} /> Ver conversación
+      </button>
+      {open && (
+        <ConversationPopup
+          conversationId={item.conversationId}
+          title={item.number}
+          subtitle={item.client ?? item.title}
+          intercomUrl={intercomConversationUrl(item.conversationId)}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
   );
 }
 
