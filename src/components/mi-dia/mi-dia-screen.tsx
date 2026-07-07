@@ -5,23 +5,28 @@ import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
-import { Bell, Check, Clock, Loader2, Plus, Inbox, AlertTriangle, ArrowRight, CalendarClock } from "lucide-react";
+import { Bell, Check, Clock, Loader2, Plus, Inbox, AlertTriangle, ArrowRight, LayoutGrid, Rows3 } from "lucide-react";
 import { fetchIncidents, fetchUsersForSelect } from "@/server/actions/incidents";
+import { fetchRmas } from "@/server/actions/rmas";
 import { fetchReminders, completeReminder, snoozeReminder, createReminder, reassignReminder } from "@/server/actions/reminders";
-import { IncidentStatusBadge, PriorityPill, SlaBar, slaProgress } from "@/components/proto/badges";
+import { slaProgress } from "@/components/proto/badges";
 import { useAlertBadges } from "@/components/layout/sidebar-badges";
 import { IncidentDetailDrawer } from "@/components/incidents-v2/incident-detail-drawer";
 import { RmaDetailDrawer } from "@/components/rmas-v2/rma-detail-drawer";
-import { PAUSED_INCIDENT_STATES, CLOSED_INCIDENT_STATUSES } from "@/lib/constants/statuses";
+import { PAUSED_INCIDENT_STATES, CLOSED_INCIDENT_STATUSES, OPEN_RMA_STATUSES } from "@/lib/constants/statuses";
+import { extractConversationId } from "@/lib/intercom/sync";
 import { formatDateTime } from "@/lib/utils/date-format";
+import { useDailyReview } from "@/hooks/use-daily-review";
+import { RondaTarjetas } from "./ronda-tarjetas";
+import { RondaTabla } from "./ronda-tabla";
+import { reviewKeyOf, type RoundItem } from "./ronda-actions";
 import type { ReminderRow } from "@/server/queries/reminders";
 import type { IncidentRow } from "@/server/queries/incidents";
-
-const FOLLOWUP_DAYS = 2; // esperas con >= 2 días sin movimiento → "toca seguir"
+import type { RmaRow } from "@/server/queries/rmas";
 
 function startOfToday() { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }
 function endOfToday() { const d = new Date(); d.setHours(23, 59, 59, 999); return d; }
-function daysSince(date: Date | string) { return Math.floor((Date.now() - new Date(date).getTime()) / 86_400_000); }
+const OPEN_RMA = new Set<string>(OPEN_RMA_STATUSES);
 
 export function MiDiaScreen() {
   const qc = useQueryClient();
@@ -30,7 +35,9 @@ export function MiDiaScreen() {
   const [incidentId, setIncidentId] = useState<string | null>(null);
   const [rmaId, setRmaId] = useState<string | null>(null);
   const [addingReminder, setAddingReminder] = useState(false);
+  const [rondaView, setRondaView] = useState<"tarjetas" | "tabla">("tarjetas");
 
+  const review = useDailyReview();
   const { data: badges } = useAlertBadges();
 
   const { data: remindersData = [], isLoading: loadingR } = useQuery({
@@ -40,8 +47,12 @@ export function MiDiaScreen() {
 
   const { data: incData, isLoading: loadingI } = useQuery({
     queryKey: ["incidents", "mine", meId],
-    queryFn: () => fetchIncidents({ page: 1, pageSize: 500, sortBy: "updatedAt", sortOrder: "desc", filters: { assignedUserId: [meId!] } }),
+    queryFn: () => fetchIncidents({ page: 1, pageSize: 500, sortBy: "createdAt", sortOrder: "asc", filters: { assignedUserId: [meId!] } }),
     enabled: !!meId,
+  });
+  const { data: rmaData, isLoading: loadingRma } = useQuery({
+    queryKey: ["rmas", "activos-ronda"],
+    queryFn: () => fetchRmas({ page: 1, pageSize: 500, sortBy: "createdAt", sortOrder: "asc" }),
   });
   const { data: users = [] } = useQuery({
     queryKey: ["users", "select"],
@@ -49,17 +60,49 @@ export function MiDiaScreen() {
   });
 
   const myIncidents: IncidentRow[] = useMemo(() => incData?.data ?? [], [incData]);
+  const rmas: RmaRow[] = useMemo(() => rmaData?.data ?? [], [rmaData]);
 
-  const { porAtender, esperas, slaRiesgo } = useMemo(() => {
+  // Cola de la ronda: incidencias mías abiertas + RMA activos, más antiguas primero.
+  const allItems: RoundItem[] = useMemo(() => {
+    const closed = CLOSED_INCIDENT_STATUSES as readonly string[];
+    const incItems: RoundItem[] = myIncidents
+      .filter((i) => !closed.includes(i.status))
+      .map((i) => ({
+        kind: "incident" as const,
+        id: i.id,
+        number: i.incidentNumber,
+        title: i.title,
+        client: i.clientCompanyName ?? i.clientName ?? null,
+        status: i.status,
+        createdAt: i.createdAt,
+        conversationId: extractConversationId(i.intercomUrl ?? "") ?? i.intercomEscalationId ?? null,
+        lastContactedAt: i.lastContactedAt ?? null,
+      }));
+    const rmaItems: RoundItem[] = rmas
+      .filter((r) => OPEN_RMA.has(r.status))
+      .map((r) => ({
+        kind: "rma" as const,
+        id: r.id,
+        number: r.rmaNumber,
+        title: [r.deviceBrand, r.deviceModel].filter(Boolean).join(" ") || `RMA ${r.rmaNumber}`,
+        client: r.clientCompanyName ?? r.clientName ?? null,
+        status: r.status,
+        createdAt: r.createdAt,
+        conversationId: extractConversationId(r.clientIntercomUrl ?? "") ?? null,
+        lastContactedAt: null,
+      }));
+    return [...incItems, ...rmaItems].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }, [myIncidents, rmas]);
+
+  const pendingItems = useMemo(
+    () => allItems.filter((it) => !review.isReviewed(reviewKeyOf(it))),
+    [allItems, review],
+  );
+
+  const slaRiesgo = useMemo(() => {
     const closed = CLOSED_INCIDENT_STATUSES as readonly string[];
     const paused = PAUSED_INCIDENT_STATES as readonly string[];
-    const open = myIncidents.filter((i) => !closed.includes(i.status));
-    const atender = open.filter((i) => !paused.includes(i.status)).sort((a, b) => slaProgress(b).pct - slaProgress(a).pct);
-    const esp = open
-      .filter((i) => paused.includes(i.status) && daysSince(i.stateChangedAt) >= FOLLOWUP_DAYS)
-      .sort((a, b) => daysSince(b.stateChangedAt) - daysSince(a.stateChangedAt));
-    const risk = atender.filter((i) => ["bad", "warn"].includes(slaProgress(i).level));
-    return { porAtender: atender, esperas: esp, slaRiesgo: risk };
+    return myIncidents.filter((i) => !closed.includes(i.status) && !paused.includes(i.status) && ["bad", "warn"].includes(slaProgress(i).level)).length;
   }, [myIncidents]);
 
   const { vencidos, hoy, proximos } = useMemo(() => {
@@ -75,20 +118,14 @@ export function MiDiaScreen() {
     return { vencidos: v, hoy: h, proximos: p };
   }, [remindersData]);
 
-  function invalidate() {
-    qc.invalidateQueries({ queryKey: ["reminders"] });
-  }
+  function invalidate() { qc.invalidateQueries({ queryKey: ["reminders"] }); }
   const completeM = useMutation({
     mutationFn: (r: ReminderRow) => completeReminder(r.id).then((res) => ({ res, r })),
     onSuccess: ({ res, r }) => {
       if (!res.success) { toast.error(res.error); return; }
       invalidate();
-      // Deshacer: revertir a pendiente con su fecha original.
       toast.success("Recordatorio hecho", {
-        action: {
-          label: "Deshacer",
-          onClick: async () => { await snoozeReminder({ id: r.id, dueAt: new Date(r.dueAt).toISOString() }); invalidate(); },
-        },
+        action: { label: "Deshacer", onClick: async () => { await snoozeReminder({ id: r.id, dueAt: new Date(r.dueAt).toISOString() }); invalidate(); } },
       });
     },
   });
@@ -106,19 +143,21 @@ export function MiDiaScreen() {
     if (r.entityType === "incident" && r.entityId) setIncidentId(r.entityId);
     else if (r.entityType === "rma" && r.entityId) setRmaId(r.entityId);
   }
+  function openItem(it: RoundItem) {
+    if (it.kind === "incident") setIncidentId(it.id); else setRmaId(it.id);
+  }
 
   const greeting = session?.user?.name ? `, ${session.user.name.split(" ")[0]}` : "";
   const intercomPending = badges?.intercom ?? 0;
-  const loading = loadingR || loadingI;
+  const loading = loadingR || loadingI || loadingRma;
 
   return (
     <div className="stack">
       <div className="topbar__title" style={{ marginBottom: 4 }}>
         <h1>Mi día{greeting}</h1>
-        <p>Tu agenda: recordatorios, lo que tienes que atender y lo que se enfría</p>
+        <p>Tu ronda de seguimiento y tus recordatorios del día</p>
       </div>
 
-      {/* Pendiente de registrar (Intercom) */}
       {intercomPending > 0 && (
         <Link href="/intercom" className="card" style={{ padding: 14, display: "flex", alignItems: "center", gap: 12, textDecoration: "none", color: "inherit" }}>
           <div style={{ width: 34, height: 34, borderRadius: 9, background: "var(--orange-50)", color: "var(--primary)", display: "grid", placeItems: "center", flexShrink: 0 }}>
@@ -135,49 +174,60 @@ export function MiDiaScreen() {
       {loading ? (
         <div className="card empty"><Loader2 className="animate-spin" /> <span className="muted">Cargando tu día…</span></div>
       ) : (
-        <>
-          {/* Recordatorios */}
-          <Section
-            title="Recordatorios"
-            icon={<Bell size={15} />}
-            count={vencidos.length + hoy.length}
-            action={<button className="btn btn--outline btn--sm" onClick={() => setAddingReminder((v) => !v)}><Plus size={13} /> Nuevo</button>}
-          >
-            {addingReminder && <StandaloneReminderForm onDone={() => { setAddingReminder(false); invalidate(); }} />}
-            {vencidos.length === 0 && hoy.length === 0 && proximos.length === 0 && !addingReminder && (
-              <div className="muted text-sm" style={{ padding: "4px 2px" }}>Sin recordatorios. Crea uno o ponlos desde una ficha.</div>
-            )}
-            {vencidos.length > 0 && <SubLabel text="Vencidos" tone="bad" />}
-            {vencidos.map((r) => <ReminderRowView key={r.id} r={r} overdue onComplete={() => completeM.mutate(r)} onSnooze={(dueAt) => snoozeM.mutate({ id: r.id, dueAt })} onReassign={(userId) => reassignM.mutate({ id: r.id, userId })} users={users} onOpen={() => openReminderEntity(r)} />)}
-            {hoy.length > 0 && <SubLabel text="Hoy" tone="warn" />}
-            {hoy.map((r) => <ReminderRowView key={r.id} r={r} onComplete={() => completeM.mutate(r)} onSnooze={(dueAt) => snoozeM.mutate({ id: r.id, dueAt })} onReassign={(userId) => reassignM.mutate({ id: r.id, userId })} users={users} onOpen={() => openReminderEntity(r)} />)}
-            {proximos.length > 0 && <SubLabel text="Próximos" tone="muted" />}
-            {proximos.map((r) => <ReminderRowView key={r.id} r={r} onComplete={() => completeM.mutate(r)} onSnooze={(dueAt) => snoozeM.mutate({ id: r.id, dueAt })} onReassign={(userId) => reassignM.mutate({ id: r.id, userId })} users={users} onOpen={() => openReminderEntity(r)} />)}
-          </Section>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-start" }}>
+          {/* PRINCIPAL: Ronda */}
+          <div className="stack" style={{ flex: "1 1 520px", minWidth: 0 }}>
+            <div className="card" style={{ padding: 18 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+                <span style={{ color: "var(--primary)", display: "flex" }}><Check size={15} /></span>
+                <span className="fw-700" style={{ fontSize: 14 }}>Ronda diaria</span>
+                {pendingItems.length > 0 && <span className="chip__count">{pendingItems.length}</span>}
+                {slaRiesgo > 0 && (
+                  <span className="badge badge--amber" title="Incidencias tuyas en riesgo de SLA" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    <AlertTriangle size={12} /> {slaRiesgo} en riesgo SLA
+                  </span>
+                )}
+                <div style={{ flex: 1 }} />
+                <div style={{ display: "flex", gap: 4 }}>
+                  <button className={`btn btn--sm ${rondaView === "tarjetas" ? "btn--primary" : "btn--outline"}`} onClick={() => setRondaView("tarjetas")} title="Vista tarjetas"><LayoutGrid size={14} /></button>
+                  <button className={`btn btn--sm ${rondaView === "tabla" ? "btn--primary" : "btn--outline"}`} onClick={() => setRondaView("tabla")} title="Vista tabla"><Rows3 size={14} /></button>
+                </div>
+              </div>
 
-          {/* SLA en riesgo */}
-          {slaRiesgo.length > 0 && (
-            <Section title="SLA en riesgo" icon={<AlertTriangle size={15} />} count={slaRiesgo.length}>
-              {slaRiesgo.map((i) => <IncidentRowView key={i.id} i={i} onOpen={() => setIncidentId(i.id)} />)}
+              {rondaView === "tarjetas" ? (
+                <RondaTarjetas items={pendingItems} onOpen={openItem} onReviewed={(it) => review.markReviewed(reviewKeyOf(it))} reviewedToday={review.reviewedCount} />
+              ) : (
+                <RondaTabla
+                  items={allItems}
+                  isReviewed={review.isReviewed}
+                  onToggleReviewed={(it) => { const k = reviewKeyOf(it); if (review.isReviewed(k)) review.unmark(k); else review.markReviewed(k); }}
+                  onOpen={openItem}
+                />
+              )}
+            </div>
+          </div>
+
+          {/* LATERAL: Recordatorios */}
+          <aside className="stack" style={{ flex: "1 1 300px", maxWidth: 380 }}>
+            <Section
+              title="Recordatorios"
+              icon={<Bell size={15} />}
+              count={vencidos.length + hoy.length}
+              action={<button className="btn btn--outline btn--sm" onClick={() => setAddingReminder((v) => !v)}><Plus size={13} /> Nuevo</button>}
+            >
+              {addingReminder && <StandaloneReminderForm onDone={() => { setAddingReminder(false); invalidate(); }} />}
+              {vencidos.length === 0 && hoy.length === 0 && proximos.length === 0 && !addingReminder && (
+                <div className="muted text-sm" style={{ padding: "4px 2px" }}>Sin recordatorios. Crea uno o ponlos desde una ficha.</div>
+              )}
+              {vencidos.length > 0 && <SubLabel text="Vencidos" tone="bad" />}
+              {vencidos.map((r) => <ReminderRowView key={r.id} r={r} overdue onComplete={() => completeM.mutate(r)} onSnooze={(dueAt) => snoozeM.mutate({ id: r.id, dueAt })} onReassign={(userId) => reassignM.mutate({ id: r.id, userId })} users={users} onOpen={() => openReminderEntity(r)} />)}
+              {hoy.length > 0 && <SubLabel text="Hoy" tone="warn" />}
+              {hoy.map((r) => <ReminderRowView key={r.id} r={r} onComplete={() => completeM.mutate(r)} onSnooze={(dueAt) => snoozeM.mutate({ id: r.id, dueAt })} onReassign={(userId) => reassignM.mutate({ id: r.id, userId })} users={users} onOpen={() => openReminderEntity(r)} />)}
+              {proximos.length > 0 && <SubLabel text="Próximos" tone="muted" />}
+              {proximos.map((r) => <ReminderRowView key={r.id} r={r} onComplete={() => completeM.mutate(r)} onSnooze={(dueAt) => snoozeM.mutate({ id: r.id, dueAt })} onReassign={(userId) => reassignM.mutate({ id: r.id, userId })} users={users} onOpen={() => openReminderEntity(r)} />)}
             </Section>
-          )}
-
-          {/* Mis incidencias por atender */}
-          <Section title="Por atender" icon={<CalendarClock size={15} />} count={porAtender.length}>
-            {porAtender.length === 0 ? (
-              <div className="muted text-sm" style={{ padding: "4px 2px" }}>Nada pendiente asignado a ti 🎉</div>
-            ) : porAtender.map((i) => <IncidentRowView key={i.id} i={i} onOpen={() => setIncidentId(i.id)} />)}
-          </Section>
-
-          {/* Esperas que tocan seguir */}
-          {esperas.length > 0 && (
-            <Section title="Esperas que tocan seguir" icon={<Clock size={15} />} count={esperas.length}>
-              {esperas.map((i) => (
-                <IncidentRowView key={i.id} i={i} onOpen={() => setIncidentId(i.id)} suffix={<span className="muted text-xs">{daysSince(i.stateChangedAt)}d esperando</span>} />
-              ))}
-            </Section>
-          )}
-        </>
+          </aside>
+        </div>
       )}
 
       <IncidentDetailDrawer incidentId={incidentId} onClose={() => setIncidentId(null)} />
@@ -247,8 +297,6 @@ function SubLabel({ text, tone }: { text: string; tone: "bad" | "warn" | "muted"
 }
 
 function ReminderRowView({ r, overdue, onComplete, onSnooze, onReassign, users, onOpen }: { r: ReminderRow; overdue?: boolean; onComplete: () => void; onSnooze: (dueAt: string) => void; onReassign: (userId: string) => void; users: { id: string; name: string }[]; onOpen: () => void }) {
-  // Toda la fila abre la ficha vinculada (incidencia/RMA). Los recordatorios
-  // sueltos (sin entidad) no navegan. Los controles cortan la propagación.
   const hasEntity = !!(r.entityType && r.entityId);
   return (
     <div
@@ -286,22 +334,6 @@ function ReminderRowView({ r, overdue, onComplete, onSnooze, onReassign, users, 
         <button className="btn btn--ghost btn--sm" title="Marcar hecho" onClick={onComplete}><Check size={14} /></button>
       </div>
     </div>
-  );
-}
-
-function IncidentRowView({ i, onOpen, suffix }: { i: IncidentRow; onOpen: () => void; suffix?: React.ReactNode }) {
-  return (
-    <button type="button" onClick={onOpen} style={{ width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", border: "1px solid var(--border)", borderRadius: 10, background: "#fff", cursor: "pointer" }}>
-      <span className="id-cell" style={{ flexShrink: 0 }}>{i.incidentNumber}</span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div className="text-sm fw-600" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{i.title}</div>
-        <div className="text-xs muted" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{i.clientCompanyName ?? i.clientName ?? "—"}</div>
-      </div>
-      <PriorityPill priority={i.priority} />
-      <div style={{ width: 90, flexShrink: 0 }}><SlaBar incident={i} /></div>
-      <IncidentStatusBadge status={i.status} />
-      {suffix}
-    </button>
   );
 }
 
