@@ -9,6 +9,7 @@ import {
   Trash2,
   Loader2,
   StickyNote,
+  Phone,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,6 +31,7 @@ const ACTION_LABELS: Record<string, string> = {
   attachment_added: "Adjunto añadido",
   attachment_removed: "Adjunto eliminado",
   note: "Nota",
+  contacted: "Contactó al cliente",
 };
 
 const ACTION_ICONS: Record<string, typeof Plus> = {
@@ -39,6 +41,7 @@ const ACTION_ICONS: Record<string, typeof Plus> = {
   attachment_added: Paperclip,
   attachment_removed: Trash2,
   note: StickyNote,
+  contacted: Phone,
 };
 
 function getStatusLabel(status: string | null, entityType: EntityType): string {
@@ -117,6 +120,11 @@ export function EventLogTimeline({
                     {log.action === "note" && details?.body && (
                       <p className="mt-1 text-sm text-foreground whitespace-pre-wrap">
                         {details.body}
+                      </p>
+                    )}
+                    {log.action === "contacted" && (details?.channel || details?.note) && (
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {[details.channel ? `Vía ${details.channel}` : null, details.note].filter(Boolean).join(" · ")}
                       </p>
                     )}
                     {details?.fileName && (

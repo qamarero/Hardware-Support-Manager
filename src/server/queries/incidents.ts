@@ -14,6 +14,8 @@ export type IncidentRow = typeof incidents.$inferSelect & {
   latestRmaId?: string | null;
   latestRmaNumber?: string | null;
   latestRmaStatus?: string | null;
+  /** Última vez que se registró "contacté al cliente" (event_logs). */
+  lastContactedAt?: string | null;
 };
 
 export async function getIncidents(
@@ -107,6 +109,8 @@ export async function getIncidents(
         latestRmaId: sql<string | null>`(select r.id from hsm.rmas r where r.incident_id = ${incidents.id} order by r.created_at desc limit 1)`,
         latestRmaNumber: sql<string | null>`(select r.rma_number from hsm.rmas r where r.incident_id = ${incidents.id} order by r.created_at desc limit 1)`,
         latestRmaStatus: sql<string | null>`(select r.status::text from hsm.rmas r where r.incident_id = ${incidents.id} order by r.created_at desc limit 1)`,
+        // Última marca "contacté al cliente" (seguimiento diario).
+        lastContactedAt: sql<string | null>`(select max(el.created_at)::text from hsm.event_logs el where el.entity_type = 'incident' and el.entity_id = ${incidents.id} and el.action = 'contacted')`,
       })
       .from(incidents)
       .leftJoin(users, eq(incidents.assignedUserId, users.id))

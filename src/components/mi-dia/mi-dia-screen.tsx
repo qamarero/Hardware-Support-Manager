@@ -247,32 +247,44 @@ function SubLabel({ text, tone }: { text: string; tone: "bad" | "warn" | "muted"
 }
 
 function ReminderRowView({ r, overdue, onComplete, onSnooze, onReassign, users, onOpen }: { r: ReminderRow; overdue?: boolean; onComplete: () => void; onSnooze: (dueAt: string) => void; onReassign: (userId: string) => void; users: { id: string; name: string }[]; onOpen: () => void }) {
+  // Toda la fila abre la ficha vinculada (incidencia/RMA). Los recordatorios
+  // sueltos (sin entidad) no navegan. Los controles cortan la propagación.
+  const hasEntity = !!(r.entityType && r.entityId);
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: "var(--gray-50)", borderRadius: 10 }}>
+    <div
+      role={hasEntity ? "button" : undefined}
+      tabIndex={hasEntity ? 0 : undefined}
+      onClick={hasEntity ? onOpen : undefined}
+      onKeyDown={hasEntity ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } } : undefined}
+      title={hasEntity ? "Abrir ficha vinculada" : undefined}
+      style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: "var(--gray-50)", borderRadius: 10, cursor: hasEntity ? "pointer" : "default" }}
+      onMouseEnter={hasEntity ? (e) => { e.currentTarget.style.background = "var(--gray-100)"; } : undefined}
+      onMouseLeave={hasEntity ? (e) => { e.currentTarget.style.background = "var(--gray-50)"; } : undefined}
+    >
       <div style={{ flex: 1, minWidth: 0 }}>
         <div className="text-sm fw-600" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</div>
         <div className="text-xs muted" style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ color: overdue ? "var(--danger)" : undefined }}>{formatDateTime(r.dueAt)}</span>
-          {r.entityNumber && (
-            <button onClick={onOpen} className="mono" style={{ border: 0, background: "transparent", color: "var(--primary)", cursor: "pointer", padding: 0 }}>· {r.entityNumber}</button>
-          )}
+          {r.entityNumber && <span className="mono" style={{ color: "var(--primary)" }}>· {r.entityNumber}</span>}
           {r.note && <span>· {r.note}</span>}
         </div>
       </div>
-      {users.length > 0 && (
-        <select
-          className="select"
-          style={{ width: "auto", fontSize: 12, padding: "4px 6px" }}
-          value=""
-          onChange={(e) => { if (e.target.value) onReassign(e.target.value); }}
-          title="Delegar a otro técnico"
-        >
-          <option value="">Delegar…</option>
-          {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-        </select>
-      )}
-      <SnoozeControl onSnooze={onSnooze} />
-      <button className="btn btn--ghost btn--sm" title="Marcar hecho" onClick={onComplete}><Check size={14} /></button>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }} onClick={(e) => e.stopPropagation()}>
+        {users.length > 0 && (
+          <select
+            className="select"
+            style={{ width: "auto", fontSize: 12, padding: "4px 6px" }}
+            value=""
+            onChange={(e) => { if (e.target.value) onReassign(e.target.value); }}
+            title="Delegar a otro técnico"
+          >
+            <option value="">Delegar…</option>
+            {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </select>
+        )}
+        <SnoozeControl onSnooze={onSnooze} />
+        <button className="btn btn--ghost btn--sm" title="Marcar hecho" onClick={onComplete}><Check size={14} /></button>
+      </div>
     </div>
   );
 }
