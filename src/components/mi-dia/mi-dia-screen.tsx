@@ -195,7 +195,7 @@ export function MiDiaScreen() {
               </div>
 
               {rondaView === "tarjetas" ? (
-                <RondaTarjetas items={pendingItems} onOpen={openItem} onReviewed={(it) => review.markReviewed(reviewKeyOf(it))} reviewedToday={review.reviewedCount} />
+                <RondaTarjetas items={pendingItems} onOpen={openItem} onReviewed={(it) => review.markReviewed(reviewKeyOf(it))} reviewedToday={allItems.filter((it) => review.isReviewed(reviewKeyOf(it))).length} />
               ) : (
                 <RondaTabla
                   items={allItems}

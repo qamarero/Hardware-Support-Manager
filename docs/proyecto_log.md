@@ -1578,5 +1578,14 @@ siguiente paso). Reutiliza recordatorios, event_logs, Mi día y `fetchIntercomCo
 - **F5 — Tabla de incidencias**: orden "+ antiguas" (`createdAt` asc) + columna
   "Seguimiento" (marca revisada hoy compartida con la ronda + Contacté + Siguiente paso).
 
-**Pendiente / siguiente:** si hiciera falta reporting de cadencia de contacto, migrar
-"revisada" de localStorage a una tabla `daily_reviews`; hoy local es suficiente.
+**Actualización 2026-07-08:** ajustes de la Ronda tras uso real:
+- Recordatorios del lateral en **formato vertical** (no se aplastaban en móvil).
+- **"Ver conversación"** en tarjetas/tabla → abre el hilo de Intercom en el mismo
+  `ConversationPopup` de las tablas (además del enlace externo y el hint).
+- **"Revisada hoy" ahora es COMPARTIDA por el equipo** (antes localStorage): tabla
+  `hsm.daily_reviews` (`sql/022`, aplicada por MCP; grant a `hsm_app` verificado),
+  `src/server/{queries,actions}/daily-reviews.ts`, hook `use-daily-review` reescrito
+  a BD (misma API) con optimista + polling 60s. Si un técnico marca revisada, sale de
+  la ronda de todos. Fecha = local del cliente.
+- **"Siguiente paso"** además pasa la entidad a **"Esperando al cliente"** (pausa SLA,
+  `force`), en incidencias y RMA.

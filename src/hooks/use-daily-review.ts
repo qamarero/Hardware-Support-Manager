@@ -1,15 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { fetchTodayReviews, markReviewed as markAction, unmarkReviewed as unmarkAction } from "@/server/actions/daily-reviews";
 
 /**
- * Marca personal de "revisada hoy" para la ronda de seguimiento diario.
- *
- * Vive en localStorage con clave por usuario + fecha
- * (`hsm:reviewed:{userId}:{YYYY-MM-DD}`), así se resetea sola cada día sin
- * tocar la BD ni ensuciar el timeline. Es una marca personal (no compartida);
- * el registro auditable de "contacté al cliente" va aparte en event_logs.
+ * Marca "revisada hoy" de la ronda diaria, **compartida por el equipo** y
+ * persistida en BD (tabla `hsm.daily_reviews`, ver sql/022). Si un técnico
+ * marca una incidencia/RMA como revisada hoy, desaparece de la ronda de todos.
+ * Se resetea solo cada día (la fecha es la local del cliente). Se refresca cada
+ * minuto para ver lo que marcan los compañeros. API idéntica a la versión local
+ * anterior: isReviewed / markReviewed / unmark / reviewedCount / ready.
  */
 
 export type ReviewKey = `incident:${string}` | `rma:${string}`;
@@ -25,46 +26,54 @@ function todayStr(): string {
 }
 
 export function useDailyReview() {
-  const { data: session } = useSession();
-  const userId = (session?.user as { id?: string } | undefined)?.id ?? "anon";
-  // `day` se fija en cliente (evita desajuste SSR/CSR); vacío hasta montar.
+  const qc = useQueryClient();
   const [day, setDay] = useState("");
-  const [ids, setIds] = useState<Set<string>>(new Set());
 
-  const storageKey = day ? `hsm:reviewed:${userId}:${day}` : "";
-
-  // Carga inicial + recarga al volver a la pestaña (por si cambió el día).
+  // La fecha "hoy" se fija en cliente (evita desajuste SSR) y se revisa al
+  // volver a la pestaña (por si cambió el día).
   useEffect(() => {
-    function load() {
-      const d = todayStr();
-      const key = `hsm:reviewed:${userId}:${d}`;
-      setDay(d);
-      try {
-        const raw = localStorage.getItem(key);
-        setIds(new Set(raw ? (JSON.parse(raw) as string[]) : []));
-      } catch {
-        setIds(new Set());
-      }
-    }
-    load();
-    const onVis = () => { if (document.visibilityState === "visible") load(); };
+    setDay(todayStr());
+    const onVis = () => { if (document.visibilityState === "visible") setDay(todayStr()); };
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
-  }, [userId]);
+  }, []);
 
-  const persist = useCallback(
-    (next: Set<string>) => {
-      setIds(new Set(next));
-      if (storageKey) {
-        try { localStorage.setItem(storageKey, JSON.stringify([...next])); } catch { /* cuota/privado */ }
-      }
+  const qkey = ["daily-reviews", day] as const;
+
+  const { data: ids = new Set<string>() } = useQuery({
+    queryKey: qkey,
+    enabled: !!day,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const rows = await fetchTodayReviews(day);
+      return new Set(rows.map((r) => `${r.entityType}:${r.entityId}`));
     },
-    [storageKey],
+  });
+
+  const patchLocal = useCallback(
+    (fn: (s: Set<string>) => void) => {
+      qc.setQueryData<Set<string>>(qkey, (prev) => { const n = new Set(prev ?? []); fn(n); return n; });
+    },
+    [qc, day], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
-  const isReviewed = useCallback((key: string) => ids.has(key), [ids]);
-  const markReviewed = useCallback((key: string) => { const n = new Set(ids); n.add(key); persist(n); }, [ids, persist]);
-  const unmark = useCallback((key: string) => { const n = new Set(ids); n.delete(key); persist(n); }, [ids, persist]);
+  const markM = useMutation({
+    mutationFn: (key: string) => { const [t, id] = key.split(":"); return markAction({ entityType: t, entityId: id, date: day }); },
+    onMutate: (key: string) => patchLocal((s) => s.add(key)),
+    onError: (_e, key) => patchLocal((s) => { s.delete(key); }),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["daily-reviews"] }),
+  });
+  const unmarkM = useMutation({
+    mutationFn: (key: string) => { const [t, id] = key.split(":"); return unmarkAction({ entityType: t, entityId: id, date: day }); },
+    onMutate: (key: string) => patchLocal((s) => { s.delete(key); }),
+    onError: (_e, key) => patchLocal((s) => s.add(key)),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["daily-reviews"] }),
+  });
+
+  const isReviewed = useCallback((k: string) => ids.has(k), [ids]);
+  const markReviewed = useCallback((k: string) => { if (day) markM.mutate(k); }, [day, markM]);
+  const unmark = useCallback((k: string) => { if (day) unmarkM.mutate(k); }, [day, unmarkM]);
 
   return { ready: !!day, isReviewed, markReviewed, unmark, reviewedCount: ids.size };
 }

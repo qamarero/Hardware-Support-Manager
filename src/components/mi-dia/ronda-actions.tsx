@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { Phone, Bell, Loader2, Check, ExternalLink, MessageSquare } from "lucide-react";
 import { logContact } from "@/server/actions/follow-up";
 import { createReminder } from "@/server/actions/reminders";
+import { transitionIncident } from "@/server/actions/incidents";
+import { transitionRma } from "@/server/actions/rmas";
 import { useClientReplyStatus } from "@/hooks/use-client-reply-status";
 import { intercomConversationUrl } from "@/lib/utils/intercom-url";
 import { formatRelativeTime } from "@/lib/utils/date-format";
@@ -110,14 +112,27 @@ export function NextStepButton({ item, size = "sm" }: { item: RoundItem; size?: 
   }, []);
 
   const m = useMutation({
-    mutationFn: (dueAt: string) => createReminder({ title: `Seguimiento ${item.number}`, dueAt, entityType: item.kind, entityId: item.id }),
-    onSuccess: (r) => {
-      if (!r.success) { toast.error(r.error); return; }
-      toast.success("Siguiente paso programado");
+    mutationFn: async (dueAt: string) => {
+      const r = await createReminder({ title: `Seguimiento ${item.number}`, dueAt, entityType: item.kind, entityId: item.id });
+      if (!r.success) throw new Error(r.error || "No se pudo crear el recordatorio");
+      // Además: dejar la entidad "Esperando al cliente" (pausa el SLA).
+      const t = item.kind === "incident"
+        ? await transitionIncident({ incidentId: item.id, toStatus: "esperando_cliente", force: true })
+        : await transitionRma({ rmaId: item.id, toStatus: "esperando_cliente", force: true });
+      if (!t.success) throw new Error(t.error || "No se pudo cambiar el estado");
+      return r;
+    },
+    onSuccess: () => {
+      toast.success("Siguiente paso programado · estado → Esperando al cliente");
       qc.invalidateQueries({ queryKey: ["reminders"] });
+      qc.invalidateQueries({ queryKey: ["incidents-v2"] });
+      qc.invalidateQueries({ queryKey: ["incidents", "mine"] });
+      qc.invalidateQueries({ queryKey: ["rmas", "activos-ronda"] });
+      qc.invalidateQueries({ queryKey: ["rmas-v2"] });
+      qc.invalidateQueries({ queryKey: [item.kind === "incident" ? "incident-detail" : "rma-detail", item.id] });
       setOpen(false);
     },
-    onError: () => toast.error("No se pudo crear el recordatorio"),
+    onError: (e) => toast.error(e instanceof Error ? e.message : "No se pudo completar el siguiente paso"),
   });
 
   return (
