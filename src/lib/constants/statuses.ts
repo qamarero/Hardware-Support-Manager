@@ -35,6 +35,7 @@ export const OPEN_RMA_STATUSES = [
   "en_proveedor",
   "devuelto",
   "recibido_oficina",
+  "enviado_cliente",
   "esperando_cliente",
 ] as const;
 
@@ -44,7 +45,7 @@ export const PAUSED_INCIDENT_STATES = ["esperando_cliente", "esperando_proveedor
 /** RMA statuses where the SLA/aging clock is paused — el equipo/acción está
  *  fuera de nuestro alcance: solicitud pendiente de aprobación del proveedor,
  *  enviado o en su poder, o a la espera del cliente (que confirme/recoja). */
-export const PAUSED_RMA_STATES = ["solicitado", "enviado_proveedor", "en_proveedor", "esperando_cliente"] as const;
+export const PAUSED_RMA_STATES = ["solicitado", "enviado_proveedor", "en_proveedor", "enviado_cliente", "esperando_cliente"] as const;
 
 /** RMA statuses where the device is in the warehouse/office (not with provider). */
 export const WAREHOUSE_RMA_STATUSES = ["borrador", "aprobado", "recibido_oficina"] as const;

@@ -32,8 +32,8 @@ import { articles } from "./articles";
 
 export const rmaStatusEnum = hsmSchema.enum("rma_status", [
   "borrador", "solicitado", "aprobado", "enviado_proveedor",
-  "en_proveedor", "devuelto", "recibido_oficina", "esperando_cliente",
-  "entregado_cliente", "rechazado", "cerrado", "cancelado",
+  "en_proveedor", "devuelto", "recibido_oficina", "enviado_cliente",
+  "esperando_cliente", "entregado_cliente", "rechazado", "cerrado", "cancelado",
 ]);
 
 export const rmas = hsmSchema.table("rmas", {

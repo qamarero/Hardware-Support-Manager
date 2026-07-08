@@ -67,8 +67,8 @@ export const transitionRmaSchema = z.object({
   rmaId: z.string().uuid(),
   toStatus: z.enum([
     "borrador", "solicitado", "aprobado", "enviado_proveedor",
-    "en_proveedor", "devuelto", "recibido_oficina", "esperando_cliente",
-    "entregado_cliente", "rechazado", "cerrado", "cancelado",
+    "en_proveedor", "devuelto", "recibido_oficina", "enviado_cliente",
+    "esperando_cliente", "entregado_cliente", "rechazado", "cerrado", "cancelado",
   ]),
   comment: z.string().optional(),
   // Resultado capturado en el cierre (entregado/cerrado/rechazado). Aditivo: se

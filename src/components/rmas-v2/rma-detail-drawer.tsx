@@ -39,12 +39,12 @@ interface Props {
 
 // Secuencia principal del flujo RMA (rechazado/cancelado quedan fuera del stepper).
 const STAGES: RmaStatus[] = [
-  "borrador", "solicitado", "aprobado", "enviado_proveedor", "en_proveedor", "devuelto", "recibido_oficina", "esperando_cliente", "entregado_cliente", "cerrado",
+  "borrador", "solicitado", "aprobado", "enviado_proveedor", "en_proveedor", "devuelto", "recibido_oficina", "enviado_cliente", "esperando_cliente", "entregado_cliente", "cerrado",
 ];
 
 // Todos los estados seleccionables en transición libre (incluye rechazado/cancelado).
 const SELECTABLE_RMA_STATUSES: RmaStatus[] = [
-  "borrador", "solicitado", "aprobado", "enviado_proveedor", "en_proveedor", "devuelto", "recibido_oficina", "esperando_cliente", "entregado_cliente", "rechazado", "cerrado", "cancelado",
+  "borrador", "solicitado", "aprobado", "enviado_proveedor", "en_proveedor", "devuelto", "recibido_oficina", "enviado_cliente", "esperando_cliente", "entregado_cliente", "rechazado", "cerrado", "cancelado",
 ];
 
 export function RmaDetailDrawer({ rmaId, onClose }: Props) {

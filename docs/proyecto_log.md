@@ -1589,3 +1589,12 @@ siguiente paso). Reutiliza recordatorios, event_logs, Mi día y `fetchIntercomCo
   la ronda de todos. Fecha = local del cliente.
 - **"Siguiente paso"** además pasa la entidad a **"Esperando al cliente"** (pausa SLA,
   `force`), en incidencias y RMA.
+- **RMA "Progreso" → panel "Estado" no secuencial**: el stepper numerado 1→9 daba
+  impresión de orden obligatorio; ahora son píldoras de todos los estados con solo el
+  actual resaltado (los estados de RMA no son lineales).
+- **Pausa de SLA ampliada**: `PAUSED_RMA_STATES` añade `solicitado` (esperando aprobación
+  del proveedor). Recordatorio: los incidentes ya pausan en esperando_cliente/proveedor/pieza.
+- **Nuevo estado de RMA `enviado_cliente`** ("Enviado al Cliente", `sql/023`, MCP): equipo
+  enviado al cliente a la espera de que confirme recepción; entre recibido_oficina y
+  entregado_cliente; **pausa el SLA**. Coordinado en enum/constantes/validador/máquina de
+  estados/badges/drawer/lista.
