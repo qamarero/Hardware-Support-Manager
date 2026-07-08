@@ -302,36 +302,37 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
             </div>
           )}
 
-          {/* Stepper */}
+          {/* Estado (no secuencial): píldoras de estados, solo se resalta el actual.
+              El flujo RMA no es lineal — reflejamos la situación, no un orden fijo. */}
           <div className="card" style={{ padding: 20 }}>
-            <div className="field__label" style={{ marginBottom: 14 }}>Progreso</div>
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 0 }}>
-              {STAGES.map((s, idx) => {
-                const isDone = idx <= currentIdx;
-                const isActive = idx === currentIdx;
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+              <div className="field__label">Estado</div>
+              {isPaused && <span className="badge badge--blue" title="En este estado el SLA está en pausa (fuera de nuestro alcance)">⏸ SLA en pausa</span>}
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {SELECTABLE_RMA_STATUSES.map((s) => {
+                const active = s === rma.status;
                 return (
-                  <div key={s} style={{ display: "contents" }}>
-                    <div style={{ textAlign: "center", flex: "0 0 auto", width: 78 }}>
-                      <div style={{
-                        width: 28, height: 28, borderRadius: 50,
-                        background: isDone ? "var(--primary)" : "var(--gray-200)",
-                        color: isDone ? "#fff" : "var(--gray-500)",
-                        display: "grid", placeItems: "center", margin: "0 auto",
-                        fontWeight: 700, fontSize: 11,
-                        border: isActive ? "3px solid var(--orange-200)" : "none",
-                      }}>
-                        {isDone && !isActive ? <Check size={12} /> : idx + 1}
-                      </div>
-                      <div style={{ fontSize: 9.5, marginTop: 6, lineHeight: 1.2, color: isDone ? "var(--fg-primary)" : "var(--fg-tertiary)", fontWeight: isActive ? 700 : 500 }}>
-                        {RMA_STATUS_LABELS[s]}
-                      </div>
-                    </div>
-                    {idx < STAGES.length - 1 && (
-                      <div style={{ flex: 1, height: 2, marginTop: 14, background: idx < currentIdx ? "var(--primary)" : "var(--gray-200)" }} />
-                    )}
-                  </div>
+                  <span
+                    key={s}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 6,
+                      padding: "5px 12px", borderRadius: 999, fontSize: 12,
+                      fontWeight: active ? 700 : 500,
+                      background: active ? "var(--primary)" : "var(--gray-50)",
+                      color: active ? "#fff" : "var(--gray-600)",
+                      border: `1px solid ${active ? "var(--primary)" : "var(--border)"}`,
+                      opacity: active ? 1 : 0.85,
+                    }}
+                  >
+                    {active && <span style={{ width: 6, height: 6, borderRadius: 50, background: "#fff" }} />}
+                    {RMA_STATUS_LABELS[s]}
+                  </span>
                 );
               })}
+            </div>
+            <div className="text-xs muted" style={{ marginTop: 10 }}>
+              Los estados no son secuenciales: marcan la situación actual, no un orden por el que haya que pasar.
             </div>
           </div>
 
