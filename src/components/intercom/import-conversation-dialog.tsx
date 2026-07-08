@@ -19,7 +19,7 @@ import {
 import { importIntercomConversation } from "@/server/actions/intercom-inbox";
 
 interface ImportConversationDialogProps {
-  onImported: (inboxItemId: string, alreadyExisted: boolean) => void;
+  onImported: (inboxItemId: string, alreadyExisted: boolean, status: string) => void;
 }
 
 export function ImportConversationDialog({ onImported }: ImportConversationDialogProps) {
@@ -33,13 +33,13 @@ export function ImportConversationDialog({ onImported }: ImportConversationDialo
         toast.error(result.error);
         return;
       }
-      const { inboxItemId, alreadyExisted } = result.data;
+      const { inboxItemId, alreadyExisted, status } = result.data;
       toast.success(
         alreadyExisted
-          ? "La conversación ya estaba en la bandeja"
+          ? "La conversación ya estaba en la bandeja — te la muestro"
           : "Conversación importada a la bandeja"
       );
-      onImported(inboxItemId, alreadyExisted);
+      onImported(inboxItemId, alreadyExisted, status);
       setValue("");
       setOpen(false);
     },

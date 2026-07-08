@@ -41,7 +41,7 @@ export async function fetchPendingIntercomCount(): Promise<number> {
  */
 export async function importIntercomConversation(
   urlOrId: string
-): Promise<ActionResult<{ inboxItemId: string; alreadyExisted: boolean; intercomConversationId: string }>> {
+): Promise<ActionResult<{ inboxItemId: string; alreadyExisted: boolean; intercomConversationId: string; status: string }>> {
   await getRequiredSession();
 
   const trimmed = (urlOrId ?? "").trim();
@@ -64,7 +64,7 @@ export async function importIntercomConversation(
   if (existing) {
     return {
       success: true,
-      data: { inboxItemId: existing.id, alreadyExisted: true, intercomConversationId: conversationId },
+      data: { inboxItemId: existing.id, alreadyExisted: true, intercomConversationId: conversationId, status: existing.status },
     };
   }
 
@@ -127,7 +127,7 @@ export async function importIntercomConversation(
 
   return {
     success: true,
-    data: { inboxItemId: inserted.id, alreadyExisted: false, intercomConversationId: conversationId },
+    data: { inboxItemId: inserted.id, alreadyExisted: false, intercomConversationId: conversationId, status: "pendiente" },
   };
 }
 

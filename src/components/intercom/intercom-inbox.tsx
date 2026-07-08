@@ -107,16 +107,12 @@ export function IntercomInbox({ initialData }: IntercomInboxProps) {
     setSelectedId(null);
   };
 
-  const handleImported = async (inboxItemId: string, alreadyExisted: boolean) => {
-    // Tras importar, refrescar la lista. Si ya existía, además mover a su tab.
-    if (alreadyExisted) {
-      // No sabemos en qué tab está — refresh y dejamos que el técnico lo localice.
-      // Como mejora futura podríamos hacer una query para saber su status y cambiar de tab.
-    } else {
-      // Asegurar que estamos en la tab Pendientes (donde acaba de entrar).
-      if (params.status !== "pendiente") {
-        await setParams({ status: "pendiente", page: 1 });
-      }
+  const handleImported = async (inboxItemId: string, _alreadyExisted: boolean, status: string) => {
+    // Mostrar SIEMPRE la conversación importada, exista o no: nos movemos a la
+    // pestaña donde vive (una ya existente puede estar en Convertida/Descartada,
+    // no en Pendientes) para que aparezca en la lista y quede seleccionada.
+    if (params.status !== status) {
+      await setParams({ status, page: 1 });
     }
     await refetch();
     setSelectedId(inboxItemId);
