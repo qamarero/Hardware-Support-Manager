@@ -62,9 +62,25 @@ export async function importIntercomConversation(
     .limit(1);
 
   if (existing) {
+    // Ya convertida a incidencia: no se re-triage; solo se muestra en su pestaña.
+    if (existing.status === "convertida") {
+      return {
+        success: true,
+        data: { inboxItemId: existing.id, alreadyExisted: true, intercomConversationId: conversationId, status: "convertida" },
+      };
+    }
+    // Pendiente o descartada: la "reabrimos" en Pendientes y la subimos arriba
+    // del todo (bump receivedAt) para tener una ficha lista para aprobar/descartar
+    // sin tener que buscarla entre la paginación. No duplicamos fila (la unicidad
+    // por conversación sostiene la idempotencia del webhook).
+    await db
+      .update(intercomInbox)
+      .set({ status: "pendiente", dismissedByUserId: null, dismissedAt: null, receivedAt: new Date() })
+      .where(eq(intercomInbox.id, existing.id));
+    revalidatePath("/intercom");
     return {
       success: true,
-      data: { inboxItemId: existing.id, alreadyExisted: true, intercomConversationId: conversationId, status: existing.status },
+      data: { inboxItemId: existing.id, alreadyExisted: true, intercomConversationId: conversationId, status: "pendiente" },
     };
   }
 

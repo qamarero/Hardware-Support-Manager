@@ -35,9 +35,11 @@ export function ImportConversationDialog({ onImported }: ImportConversationDialo
       }
       const { inboxItemId, alreadyExisted, status } = result.data;
       toast.success(
-        alreadyExisted
-          ? "La conversación ya estaba en la bandeja — te la muestro"
-          : "Conversación importada a la bandeja"
+        !alreadyExisted
+          ? "Conversación importada a la bandeja"
+          : status === "convertida"
+            ? "Ya está convertida a incidencia — te la muestro"
+            : "Ya estaba en la bandeja — la he puesto en Pendientes"
       );
       onImported(inboxItemId, alreadyExisted, status);
       setValue("");
