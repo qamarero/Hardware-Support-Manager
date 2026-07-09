@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2, Truck } from "lucide-react";
+import { lookupSpanishCity } from "@/lib/utils/postal-code";
 import {
   Dialog,
   DialogContent,
@@ -59,6 +60,26 @@ export function RmaShippingDialog({ rma }: { rma: RmaRow }) {
 
   const set = (k: keyof FormState, v: string) => setF((prev) => ({ ...prev, [k]: v }));
 
+  // Autocompletar ciudad desde el código postal (recogida). Best-effort: solo
+  // rellena si la ciudad está vacía o si la habíamos autocompletado nosotros
+  // (no pisa una ciudad escrita a mano).
+  const [cityLoading, setCityLoading] = useState(false);
+  const cityAutoRef = useRef(false);
+  useEffect(() => {
+    const cp = f.postalCode.trim();
+    if (!/^\d{5}$/.test(cp)) return;
+    if (f.city.trim() && !cityAutoRef.current) return;
+    let cancelled = false;
+    setCityLoading(true);
+    const t = setTimeout(async () => {
+      const city = await lookupSpanishCity(cp);
+      if (cancelled) return;
+      if (city) { setF((prev) => ({ ...prev, city })); cityAutoRef.current = true; }
+      setCityLoading(false);
+    }, 400);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [f.postalCode]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const saveM = useMutation({
     mutationFn: () =>
       updateRma(rma.id, {
@@ -101,7 +122,7 @@ export function RmaShippingDialog({ rma }: { rma: RmaRow }) {
     <Dialog
       open={open}
       onOpenChange={(v) => {
-        if (v) setF(buildInitial(rma));
+        if (v) { setF(buildInitial(rma)); cityAutoRef.current = false; }
         setOpen(v);
       }}
     >
@@ -148,8 +169,11 @@ export function RmaShippingDialog({ rma }: { rma: RmaRow }) {
                 <Input value={f.postalCode} onChange={(e) => set("postalCode", e.target.value)} />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Ciudad</Label>
-                <Input value={f.city} onChange={(e) => set("city", e.target.value)} />
+                <Label className="text-xs flex items-center gap-1.5">
+                  Ciudad
+                  {cityLoading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                </Label>
+                <Input value={f.city} placeholder="Se autocompleta con el CP" onChange={(e) => { cityAutoRef.current = false; set("city", e.target.value); }} />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Provincia</Label>
