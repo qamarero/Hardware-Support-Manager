@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2, Truck } from "lucide-react";
-import { lookupSpanishCity } from "@/lib/utils/postal-code";
+import { lookupPostalCode } from "@/server/actions/geo";
 import {
   Dialog,
   DialogContent,
@@ -60,23 +60,38 @@ export function RmaShippingDialog({ rma }: { rma: RmaRow }) {
 
   const set = (k: keyof FormState, v: string) => setF((prev) => ({ ...prev, [k]: v }));
 
-  // Autocompletar ciudad desde el código postal (recogida). Best-effort: solo
-  // rellena si la ciudad está vacía o si la habíamos autocompletado nosotros
-  // (no pisa una ciudad escrita a mano).
-  const [cityLoading, setCityLoading] = useState(false);
+  // Autocompletar municipio y provincia desde el código postal (recogida).
+  // Datos locales del INE vía server action; la provincia sale del prefijo del
+  // CP. Best-effort: solo rellena cada campo si está vacío o si lo habíamos
+  // autocompletado nosotros (no pisa lo escrito a mano).
+  const [geoLoading, setGeoLoading] = useState(false);
   const cityAutoRef = useRef(false);
+  const provinceAutoRef = useRef(false);
   useEffect(() => {
     const cp = f.postalCode.trim();
     if (!/^\d{5}$/.test(cp)) return;
-    if (f.city.trim() && !cityAutoRef.current) return;
+    const canCity = !f.city.trim() || cityAutoRef.current;
+    const canProvince = !f.province.trim() || provinceAutoRef.current;
+    if (!canCity && !canProvince) return;
     let cancelled = false;
-    setCityLoading(true);
+    setGeoLoading(true);
     const t = setTimeout(async () => {
-      const city = await lookupSpanishCity(cp);
+      const { municipio, provincia } = await lookupPostalCode(cp);
       if (cancelled) return;
-      if (city) { setF((prev) => ({ ...prev, city })); cityAutoRef.current = true; }
-      setCityLoading(false);
-    }, 400);
+      setF((prev) => {
+        const next = { ...prev };
+        if (municipio && (!prev.city.trim() || cityAutoRef.current)) {
+          next.city = municipio;
+          cityAutoRef.current = true;
+        }
+        if (provincia && (!prev.province.trim() || provinceAutoRef.current)) {
+          next.province = provincia;
+          provinceAutoRef.current = true;
+        }
+        return next;
+      });
+      setGeoLoading(false);
+    }, 350);
     return () => { cancelled = true; clearTimeout(t); };
   }, [f.postalCode]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -122,7 +137,7 @@ export function RmaShippingDialog({ rma }: { rma: RmaRow }) {
     <Dialog
       open={open}
       onOpenChange={(v) => {
-        if (v) { setF(buildInitial(rma)); cityAutoRef.current = false; }
+        if (v) { setF(buildInitial(rma)); cityAutoRef.current = false; provinceAutoRef.current = false; }
         setOpen(v);
       }}
     >
@@ -171,13 +186,16 @@ export function RmaShippingDialog({ rma }: { rma: RmaRow }) {
               <div className="space-y-1.5">
                 <Label className="text-xs flex items-center gap-1.5">
                   Ciudad
-                  {cityLoading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                  {geoLoading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
                 </Label>
                 <Input value={f.city} placeholder="Se autocompleta con el CP" onChange={(e) => { cityAutoRef.current = false; set("city", e.target.value); }} />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Provincia</Label>
-                <Input value={f.province} onChange={(e) => set("province", e.target.value)} />
+                <Label className="text-xs flex items-center gap-1.5">
+                  Provincia
+                  {geoLoading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                </Label>
+                <Input value={f.province} placeholder="Se autocompleta con el CP" onChange={(e) => { provinceAutoRef.current = false; set("province", e.target.value); }} />
               </div>
             </div>
           </div>
