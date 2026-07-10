@@ -6,9 +6,15 @@ updated: 2026-07-10
 
 # Métricas RMA
 
-Pestaña `/rmas/metricas` (nav «Operaciones») + endpoint externo para el Main Portal.
-Da visibilidad de la operativa de [[Estados de RMA|RMA]] y permite exportar un reporte
-semanal. Forma parte de la [[Operativa]] (PROYECTO ⑫; ver [[proyecto_log]]).
+> Ahora es el **reporte de soporte completo** (incidencias **+** RMA) en `/metricas`
+> («Métricas soporte»), no solo RMA. Este documento describe esa pestaña.
+
+Pestaña `/metricas` (nav, junto a «Panel») + endpoint externo para el Main Portal.
+Da visibilidad de la operativa de incidencias y de [[Estados de RMA|RMA]] y permite exportar
+un reporte semanal. Forma parte de la [[Operativa]] (PROYECTO ⑫; ver [[proyecto_log]]).
+
+El reporte tiene **dos bloques**: **Incidencias** (abiertas, >7 días, cumplimiento SLA, tiempo
+medio de resolución, resueltas, cambios de estado) y **RMA** (los de abajo).
 
 ## Qué muestra
 

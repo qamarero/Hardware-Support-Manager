@@ -43,12 +43,12 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
     items: [
       { href: "/mi-dia", label: "Mi día", icon: CalendarCheck },
       { href: "/dashboard", label: "Panel", icon: LayoutDashboard },
+      { href: "/metricas", label: "Métricas soporte", icon: BarChart3 },
       { href: "/incidents", label: "Incidencias", icon: Ticket, badge: "incidents" },
       { href: "/tablero", label: "Tablero Kanban", icon: LayoutGrid },
       { href: "/corcho", label: "Corcho", icon: StickyNote },
       { href: "/casos", label: "Casos · RMA", icon: RefreshCw },
       { href: "/rmas", label: "RMA", icon: RotateCcw, badge: "rmas" },
-      { href: "/rmas/metricas", label: "Métricas RMA", icon: BarChart3 },
     ],
   },
   {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useQueryState } from "nuqs";
 import { toast } from "sonner";
@@ -15,11 +15,11 @@ import {
   ArrowDown,
   Minus,
 } from "lucide-react";
-import { fetchRmaMetricsDashboard } from "@/server/actions/rma-metrics";
+import { fetchSupportMetricsDashboard } from "@/server/actions/support-metrics";
 import { upsertMetricReview } from "@/server/actions/rma-metric-reviews";
 import {
-  RMA_METRIC_CATALOG,
-  RMA_AGING_THRESHOLD_DAYS,
+  SUPPORT_METRIC_CATALOG,
+  GROUP_LABELS,
   suggestMetricStatus,
   formatMetricValue,
   type RmaMetricStatus,
@@ -57,7 +57,6 @@ function fmtWeek(from: string, to: string): string {
   return `${f.toLocaleDateString("es-ES", opts)} – ${t.toLocaleDateString("es-ES", opts)}`;
 }
 
-/** Delta con flecha para KPIs (respeta el sentido: menos es mejor / más es mejor). */
 function Delta({
   current,
   previous,
@@ -85,14 +84,13 @@ function Delta({
   );
 }
 
-/** Barras horizontales simples (proto, sin librería). */
 function Bars({ data }: { data: { label: string; value: number }[] }) {
   const max = Math.max(1, ...data.map((d) => d.value));
   if (data.length === 0) return <p className="ds-body-sm" style={{ color: "var(--gray-400)" }}>Sin datos en la semana.</p>;
   return (
     <div className="stack" style={{ gap: 6 }}>
       {data.map((d) => (
-        <div key={d.label} style={{ display: "grid", gridTemplateColumns: "140px 1fr 40px", alignItems: "center", gap: 8 }}>
+        <div key={d.label} style={{ display: "grid", gridTemplateColumns: "150px 1fr 44px", alignItems: "center", gap: 8 }}>
           <span className="ds-body-sm" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.label}</span>
           <span style={{ background: "var(--gray-100)", borderRadius: 4, height: 14 }}>
             <span style={{ display: "block", width: `${(d.value / max) * 100}%`, minWidth: d.value > 0 ? 4 : 0, height: 14, background: "var(--primary, #ff7a1a)", borderRadius: 4 }} />
@@ -100,6 +98,38 @@ function Bars({ data }: { data: { label: string; value: number }[] }) {
           <span className="ds-num ds-body-sm" style={{ textAlign: "right" }}>{d.value}</span>
         </div>
       ))}
+    </div>
+  );
+}
+
+function Kpi({ label, value, sup, alert }: { label: string; value: string | number; sup?: string; alert?: boolean }) {
+  return (
+    <div className="kpi">
+      <div className="kpi__label">{label}</div>
+      <div className="kpi__value">{value}{sup ? <sup>{sup}</sup> : null}</div>
+      {alert ? <div className="kpi__delta kpi__delta--down">requiere atención</div> : <div className="kpi__delta kpi__delta--flat">snapshot</div>}
+    </div>
+  );
+}
+
+function KpiDelta({
+  label,
+  value,
+  prev,
+  betterWhen,
+  unit,
+}: {
+  label: string;
+  value: number | null;
+  prev: number | null;
+  betterWhen: "lower" | "higher" | "info";
+  unit: string;
+}) {
+  return (
+    <div className="kpi">
+      <div className="kpi__label">{label}</div>
+      <div className="kpi__value">{formatMetricValue(unit as "h" | "count" | "pct", value)}</div>
+      <Delta current={value} previous={prev} betterWhen={betterWhen} unit={unit} />
     </div>
   );
 }
@@ -116,16 +146,15 @@ const PRINT_CSS = `
 .print-only { display: none; }
 `;
 
-export function RmaMetricasScreen() {
+export function MetricasScreen() {
   const [weekParam, setWeekParam] = useQueryState("semana");
   const weekStart = weekParam || isoWeekStart(todayIso());
 
   const { data, isLoading } = useQuery({
-    queryKey: ["rma-metrics-dashboard", weekStart],
-    queryFn: () => fetchRmaMetricsDashboard(weekStart),
+    queryKey: ["support-metrics-dashboard", weekStart],
+    queryFn: () => fetchSupportMetricsDashboard(weekStart),
   });
 
-  // Anotaciones locales (semáforo/responsable/comentario) sobre lo que hay en BD.
   const [edits, setEdits] = useState<Record<string, Partial<Draft>>>({});
   useEffect(() => {
     setEdits({});
@@ -167,11 +196,12 @@ export function RmaMetricasScreen() {
   function exportCsv() {
     if (!data) return;
     const report = generateCSV(
-      ["Métrica", "Objetivo", "Esta semana", "Semana anterior", "Responsable", "Estado", "Comentario"],
-      RMA_METRIC_CATALOG.map((m) => {
+      ["Grupo", "Métrica", "Objetivo", "Esta semana", "Semana anterior", "Responsable", "Estado", "Comentario"],
+      SUPPORT_METRIC_CATALOG.map((m) => {
         const eff = effective(m.key);
         const owner = data.users.find((u) => u.id === eff.ownerUserId)?.name ?? "";
         return [
+          GROUP_LABELS[m.group],
           m.label,
           m.target !== null ? formatMetricValue(m.unit, m.target) : "",
           formatMetricValue(m.unit, data.values[m.key] ?? null),
@@ -182,22 +212,22 @@ export function RmaMetricasScreen() {
         ];
       }),
     );
-    const byStatus = generateCSV(["Estado", "Cantidad"], data.byStatus.map((s) => [s.label, s.count]));
-    const outcomes = generateCSV(
-      ["Resultado", "Cantidad"],
-      data.outcomes.map((o) => [OUTCOME_LABELS[o.outcome] ?? o.outcome, o.count]),
-    );
-    const csv = [report, "", "REPARTO POR ESTADO", byStatus, "", "RESULTADOS AL CIERRE", outcomes].join("\r\n");
-    downloadCSV(csv, `metricas-rma-${data.range.from}.csv`);
+    const incAging = generateCSV(["Antigüedad incidencias", "Cantidad"], data.incidentAging.map((b) => [b.bucket, b.count]));
+    const byStatus = generateCSV(["Estado RMA", "Cantidad"], data.rmaByStatus.map((s) => [s.label, s.count]));
+    const outcomes = generateCSV(["Resultado RMA", "Cantidad"], data.rmaOutcomes.map((o) => [OUTCOME_LABELS[o.outcome] ?? o.outcome, o.count]));
+    const csv = [report, "", "INCIDENCIAS POR ANTIGÜEDAD", incAging, "", "RMA POR ESTADO", byStatus, "", "RESULTADOS RMA", outcomes].join("\r\n");
+    downloadCSV(csv, `metricas-soporte-${data.range.from}.csv`);
   }
 
   function exportPdf() {
-    if (data) document.title = `Métricas RMA — semana ${data.range.from}`;
+    if (data) document.title = `Métricas soporte — semana ${data.range.from}`;
     window.print();
   }
 
   const gotoWeek = (deltaWeeks: number) => setWeekParam(addDaysIso(weekStart, deltaWeeks * 7));
   const thisWeek = isoWeekStart(todayIso());
+  const v = data?.values ?? {};
+  const p = data?.prevValues ?? {};
 
   return (
     <div className="stack" style={{ gap: 20 }}>
@@ -207,10 +237,10 @@ export function RmaMetricasScreen() {
       <div className="row row--2-1" style={{ alignItems: "flex-start", gap: 12 }}>
         <div>
           <h1 className="ds-h2" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <BarChart3 size={22} /> Métricas RMA
+            <BarChart3 size={22} /> Métricas soporte
           </h1>
           <p className="ds-body-sm" style={{ color: "var(--gray-500)" }}>
-            Reporte semanal de RMA. {data ? fmtWeek(data.range.from, data.range.to) : "…"}
+            Reporte semanal del soporte de hardware (incidencias + RMA). {data ? fmtWeek(data.range.from, data.range.to) : "…"}
           </p>
         </div>
         <div className="no-print" style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
@@ -230,17 +260,29 @@ export function RmaMetricasScreen() {
         </div>
       ) : (
         <>
-          {/* KPI cards */}
-          <div className="kpi-grid">
-            <Kpi label="RMA activos" value={data.aging.openTotal} sup="abiertos" />
-            <Kpi label={`RMA >${RMA_AGING_THRESHOLD_DAYS} días`} value={data.aging.gt7d} sup="aging" alert={data.aging.gt7d > 0} />
-            <KpiDelta label="Cambios de estado" value={data.values.rma_state_changes} prev={data.prevValues.rma_state_changes} betterWhen="info" unit="count" />
-            <KpiDelta label="Solicitudes tramitadas" value={data.values.rma_solicitudes} prev={data.prevValues.rma_solicitudes} betterWhen="info" unit="count" />
-            <KpiDelta label="Tiempo hasta tramitar" value={data.values.rma_time_to_solicitado} prev={data.prevValues.rma_time_to_solicitado} betterWhen="lower" unit="h" />
-            <KpiDelta label="% tramitados en objetivo" value={data.values.rma_solicitado_within_target} prev={data.prevValues.rma_solicitado_within_target} betterWhen="higher" unit="pct" />
+          {/* KPIs Incidencias */}
+          <div>
+            <div className="ds-overline" style={{ marginBottom: 8 }}>Incidencias</div>
+            <div className="kpi-grid">
+              <Kpi label="Incidencias abiertas" value={v.inc_open ?? 0} sup="abiertas" />
+              <Kpi label={`Incidencias >${7} días`} value={v.inc_aging_gt7 ?? 0} sup="aging" alert={(v.inc_aging_gt7 ?? 0) > 0} />
+              <KpiDelta label="Cumplimiento SLA" value={v.inc_sla_compliance} prev={p.inc_sla_compliance} betterWhen="higher" unit="pct" />
+              <KpiDelta label="Tiempo medio resolución" value={v.inc_avg_resolution_h} prev={p.inc_avg_resolution_h} betterWhen="lower" unit="h" />
+            </div>
           </div>
 
-          {/* Tabla-reporte editable */}
+          {/* KPIs RMA */}
+          <div>
+            <div className="ds-overline" style={{ marginBottom: 8 }}>RMA</div>
+            <div className="kpi-grid">
+              <Kpi label="RMA activos" value={data.rmaActive} sup="abiertos" />
+              <Kpi label="RMA >7 días" value={v.rma_aging_gt7 ?? 0} sup="aging" alert={(v.rma_aging_gt7 ?? 0) > 0} />
+              <KpiDelta label="Tiempo hasta tramitar" value={v.rma_time_to_solicitado} prev={p.rma_time_to_solicitado} betterWhen="lower" unit="h" />
+              <KpiDelta label="% tramitados en objetivo" value={v.rma_solicitado_within_target} prev={p.rma_solicitado_within_target} betterWhen="higher" unit="pct" />
+            </div>
+          </div>
+
+          {/* Tabla-reporte editable (incidencias + RMA) */}
           <div className="card">
             <div className="card__header"><strong>Reporte semanal</strong></div>
             <div className="table-wrap">
@@ -257,44 +299,54 @@ export function RmaMetricasScreen() {
                   </tr>
                 </thead>
                 <tbody>
-                  {RMA_METRIC_CATALOG.map((m) => {
+                  {SUPPORT_METRIC_CATALOG.map((m, i) => {
                     const eff = effective(m.key);
                     const cur = data.values[m.key] ?? null;
                     const suggestion = suggestMetricStatus(m, cur);
                     const shown = (eff.status || suggestion || "") as RmaMetricStatus | "";
+                    const showHeader = i === 0 || SUPPORT_METRIC_CATALOG[i - 1].group !== m.group;
                     return (
-                      <tr key={m.key}>
-                        <td title={m.description}>{m.label}</td>
-                        <td className="mono">{m.target !== null ? formatMetricValue(m.unit, m.target) : "—"}</td>
-                        <td className="num mono"><strong>{formatMetricValue(m.unit, cur)}</strong></td>
-                        <td className="num mono" style={{ color: "var(--gray-500)" }}>{formatMetricValue(m.unit, data.prevValues[m.key] ?? null)}</td>
-                        <td>
-                          <select className="select" value={eff.ownerUserId} onChange={(e) => patch(m.key, { ownerUserId: e.target.value })}>
-                            <option value="">—</option>
-                            {data.users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-                          </select>
-                        </td>
-                        <td>
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                            <span style={{ width: 10, height: 10, borderRadius: "50%", background: shown ? STATUS_DOT[shown] : "var(--gray-300)", flex: "0 0 auto" }} />
-                            <select className="select" value={eff.status} onChange={(e) => patch(m.key, { status: e.target.value })} title={!eff.status && suggestion ? `Sugerido: ${STATUS_LABELS[suggestion]}` : undefined}>
-                              <option value="">{suggestion ? `Auto (${suggestion})` : "Auto"}</option>
-                              <option value="verde">🟢 En objetivo</option>
-                              <option value="ambar">🟡 Atención</option>
-                              <option value="rojo">🔴 Fuera</option>
+                      <Fragment key={m.key}>
+                        {showHeader && (
+                          <tr>
+                            <td colSpan={7} style={{ background: "var(--gray-50, #f8f8f7)", fontWeight: 600, textTransform: "uppercase", fontSize: 11, letterSpacing: "0.04em", color: "var(--gray-500)" }}>
+                              {GROUP_LABELS[m.group]}
+                            </td>
+                          </tr>
+                        )}
+                        <tr>
+                          <td title={m.description}>{m.label}</td>
+                          <td className="mono">{m.target !== null ? formatMetricValue(m.unit, m.target) : "—"}</td>
+                          <td className="num mono"><strong>{formatMetricValue(m.unit, cur)}</strong></td>
+                          <td className="num mono" style={{ color: "var(--gray-500)" }}>{formatMetricValue(m.unit, data.prevValues[m.key] ?? null)}</td>
+                          <td>
+                            <select className="select" value={eff.ownerUserId} onChange={(e) => patch(m.key, { ownerUserId: e.target.value })}>
+                              <option value="">—</option>
+                              {data.users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
                             </select>
-                          </span>
-                        </td>
-                        <td style={{ minWidth: 200 }}>
-                          <input
-                            className="input"
-                            placeholder="Comentario opcional"
-                            value={eff.comment}
-                            onChange={(e) => patch(m.key, { comment: e.target.value }, false)}
-                            onBlur={() => saveM.mutate({ metricKey: m.key, ...effective(m.key) })}
-                          />
-                        </td>
-                      </tr>
+                          </td>
+                          <td>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                              <span style={{ width: 10, height: 10, borderRadius: "50%", background: shown ? STATUS_DOT[shown] : "var(--gray-300)", flex: "0 0 auto" }} />
+                              <select className="select" value={eff.status} onChange={(e) => patch(m.key, { status: e.target.value })} title={!eff.status && suggestion ? `Sugerido: ${STATUS_LABELS[suggestion]}` : undefined}>
+                                <option value="">{suggestion ? `Auto (${suggestion})` : "Auto"}</option>
+                                <option value="verde">🟢 En objetivo</option>
+                                <option value="ambar">🟡 Atención</option>
+                                <option value="rojo">🔴 Fuera</option>
+                              </select>
+                            </span>
+                          </td>
+                          <td style={{ minWidth: 200 }}>
+                            <input
+                              className="input"
+                              placeholder="Comentario opcional"
+                              value={eff.comment}
+                              onChange={(e) => patch(m.key, { comment: e.target.value }, false)}
+                              onBlur={() => saveM.mutate({ metricKey: m.key, ...effective(m.key) })}
+                            />
+                          </td>
+                        </tr>
+                      </Fragment>
                     );
                   })}
                 </tbody>
@@ -305,20 +357,20 @@ export function RmaMetricasScreen() {
           {/* Charts */}
           <div className="row row--2">
             <div className="card card--pad">
-              <div className="card__header"><strong>Reparto por estado</strong></div>
-              <Bars data={data.byStatus.map((s) => ({ label: s.label, value: s.count }))} />
+              <div className="card__header"><strong>Incidencias por antigüedad</strong></div>
+              <Bars data={data.incidentAging.map((b) => ({ label: b.bucket, value: b.count }))} />
             </div>
             <div className="card card--pad">
-              <div className="card__header"><strong>Cambios de estado por día</strong></div>
-              <Bars data={data.stateChanges.byDay.map((d) => ({ label: d.date.slice(5), value: d.count }))} />
+              <div className="card__header"><strong>RMA · reparto por estado</strong></div>
+              <Bars data={data.rmaByStatus.map((s) => ({ label: s.label, value: s.count }))} />
             </div>
             <div className="card card--pad">
-              <div className="card__header"><strong>Resultados al cierre</strong></div>
-              <Bars data={data.outcomes.map((o) => ({ label: OUTCOME_LABELS[o.outcome] ?? o.outcome, value: o.count }))} />
+              <div className="card__header"><strong>RMA · resultados al cierre</strong></div>
+              <Bars data={data.rmaOutcomes.map((o) => ({ label: OUTCOME_LABELS[o.outcome] ?? o.outcome, value: o.count }))} />
             </div>
             <div className="card card--pad">
-              <div className="card__header"><strong>Turnaround por proveedor (días)</strong></div>
-              <Bars data={data.providerTurnaround.slice(0, 8).map((p) => ({ label: p.providerName, value: p.avgDays }))} />
+              <div className="card__header"><strong>RMA · turnaround por proveedor (días)</strong></div>
+              <Bars data={data.rmaProviderTurnaround.slice(0, 8).map((pr) => ({ label: pr.providerName, value: pr.avgDays }))} />
             </div>
           </div>
 
@@ -327,38 +379,6 @@ export function RmaMetricasScreen() {
           </p>
         </>
       )}
-    </div>
-  );
-}
-
-function Kpi({ label, value, sup, alert }: { label: string; value: number; sup?: string; alert?: boolean }) {
-  return (
-    <div className="kpi">
-      <div className="kpi__label">{label}</div>
-      <div className="kpi__value">{value}{sup ? <sup>{sup}</sup> : null}</div>
-      {alert ? <div className="kpi__delta kpi__delta--down">requiere atención</div> : <div className="kpi__delta kpi__delta--flat">snapshot</div>}
-    </div>
-  );
-}
-
-function KpiDelta({
-  label,
-  value,
-  prev,
-  betterWhen,
-  unit,
-}: {
-  label: string;
-  value: number | null;
-  prev: number | null;
-  betterWhen: "lower" | "higher" | "info";
-  unit: string;
-}) {
-  return (
-    <div className="kpi">
-      <div className="kpi__label">{label}</div>
-      <div className="kpi__value">{formatMetricValue(unit as "h" | "count" | "pct", value)}</div>
-      <Delta current={value} previous={prev} betterWhen={betterWhen} unit={unit} />
     </div>
   );
 }

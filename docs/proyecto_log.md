@@ -1616,9 +1616,12 @@ y (2) dar visibilidad interna con una pestaña exportable.
   `src/lib/constants/rma-metrics.ts`. "Resp. RMA" = tiempo hasta tramitar (objetivo 2 h configurable).
 - **Reporte editable (Fase C)**: tabla `hsm.rma_metric_reviews` (`sql/024`, MCP) — semáforo +
   responsable + comentario por métrica y semana, **compartido**. Server actions get/upsert.
-- **Pestaña (Fase D)**: `/rmas/metricas` (proto). Selector de semana (nuqs), KPI cards con delta,
-  tabla-reporte editable (como la foto de referencia), charts de barras (reparto por estado, cambios
-  por día, resultados, turnaround por proveedor) y **export CSV + PDF** (imprimible, `window.print()`,
-  sin librerías). Ítem "Métricas RMA" en el nav de Operaciones.
+- **Pestaña (Fase D)**: `/metricas` ("Métricas soporte", proto). Reporte del **soporte completo** con
+  **dos bloques: Incidencias + RMA** (no solo RMA). Selector de semana (nuqs), KPI cards con delta por
+  bloque, tabla-reporte editable agrupada (como la foto de referencia), charts de barras (incidencias
+  por antigüedad, RMA por estado/resultados/turnaround) y **export CSV + PDF** (imprimible,
+  `window.print()`, sin librerías). Métricas de incidencias en `src/server/queries/incident-metrics.ts`
+  (reusa getSlaMetrics/getDashboardStats/getAgingDistribution); catálogo con `group` en
+  `src/lib/constants/rma-metrics.ts` (`SUPPORT_METRIC_CATALOG`). Ítem "Métricas soporte" en el nav.
 - Verificado: build+lint (0 errores), migración por MCP (grants a hsm_app OK) y la lógica SQL contra
   datos reales (8 RMA abiertos, 3 con >7 días; tiempo medio a tramitar 4,4 h; 80 transiciones).
