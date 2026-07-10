@@ -23,6 +23,7 @@ Pasos accionables para hacer las cosas.
 - [[Escalaciones Intercom]] — de una conversación a una incidencia.
 - [[RMA por proveedor]] — tramitar la devolución con el proveedor.
 - [[Etiquetas QR]] — etiquetas físicas para los envíos.
+- [[Métricas RMA]] — dashboard y reporte semanal de RMA (exportable).
 
 ## 📚 Conceptos
 Cómo funciona cada cosa.

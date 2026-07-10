@@ -1598,3 +1598,27 @@ siguiente paso). Reutiliza recordatorios, event_logs, Mi día y `fetchIntercomCo
   enviado al cliente a la espera de que confirme recepción; entre recibido_oficina y
   entregado_cliente; **pausa el SLA**. Coordinado en enum/constantes/validador/máquina de
   estados/badges/drawer/lista.
+
+### 2026-07-10 — PROYECTO ⑫: Visibilidad de RMA (endpoint fiable + pestaña "Métricas RMA")
+
+Doble objetivo: (1) que los cambios de RMA lleguen bien al Main Portal por `/api/external/metrics`,
+y (2) dar visibilidad interna con una pestaña exportable.
+
+- **Endpoint fiable (Fase A)**: las mutaciones de RMA (`createRma`/`updateRma`/`transitionRma`/
+  `forceTransitionRma`) invalidan la caché externa con `revalidateTag("hsm-external-metrics"/
+  "hsm-external-rmas")` → adiós al desfase de 30–60 s. Alineados los **13 estados** en
+  `/api/external/rmas` y en `analytics.ts`/`dashboard.ts` (entregado_cliente/rechazado cuentan como
+  cierre). `/rmas` emite `outcome`, `logistics`, `sla_paused_hours`, `active_hours_total`
+  (schema 1.1.0). `/metrics` gana un bloque `rmas` actual vs semana anterior (schema 1.2.0, aditivo).
+- **Queries KPI (Fase B)**: `src/server/queries/rma-metrics.ts` — aging RMA descontando pausa,
+  cambios de estado (event_logs), tiempo hasta tramitar (creación → primer `solicitado`), resultados
+  al cierre. `src/lib/utils/date-periods.ts` (semana ISO + periodo anterior). Catálogo en
+  `src/lib/constants/rma-metrics.ts`. "Resp. RMA" = tiempo hasta tramitar (objetivo 2 h configurable).
+- **Reporte editable (Fase C)**: tabla `hsm.rma_metric_reviews` (`sql/024`, MCP) — semáforo +
+  responsable + comentario por métrica y semana, **compartido**. Server actions get/upsert.
+- **Pestaña (Fase D)**: `/rmas/metricas` (proto). Selector de semana (nuqs), KPI cards con delta,
+  tabla-reporte editable (como la foto de referencia), charts de barras (reparto por estado, cambios
+  por día, resultados, turnaround por proveedor) y **export CSV + PDF** (imprimible, `window.print()`,
+  sin librerías). Ítem "Métricas RMA" en el nav de Operaciones.
+- Verificado: build+lint (0 errores), migración por MCP (grants a hsm_app OK) y la lógica SQL contra
+  datos reales (8 RMA abiertos, 3 con >7 días; tiempo medio a tramitar 4,4 h; 80 transiciones).

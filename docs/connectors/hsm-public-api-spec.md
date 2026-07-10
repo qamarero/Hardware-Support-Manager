@@ -452,3 +452,14 @@ curl -s "https://<hsm-domain>/api/external/rmas?provider_id=<uuid-jassway>&from=
 ## Changelog
 
 - **1.0.0** (2026-05-13): versión inicial — endpoints `/incidents` y `/rmas`
+- **1.1.0** (2026-07-10) · `/rmas`: alineados los **13 estados** de RMA. Los alias `open`/`closed`
+  y el `summary` usan ahora las constantes canónicas — `open` incluye `enviado_cliente`,
+  `esperando_cliente`; `closed` incluye `entregado_cliente`, `rechazado` (antes se contaban como
+  abiertos). Nuevos campos en `data[]`: `outcome`, `logistics`, `sla_paused_hours` y
+  `active_hours_total` (edad descontando pausas de SLA). La tabla "RMA status reference" debe
+  leerse con los 13 estados del enum (`src/lib/constants/rmas.ts`).
+- **1.2.0** (2026-07-10) · `/metrics` (repo Hw Main Portal): nuevo bloque `rmas` en `current` y
+  `previous` — `active`, `aging_gt7`, `by_status[]`, `state_changes`, `solicitudes_count`,
+  `time_to_solicitado_avg_h`, `time_to_solicitado_within_target_pct`, `cerrados`, `outcomes[]`
+  (aditivo). Además, las mutaciones de RMA ahora invalidan la caché externa vía `revalidateTag`,
+  así que los cambios se reflejan sin esperar la ventana de `revalidate` (30–60 s).
