@@ -6,6 +6,7 @@ import { useSession, signOut } from "next-auth/react";
 import {
   CalendarCheck,
   LayoutDashboard,
+  BarChart3,
   Ticket,
   LayoutGrid,
   StickyNote,
@@ -47,6 +48,7 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
       { href: "/corcho", label: "Corcho", icon: StickyNote },
       { href: "/casos", label: "Casos · RMA", icon: RefreshCw },
       { href: "/rmas", label: "RMA", icon: RotateCcw, badge: "rmas" },
+      { href: "/rmas/metricas", label: "Métricas RMA", icon: BarChart3 },
     ],
   },
   {
