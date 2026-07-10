@@ -67,7 +67,7 @@ export async function upsertMetricReview(input: {
           updatedAt: new Date(),
         },
       });
-    revalidatePath("/rmas/metricas");
+    revalidatePath("/metricas");
     return { success: true };
   } catch (err) {
     console.error("upsertMetricReview error:", err);

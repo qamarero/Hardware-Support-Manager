@@ -150,7 +150,7 @@ export function MetricasScreen() {
   const [weekParam, setWeekParam] = useQueryState("semana");
   const weekStart = weekParam || isoWeekStart(todayIso());
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ["support-metrics-dashboard", weekStart],
     queryFn: () => fetchSupportMetricsDashboard(weekStart),
   });
@@ -254,9 +254,16 @@ export function MetricasScreen() {
         </div>
       </div>
 
-      {isLoading || !data ? (
+      {isLoading ? (
         <div className="card card--pad" style={{ display: "flex", justifyContent: "center", padding: 40 }}>
           <Loader2 className="animate-spin" />
+        </div>
+      ) : isError || !data ? (
+        <div className="card card--pad" style={{ textAlign: "center", padding: 32 }}>
+          <p className="ds-body" style={{ marginBottom: 12 }}>No se pudieron cargar las métricas.</p>
+          <button type="button" className="btn btn--outline btn--sm" onClick={() => refetch()} disabled={isFetching}>
+            {isFetching ? <Loader2 size={14} className="animate-spin" /> : null} Reintentar
+          </button>
         </div>
       ) : (
         <>

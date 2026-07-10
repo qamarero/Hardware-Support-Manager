@@ -9,7 +9,7 @@ import { getSlaMetrics, getDashboardStats, getAgingDistribution } from "@/server
  * semana (cambios de estado + resueltas) desde `event_logs`/`incidents`.
  */
 
-async function getIncidentActivity(range?: DateRangeParams): Promise<{ stateChanges: number; resolved: number }> {
+export async function getIncidentActivity(range?: DateRangeParams): Promise<{ stateChanges: number; resolved: number }> {
   const from = range?.dateFrom;
   const to = range?.dateTo;
   const logFrom = from ? sql`AND created_at >= ${from + "T00:00:00"}` : sql``;
