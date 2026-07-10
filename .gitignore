@@ -60,3 +60,6 @@ venv/
 
 # Worktrees de Claude Code (no versionar)
 .claude/worktrees/
+
+# Obsidian (bóveda enlazada a la raíz del repo — estado/UI local, no versionar)
+.obsidian/

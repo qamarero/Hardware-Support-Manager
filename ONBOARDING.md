@@ -14,15 +14,15 @@ HSM es una aplicación web **interna** (Next.js 15 App Router) del departamento 
 
 ## 2. Arranque rápido desde otro terminal
 
-> El harness de Claude Code crea **un worktree por sesión** bajo `.claude/worktrees/<nombre>`. Antes de tocar nada, verifica que tu worktree está sincronizado con `main`.
+> **Fuente única: se trabaja siempre en la raíz del repo, sobre `main`. Nada de worktrees.** Si quieres una rama de pruebas antes de subir a producción, se crea **solo si se pide explícitamente**. Antes de tocar nada, verifica que `main` está al día con `origin/main`.
 
 ```bash
-# 1) ¿En qué rama/worktree estoy y cuánto me separo de main?
-git rev-parse --abbrev-ref HEAD
-git rev-list --left-right --count HEAD...main   # salida "A<TAB>B": A=adelante, B=detrás
+# 1) Estás en la raíz y en 'main'. Comprueba que no te separas de origin/main:
+git rev-parse --abbrev-ref HEAD                       # debe decir: main
+git rev-list --left-right --count HEAD...origin/main  # "A<TAB>B": A=adelante(sin push), B=detrás
 
-# 2) Si estás DETRÁS y SIN commits propios (A=0), pon al día con fast-forward:
-git merge --ff-only main
+# 2) Si estás DETRÁS y SIN commits propios (A=0), pon al día:
+git pull --ff-only
 
 # 3) Dependencias + entorno
 npm install
@@ -158,7 +158,7 @@ docs/proyecto_log.md    # changelog histórico
 
 ## 9. Workflow de cambios
 
-1. **Sincronizar** el worktree con `main` (§2).
+1. **Sincronizar** la raíz con `origin/main` (§2) — se trabaja en `main`, **sin worktrees**.
 2. **Editar** (verifica el wiring proto vs legacy antes de tocar un componente).
 3. **Verificar**: `npm run build && npm run lint` (+ `npm test` con Vitest si aplica).
 4. **Gate Intercom** (§6) si el cambio toca bandeja o transiciones.
@@ -225,4 +225,4 @@ docs/proyecto_log.md    # changelog histórico
 - A4 también para equipos (hoy A4 solo RMA; 100×150 para ambos).
 - Revisar la redacción final de las normas con uso real.
 - Sigue pendiente: **rotar el PAT de Supabase** (se expuso en chat); simplificar `/settings` al modelo binario de prioridad; guard de duplicados en `createRma`.
-- ⚠️ **Trampa de ruta**: el `cwd` es el worktree pero el repo raíz tiene su propia copia de cada archivo. Editar SIEMPRE por la ruta del worktree (`…/.claude/worktrees/<nombre>/src/…`); si no, el commit sale vacío y el build compila código viejo.
+- ✅ **Fuente única (desde 2026-07-10)**: se trabaja **siempre en la raíz del repo sobre `main`**; los worktrees quedaron eliminados. Si se necesita una rama de pruebas, se crea **solo bajo petición explícita**. (Histórico: antes el harness abría un worktree por sesión y editar por la ruta equivocada dejaba commits vacíos y builds con código viejo; ya no aplica.)
