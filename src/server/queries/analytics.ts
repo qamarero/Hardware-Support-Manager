@@ -157,7 +157,9 @@ export async function getDeviceFailureTrend(range?: DateRangeParams): Promise<De
 // ─── Provider Analytics ──────────────────────────────────────────────────────
 
 export async function getProviderRmaTurnaround(range?: DateRangeParams): Promise<ProviderTurnaround[]> {
-  const closedStatuses = ["recibido_oficina", "cerrado"] as const;
+  // Estados terminales del ciclo con el proveedor (excluye `cancelado`, que
+  // aborta sin turnaround real). Incluye los cierres nuevos entregado/rechazado.
+  const closedStatuses = ["cerrado", "entregado_cliente", "rechazado"] as const;
   const conditions = [
     ...dateConditions(rmas, range),
     // NOTE: usar `inArray` en vez de `sql\`... = ANY(${array})\`` porque el
@@ -189,9 +191,9 @@ export async function getProviderRmaVolume(range?: DateRangeParams): Promise<Pro
       providerId: rmas.providerId,
       providerName: providers.name,
       total: count().as("total"),
-      open: sql<number>`COUNT(*) FILTER (WHERE ${rmas.status} NOT IN ('cerrado', 'cancelado'))`.as("open"),
-      closed: sql<number>`COUNT(*) FILTER (WHERE ${rmas.status} = 'cerrado')`.as("closed"),
-      cancelled: sql<number>`COUNT(*) FILTER (WHERE ${rmas.status} = 'cancelado')`.as("cancelled"),
+      open: sql<number>`COUNT(*) FILTER (WHERE ${rmas.status} NOT IN ('cerrado', 'cancelado', 'entregado_cliente', 'rechazado'))`.as("open"),
+      closed: sql<number>`COUNT(*) FILTER (WHERE ${rmas.status} IN ('cerrado', 'entregado_cliente'))`.as("closed"),
+      cancelled: sql<number>`COUNT(*) FILTER (WHERE ${rmas.status} IN ('cancelado', 'rechazado'))`.as("cancelled"),
     })
     .from(rmas)
     .innerJoin(providers, eq(rmas.providerId, providers.id))
@@ -201,7 +203,9 @@ export async function getProviderRmaVolume(range?: DateRangeParams): Promise<Pro
 }
 
 export async function getProviderSuccessRate(range?: DateRangeParams): Promise<ProviderSuccessRate[]> {
-  const finishedStatuses = ["cerrado", "cancelado"] as const;
+  // Terminados = los 4 estados de cierre canónicos. Éxito = resuelto a favor
+  // del cliente (cerrado o entregado al cliente); rechazado/cancelado no.
+  const finishedStatuses = ["cerrado", "cancelado", "entregado_cliente", "rechazado"] as const;
   const conditions = [
     ...dateConditions(rmas, range),
     // Mismo fix que en getProviderRmaTurnaround — ver comentario allí.
@@ -213,7 +217,7 @@ export async function getProviderSuccessRate(range?: DateRangeParams): Promise<P
       providerId: rmas.providerId,
       providerName: providers.name,
       total: count().as("total"),
-      successful: sql<number>`COUNT(*) FILTER (WHERE ${rmas.status} = 'cerrado')`.as("successful"),
+      successful: sql<number>`COUNT(*) FILTER (WHERE ${rmas.status} IN ('cerrado', 'entregado_cliente'))`.as("successful"),
     })
     .from(rmas)
     .innerJoin(providers, eq(rmas.providerId, providers.id))

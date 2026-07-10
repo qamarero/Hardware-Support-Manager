@@ -5,7 +5,7 @@ import { rmas, providers, clients, eventLogs, incidents } from "@/lib/db/schema"
 import { eq, isNull } from "drizzle-orm";
 import { after } from "next/server";
 import { syncRmaTransition } from "@/lib/intercom/sync";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { getRequiredSession, requireRole } from "@/lib/auth/get-session";
 import {
   createRmaSchema,
@@ -20,6 +20,17 @@ import type { ActionResult, PaginationParams, PaginatedResult } from "@/types";
 import type { RmaRow } from "@/server/queries/rmas";
 import type { RmaStatus } from "@/lib/constants/rmas";
 import type { UserRole } from "@/lib/constants/roles";
+
+/**
+ * Invalida la caché de los endpoints externos que consume el Main Portal
+ * (`/api/external/metrics` y `/api/external/rmas`, cacheados con `unstable_cache`
+ * por tag). Sin esto, los cambios de RMA tardan hasta 30-60 s en reflejarse.
+ * Se llama tras cada mutación de RMA.
+ */
+function revalidateExternalRmaFeeds() {
+  revalidateTag("hsm-external-rmas");
+  revalidateTag("hsm-external-metrics");
+}
 
 export async function createRma(
   input: unknown
@@ -84,6 +95,7 @@ export async function createRma(
   });
 
   revalidatePath("/rmas");
+  revalidateExternalRmaFeeds();
   return { success: true, data: { id: rma.id } };
 }
 
@@ -186,6 +198,7 @@ export async function updateRma(
 
     revalidatePath("/rmas");
     revalidatePath(`/rmas/${id}`);
+    revalidateExternalRmaFeeds();
     return { success: true, data: { id: rma.id } };
   } catch (err) {
     console.error("updateRma error:", err);
@@ -333,6 +346,7 @@ export async function transitionRma(
 
   revalidatePath("/rmas");
   revalidatePath(`/rmas/${rmaId}`);
+  revalidateExternalRmaFeeds();
   return { success: true, data: { id: rmaId } };
 }
 
@@ -416,6 +430,7 @@ export async function forceTransitionRma(
 
     revalidatePath("/rmas");
     revalidatePath(`/rmas/${rmaId}`);
+    revalidateExternalRmaFeeds();
     return { success: true, data: { id: rmaId } };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error desconocido";

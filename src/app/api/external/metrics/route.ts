@@ -15,6 +15,13 @@ import {
   getProviderSuccessRate,
   getProviderRmaTurnaround,
 } from "@/server/queries/analytics";
+import { getRmasAggregates } from "@/server/queries/rmas";
+import {
+  getRmaMetricValues,
+  getRmaAgingDistribution,
+  getRmaOutcomeBreakdown,
+} from "@/server/queries/rma-metrics";
+import { RMA_STATUS_LABELS, type RmaStatus } from "@/lib/constants/rmas";
 
 /**
  * GET /api/external/metrics
@@ -231,6 +238,11 @@ async function buildPayload(periods: PeriodStrings) {
     extra,
     quickCurrent,
     quickPrev,
+    rmaValuesCurrent,
+    rmaValuesPrev,
+    rmaAging,
+    rmaByStatus,
+    rmaOutcomes,
   ] = await Promise.all([
     getDashboardStats(currentRange),
     getSlaMetrics(currentRange),
@@ -243,6 +255,11 @@ async function buildPayload(periods: PeriodStrings) {
     computeThroughputAndCritical(from, to),
     getQuickConsultationsStats(currentRange),
     getQuickConsultationsStats(prevRange),
+    getRmaMetricValues(currentRange),
+    getRmaMetricValues(prevRange),
+    getRmaAgingDistribution(),
+    getRmasAggregates({ dateRangeFrom: from, dateRangeTo: to }),
+    getRmaOutcomeBreakdown(currentRange),
   ]);
 
   const topProviders = buildTopProviders(
@@ -261,7 +278,7 @@ async function buildPayload(periods: PeriodStrings) {
 
   return {
     generated_at: new Date().toISOString(),
-    schema_version: "1.1.0",
+    schema_version: "1.2.0",
     filters: { from, to, prev_from: prevFrom, prev_to: prevTo },
     current: {
       open_incidents: toNumberOrNull(statsCurrent.openIncidents) ?? 0,
@@ -290,6 +307,24 @@ async function buildPayload(periods: PeriodStrings) {
         })),
         conversion_rate_pct: toNumberOrNull(quickCurrent.conversionRatePct) ?? 0,
       },
+      // Bloque RMA (aditivo, schema 1.2.0). Snapshots: `active`, `aging_gt7`,
+      // `by_status`. El resto son de actividad en el periodo (comparables con
+      // `previous.rmas`).
+      rmas: {
+        active: toNumberOrNull(statsCurrent.activeRmas) ?? 0,
+        aging_gt7: rmaAging.gt7d,
+        by_status: rmaByStatus.byStatus.map((r) => ({
+          status: r.status,
+          label: RMA_STATUS_LABELS[r.status as RmaStatus] ?? r.status,
+          count: r.count,
+        })),
+        state_changes: rmaValuesCurrent.rma_state_changes ?? 0,
+        solicitudes_count: rmaValuesCurrent.rma_solicitudes ?? 0,
+        time_to_solicitado_avg_h: rmaValuesCurrent.rma_time_to_solicitado,
+        time_to_solicitado_within_target_pct: rmaValuesCurrent.rma_solicitado_within_target,
+        cerrados: rmaValuesCurrent.rma_cerrados ?? 0,
+        outcomes: rmaOutcomes.map((o) => ({ outcome: o.outcome, count: o.count })),
+      },
     },
     previous: {
       sla_compliance_pct: toNumberOrNull(slaPrev.slaCompliancePercent) ?? 0,
@@ -299,6 +334,13 @@ async function buildPayload(periods: PeriodStrings) {
       quick_consultations: {
         count: toNumberOrNull(quickPrev.count) ?? 0,
         total_minutes: toNumberOrNull(quickPrev.totalMinutes) ?? 0,
+      },
+      rmas: {
+        state_changes: rmaValuesPrev.rma_state_changes ?? 0,
+        solicitudes_count: rmaValuesPrev.rma_solicitudes ?? 0,
+        time_to_solicitado_avg_h: rmaValuesPrev.rma_time_to_solicitado,
+        time_to_solicitado_within_target_pct: rmaValuesPrev.rma_solicitado_within_target,
+        cerrados: rmaValuesPrev.rma_cerrados ?? 0,
       },
     },
   };

@@ -11,6 +11,11 @@ import {
   RMA_STATUS_LABELS,
   type RmaStatus,
 } from "@/lib/constants/rmas";
+import {
+  OPEN_RMA_STATUSES,
+  CLOSED_RMA_STATUSES,
+  PAUSED_RMA_STATES,
+} from "@/lib/constants/statuses";
 
 /**
  * GET /api/external/rmas
@@ -37,20 +42,18 @@ export const dynamic = "force-dynamic";
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-/** Status aliases. */
+/** Status aliases — usan las constantes canónicas (13 estados) para no
+ *  desalinearse con el resto de la app. `CLOSED_RMA_STATUSES` (importado) ya
+ *  incluye `entregado_cliente` y `rechazado`. */
 const STATUS_ALIASES: Record<string, RmaStatus[]> = {
-  // Active = anything not cerrado/cancelado
-  open: ["borrador", "solicitado", "aprobado", "enviado_proveedor", "en_proveedor", "devuelto", "recibido_oficina"],
-  closed: ["cerrado", "cancelado"],
+  open: [...OPEN_RMA_STATUSES] as RmaStatus[],
+  closed: [...CLOSED_RMA_STATUSES] as RmaStatus[],
 };
 
 const ALL_STATUSES: ReadonlyArray<RmaStatus> = [
-  "borrador", "solicitado", "aprobado", "enviado_proveedor",
-  "en_proveedor", "devuelto", "recibido_oficina",
-  "cerrado", "cancelado",
-];
-
-const CLOSED_RMA_STATUSES: ReadonlyArray<RmaStatus> = ["cerrado", "cancelado"];
+  ...OPEN_RMA_STATUSES,
+  ...CLOSED_RMA_STATUSES,
+] as RmaStatus[];
 
 function defaultFromIso(): string {
   const d = new Date();
@@ -86,6 +89,28 @@ function hoursBetween(later: Date | null, earlier: Date | null): number | null {
   if (!later || !earlier) return null;
   const ms = later.getTime() - earlier.getTime();
   return Math.round((ms / (1000 * 60 * 60)) * 10) / 10;
+}
+
+function msToHours(ms: number): number {
+  return Math.round((ms / (1000 * 60 * 60)) * 10) / 10;
+}
+
+/**
+ * Milisegundos totales en pausa de SLA: los acumulados (`sla_paused_ms`) más la
+ * pausa en curso si el estado actual pausa (equipo/acción fuera de nuestro
+ * alcance). Sirve para exponer la edad "activa" descontando esperas ajenas.
+ */
+function pausedMsTotal(
+  slaPausedMs: string | null,
+  status: string,
+  stateChangedAt: Date,
+  now: Date,
+): number {
+  const acc = Number(slaPausedMs) || 0;
+  const ongoing = (PAUSED_RMA_STATES as readonly string[]).includes(status)
+    ? Math.max(0, now.getTime() - stateChangedAt.getTime())
+    : 0;
+  return acc + ongoing;
 }
 
 interface ParsedFilters {
@@ -138,7 +163,7 @@ async function buildPayload(parsed: ParsedFilters) {
 
   return {
     generated_at: now.toISOString(),
-    schema_version: "1.0.0",
+    schema_version: "1.1.0",
     filters: {
       from: parsed.from,
       to: parsed.to,
@@ -209,12 +234,26 @@ async function buildPayload(parsed: ParsedFilters) {
         shipping_cents: rma.shippingCostCents,
         replacement_cents: rma.replacementCostCents,
       },
+      outcome: rma.outcome,
+      logistics: rma.logistics,
       notes: rma.notes,
       created_at: rma.createdAt.toISOString(),
       updated_at: rma.updatedAt.toISOString(),
       state_changed_at: rma.stateChangedAt.toISOString(),
       age_hours_in_state: hoursBetween(now, rma.stateChangedAt),
       age_hours_total: hoursBetween(now, rma.createdAt),
+      // Pausa de SLA acumulada (+ en curso) y edad "activa" descontándola.
+      sla_paused_hours: msToHours(
+        pausedMsTotal(rma.slaPausedMs, rma.status, rma.stateChangedAt, now),
+      ),
+      active_hours_total: msToHours(
+        Math.max(
+          0,
+          now.getTime() -
+            rma.createdAt.getTime() -
+            pausedMsTotal(rma.slaPausedMs, rma.status, rma.stateChangedAt, now),
+        ),
+      ),
     })),
     pagination: {
       page: paginated.page,

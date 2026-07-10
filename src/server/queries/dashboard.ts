@@ -106,7 +106,7 @@ export async function getDashboardStats(
          WHERE status NOT IN ('resuelto','cerrado','cancelado')
         ) AS open_incidents,
         (SELECT count(*) FROM hsm.rmas
-         WHERE status NOT IN ('recibido_oficina','cerrado','cancelado')
+         WHERE status NOT IN ('entregado_cliente','rechazado','cerrado','cancelado')
         ) AS active_rmas,
         (SELECT count(*) FROM hsm.providers
          WHERE deleted_at IS NULL
@@ -204,7 +204,7 @@ export async function getSlaMetrics(
 
         (SELECT avg(extract(epoch from (updated_at - created_at)) / 86400)
          FROM hsm.rmas
-         WHERE status IN ('recibido_oficina','cerrado')
+         WHERE status IN ('cerrado','entregado_cliente','rechazado')
          ${rmaFrom} ${rmaTo}
         ) AS rma_avg_days
     `);
