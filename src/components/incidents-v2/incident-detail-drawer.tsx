@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2, Check, RotateCcw, Clock, Pencil, X, MessageSquare } from "lucide-react";
@@ -72,11 +72,15 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
     queryFn: () => fetchUsersForSelect(),
     enabled: !!incidentId,
   });
-  const { data: clients = [] } = useQuery({
+  const { data: clientsRaw = [] } = useQuery({
     queryKey: ["clients", "select"],
     queryFn: () => fetchClientsForSelect(),
     enabled: !!incidentId && editing,
   });
+  const clients = useMemo(
+    () => clientsRaw.map((c) => ({ id: c.id, name: c.name, hint: c.externalId })),
+    [clientsRaw]
+  );
   const { data: linkedRmas = [] } = useQuery({
     queryKey: ["linked-rmas", incidentId],
     queryFn: () => fetchLinkedRmas(incidentId!),
@@ -386,7 +390,18 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
                   </div>
 
                   <dl className="dl">
-                    <dt>Cliente</dt><dd>{inc.clientCompanyName ?? inc.clientName ?? "—"}</dd>
+                    <dt>Cliente</dt>
+                    <dd style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span>{inc.clientCompanyName ?? inc.clientName ?? "—"}</span>
+                      {inc.clientExternalId && (
+                        <span title="ID de cliente (Qamarero)" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", color: "var(--fg-tertiary)" }}>ID</span>
+                          <span style={{ fontFamily: "var(--font-mono, ui-monospace, monospace)", fontSize: 12 }}>
+                            <CopyId value={inc.clientExternalId} label={`${inc.clientExternalId.slice(0, 8)}…`} />
+                          </span>
+                        </span>
+                      )}
+                    </dd>
                     <dt>Intercom</dt>
                     <dd>
                       {intercomConversationUrl(conversationId) ? (

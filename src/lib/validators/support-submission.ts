@@ -20,6 +20,9 @@ export const createSubmissionSchema = z.object({
 
   // Client
   clientName: z.string().min(2, "Nombre de cliente requerido").max(500),
+  // ID del cliente (restaurant_id de Qamarero) si se eligió del buscador.
+  // Opcional: permite texto libre para clientes aún no registrados.
+  clientId: z.string().uuid().optional().or(z.literal("")),
 
   // Incident
   title: z.string().min(3, "Título demasiado corto").max(120),

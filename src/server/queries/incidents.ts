@@ -7,6 +7,8 @@ import type { PaginationParams, PaginatedResult } from "@/types";
 export type IncidentRow = typeof incidents.$inferSelect & {
   assignedUserName: string | null;
   clientCompanyName: string | null;
+  /** ID del cliente en el sistema principal de Qamarero (restaurant_id). Distingue homónimos. */
+  clientExternalId?: string | null;
   clientLocationName?: string | null;
   /** Nº de RMAs vinculados a la incidencia (para indicador en la lista). */
   rmaCount?: number;
@@ -104,6 +106,7 @@ export async function getIncidents(
         quickDurationMinutes: incidents.quickDurationMinutes,
         assignedUserName: users.name,
         clientCompanyName: clients.name,
+        clientExternalId: clients.externalId,
         // RMA vinculado (subconsultas correlacionadas; la FK no es unique → puede haber varios).
         rmaCount: sql<number>`(select count(*)::int from hsm.rmas r where r.incident_id = ${incidents.id})`,
         latestRmaId: sql<string | null>`(select r.id from hsm.rmas r where r.incident_id = ${incidents.id} order by r.created_at desc limit 1)`,
@@ -177,6 +180,7 @@ export async function getIncidentById(id: string): Promise<IncidentRow | null> {
       quickDurationMinutes: incidents.quickDurationMinutes,
       assignedUserName: users.name,
       clientCompanyName: clients.name,
+      clientExternalId: clients.externalId,
       clientLocationName: clientLocations.name,
     })
     .from(incidents)

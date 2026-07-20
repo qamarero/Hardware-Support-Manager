@@ -27,6 +27,24 @@ import type { SupportSubmissionStatus } from "@/lib/constants/support-submission
 import { ilike, isNull } from "drizzle-orm";
 
 /**
+ * PUBLIC action — no auth required. Lista de clientes para el buscador del
+ * formulario /submit (nombre + ID/restaurant_id para distinguir homónimos).
+ *
+ * ⚠️ ABIERTA a petición del propietario (entorno de pruebas). Cuando se
+ * implemente el login de CX, restringir esta acción con getRequiredSession()
+ * o un token — es el único punto que expone la lista de clientes en público.
+ */
+export async function fetchClientsForSubmit(): Promise<
+  { id: string; name: string; externalId: string | null }[]
+> {
+  return db
+    .select({ id: clients.id, name: clients.name, externalId: clients.externalId })
+    .from(clients)
+    .where(isNull(clients.deletedAt))
+    .orderBy(clients.name);
+}
+
+/**
  * PUBLIC action — no auth required.
  * Creates a new support submission from the CX team public form.
  */
@@ -70,6 +88,7 @@ export async function submitSupportRequest(
     submitterName,
     submitterEmail,
     clientName,
+    clientId: selectedClientId,
     title,
     description,
     priority,
@@ -83,14 +102,17 @@ export async function submitSupportRequest(
   } = parsed.data;
 
   try {
-    // Try to auto-match client by name
-    let matchedClientId: string | null = null;
-    const [client] = await db
-      .select({ id: clients.id })
-      .from(clients)
-      .where(and(ilike(clients.name, clientName.trim()), isNull(clients.deletedAt)))
-      .limit(1);
-    if (client) matchedClientId = client.id;
+    // Si el usuario eligió un cliente del buscador, usamos ese ID exacto
+    // (evita ambigüedad entre homónimos). Si no, intentamos auto-match por nombre.
+    let matchedClientId: string | null = selectedClientId || null;
+    if (!matchedClientId) {
+      const [client] = await db
+        .select({ id: clients.id })
+        .from(clients)
+        .where(and(ilike(clients.name, clientName.trim()), isNull(clients.deletedAt)))
+        .limit(1);
+      if (client) matchedClientId = client.id;
+    }
 
     const [submission] = await db
       .insert(supportSubmissions)

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2, Send, Paperclip, X } from "lucide-react";
 import { upload } from "@vercel/blob/client";
@@ -32,7 +32,8 @@ import {
   createSubmissionSchema,
   type CreateSubmissionInput,
 } from "@/lib/validators/support-submission";
-import { submitSupportRequest } from "@/server/actions/support-submissions";
+import { submitSupportRequest, fetchClientsForSubmit } from "@/server/actions/support-submissions";
+import { Combobox } from "@/components/proto/combobox";
 import { ALLOWED_SUBMITTER_DOMAINS, SUBMIT_IMAGE_TYPES, SUBMIT_MAX_IMAGE_SIZE, SUBMIT_MAX_ATTACHMENTS } from "@/lib/constants/support-submissions";
 import { DEVICE_TYPES, DEVICE_TYPE_LABELS, type DeviceType } from "@/lib/constants/device-types";
 import { SubmissionSuccess } from "./submission-success";
@@ -48,6 +49,7 @@ export function SubmissionForm() {
       submitterName: "",
       submitterEmail: "",
       clientName: "",
+      clientId: "",
       title: "",
       description: "",
       priority: "media",
@@ -61,6 +63,18 @@ export function SubmissionForm() {
       website: "", // honeypot
     },
   });
+
+  // Clientes para el buscador (acción pública). El ID (restaurant_id) se
+  // muestra como hint para distinguir homónimos (p.ej. varios "Bar La Plaza").
+  const { data: clientsRaw = [] } = useQuery({
+    queryKey: ["clients", "submit-select"],
+    queryFn: () => fetchClientsForSubmit(),
+    staleTime: 5 * 60 * 1000,
+  });
+  const clientOptions = useMemo(
+    () => clientsRaw.map((c) => ({ id: c.id, name: c.name, hint: c.externalId })),
+    [clientsRaw]
+  );
 
   const mutation = useMutation({
     mutationFn: (data: CreateSubmissionInput) => submitSupportRequest(data),
@@ -209,12 +223,29 @@ export function SubmissionForm() {
                   name="clientName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nombre del cliente / empresa *</FormLabel>
+                      <FormLabel>Cliente / empresa *</FormLabel>
                       <FormControl>
-                        <Input placeholder="Ej: Restaurante Berraco" {...field} />
+                        <Combobox
+                          options={clientOptions}
+                          value={form.watch("clientId") || ""}
+                          onChange={(id) => {
+                            form.setValue("clientId", id, { shouldValidate: true });
+                            const opt = clientOptions.find((o) => o.id === id);
+                            // Al elegir de la lista, fijamos también el nombre.
+                            form.setValue("clientName", opt ? opt.name : "", { shouldValidate: true });
+                          }}
+                          placeholder="Buscar cliente por nombre o ID…"
+                          emptyLabel="Ningún cliente coincide — escríbelo para usarlo como texto"
+                          allowFreeText
+                          freeText={field.value}
+                          onFreeText={(t) => {
+                            field.onChange(t);
+                            form.setValue("clientId", "");
+                          }}
+                        />
                       </FormControl>
                       <FormDescription className="text-xs">
-                        Intentaremos matchear automaticamente con los clientes registrados
+                        Busca el cliente y selecciónalo para fijar su ID exacto. Si no está registrado, escríbelo como texto.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

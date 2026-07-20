@@ -219,11 +219,11 @@ export async function fetchClients(
 }
 
 export async function fetchClientsForSelect(): Promise<
-  { id: string; name: string }[]
+  { id: string; name: string; externalId: string | null }[]
 > {
   await getRequiredSession();
   return db
-    .select({ id: clients.id, name: clients.name })
+    .select({ id: clients.id, name: clients.name, externalId: clients.externalId })
     .from(clients)
     .where(isNull(clients.deletedAt))
     .orderBy(clients.name);

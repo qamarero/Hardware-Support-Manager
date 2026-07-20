@@ -6,6 +6,13 @@ import { Search, Check, X, Plus } from "lucide-react";
 export interface ComboOption {
   id: string;
   name: string;
+  /** Texto secundario (p.ej. ID del cliente). Se muestra y es buscable. */
+  hint?: string | null;
+}
+
+/** Acorta un identificador largo (UUID) para mostrarlo sin ocupar toda la fila. */
+function shortHint(hint: string): string {
+  return hint.length > 12 ? `${hint.slice(0, 8)}…` : hint;
 }
 
 interface ComboboxProps {
@@ -50,7 +57,13 @@ export function Combobox({ options, value, onChange, placeholder = "Buscar…", 
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const list = q ? options.filter((o) => o.name.toLowerCase().includes(q)) : options;
+    const list = q
+      ? options.filter(
+          (o) =>
+            o.name.toLowerCase().includes(q) ||
+            (o.hint ?? "").toLowerCase().includes(q)
+        )
+      : options;
     return list.slice(0, 50); // limitar render
   }, [options, query]);
 
@@ -128,7 +141,19 @@ export function Combobox({ options, value, onChange, placeholder = "Buscar…", 
                 onMouseLeave={(e) => { if (o.id !== value) e.currentTarget.style.background = "transparent"; }}
               >
                 {o.id === value && <Check size={14} style={{ color: "var(--primary)", flexShrink: 0 }} />}
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.name}</span>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>{o.name}</span>
+                {o.hint && (
+                  <span
+                    title={o.hint}
+                    style={{
+                      flexShrink: 0, fontFamily: "var(--font-mono, ui-monospace, monospace)",
+                      fontSize: 11, color: "var(--fg-tertiary)", background: "var(--gray-50)",
+                      border: "1px solid var(--border)", borderRadius: 4, padding: "1px 5px",
+                    }}
+                  >
+                    {shortHint(o.hint)}
+                  </span>
+                )}
               </button>
             ))
           )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Save, Loader2 } from "lucide-react";
@@ -42,11 +42,16 @@ export function IncidentFormDrawer({ open, onClose, onCreated, users }: Props) {
   const [clientName, setClientName] = useState("");
   const [intercomUrl, setIntercomUrl] = useState("");
 
-  const { data: clients = [] } = useQuery({
+  const { data: clientsRaw = [] } = useQuery({
     queryKey: ["clients", "select"],
     queryFn: () => fetchClientsForSelect(),
     enabled: open,
   });
+  // El ID (restaurant_id de Qamarero) se muestra como hint para distinguir homónimos.
+  const clients = useMemo(
+    () => clientsRaw.map((c) => ({ id: c.id, name: c.name, hint: c.externalId })),
+    [clientsRaw]
+  );
 
   function reset() {
     setTitle(""); setDescription(""); setArticleId(""); setDeviceType(""); setDeviceBrand(""); setDeviceModel("");
