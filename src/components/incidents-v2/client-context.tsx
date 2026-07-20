@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Store, Loader2 } from "lucide-react";
+import { Store, Loader2, AlertTriangle } from "lucide-react";
 import { fetchClientContext } from "@/server/actions/incidents";
 import { IncidentStatusBadge } from "@/components/proto/badges";
 import { formatRelativeTime } from "@/lib/utils/date-format";
@@ -14,10 +14,20 @@ interface Props {
 
 /** Historial operativo del cliente, para dar contexto/recurrencia en la ficha. */
 export function ClientContext({ clientId, clientName, currentIncidentId }: Props) {
-  const { data, isLoading } = useQuery({
+  // El queryFn captura el error y devuelve `null` como centinela: así la query
+  // SIEMPRE resuelve y podemos distinguir de forma fiable carga (undefined) de
+  // error (null) sin depender de cómo Next/react-query traten un throw.
+  const { data, isPending, refetch, isFetching } = useQuery({
     queryKey: ["client-context", clientId, currentIncidentId],
-    queryFn: () => fetchClientContext(clientId, currentIncidentId),
+    queryFn: async () => {
+      try {
+        return await fetchClientContext(clientId, currentIncidentId);
+      } catch {
+        return null;
+      }
+    },
   });
+  const isError = data === null;
 
   return (
     <div>
@@ -25,7 +35,22 @@ export function ClientContext({ clientId, clientName, currentIncidentId }: Props
         <Store size={13} /> Historial del cliente{clientName ? ` · ${clientName}` : ""}
       </div>
       <div className="card" style={{ padding: 14 }}>
-        {isLoading || !data ? (
+        {isError ? (
+          <div className="flex items-center gap-2 text-sm" style={{ justifyContent: "space-between" }}>
+            <span className="flex items-center gap-2" style={{ color: "var(--red-600, #dc2626)" }}>
+              <AlertTriangle size={14} /> No se pudo cargar el historial.
+            </span>
+            <button
+              type="button"
+              className="btn btn--ghost btn--sm"
+              onClick={() => refetch()}
+              disabled={isFetching}
+              style={{ flexShrink: 0 }}
+            >
+              {isFetching ? <Loader2 size={13} className="animate-spin" /> : "Reintentar"}
+            </button>
+          </div>
+        ) : isPending || !data ? (
           <div className="flex items-center gap-2 muted text-sm"><Loader2 size={14} className="animate-spin" /> Cargando…</div>
         ) : (
           <div className="stack" style={{ gap: 12 }}>

@@ -2,7 +2,11 @@
 
 import { getRequiredSession } from "@/lib/auth/get-session";
 import { computePeriods, weekRange } from "@/lib/utils/date-periods";
-import { getIncidentActivity } from "@/server/queries/incident-metrics";
+import {
+  getIncidentActivity,
+  getWeeklyIncidentActivity,
+  type WeeklyIncidentActivity,
+} from "@/server/queries/incident-metrics";
 import {
   getRmaAgingDistribution,
   getRmaStateChangeStats,
@@ -46,6 +50,23 @@ export interface SupportMetricsDashboard {
  * Supabase → `statement timeout` → carga infinita. Ahora el pico de
  * concurrencia es ~7 y los snapshots se calculan una sola vez.
  */
+/**
+ * Informe de actividad semanal de incidencias (por incidencia) para la sección
+ * de /metricas. Devuelve `null` si falla, para que la UI muestre un estado de
+ * error con reintento en vez de un spinner infinito.
+ */
+export async function fetchWeeklyIncidentActivity(
+  weekStart: string,
+): Promise<WeeklyIncidentActivity | null> {
+  try {
+    await getRequiredSession();
+    const { from, to } = weekRange(weekStart);
+    return await getWeeklyIncidentActivity(from, to);
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchSupportMetricsDashboard(weekStart: string): Promise<SupportMetricsDashboard> {
   await getRequiredSession();
 

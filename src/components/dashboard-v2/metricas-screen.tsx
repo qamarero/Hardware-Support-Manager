@@ -26,6 +26,7 @@ import {
 } from "@/lib/constants/rma-metrics";
 import { addDaysIso, isoWeekStart, todayIso } from "@/lib/utils/date-periods";
 import { generateCSV, downloadCSV } from "@/lib/utils/csv-export";
+import { IncidentActivityReport } from "./incident-activity-report";
 
 const OUTCOME_LABELS: Record<string, string> = {
   reparado: "Reparado",
@@ -386,6 +387,9 @@ export function MetricasScreen() {
           </p>
         </>
       )}
+
+      {/* Informe de actividad de incidencias (query propia, independiente del dashboard) */}
+      <IncidentActivityReport weekStart={weekStart} />
     </div>
   );
 }
