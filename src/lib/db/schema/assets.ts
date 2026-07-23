@@ -1,4 +1,4 @@
-import { uuid, varchar, text, timestamp, index } from "drizzle-orm/pg-core";
+import { uuid, varchar, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
 import { hsmSchema } from "./hsm-schema";
 import { articles } from "./articles";
 import { rmas } from "./rmas";
@@ -22,6 +22,8 @@ export const assets = hsmSchema.table(
     status: varchar("status", { length: 40 }).notNull().default("en_oficina"),
     location: varchar("location", { length: 255 }),
     notes: text("notes"),
+    // Reacondicionado: el equipo está revisado y listo para reutilizar con clientes.
+    reconditioned: boolean("reconditioned").notNull().default(false),
     // Vínculos opcionales (un equipo puede estar asociado a un RMA/incidencia).
     articleId: uuid("article_id").references(() => articles.id),
     rmaId: uuid("rma_id").references(() => rmas.id),

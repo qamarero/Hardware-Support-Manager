@@ -9,6 +9,7 @@ export const createAssetSchema = z.object({
   status: z.string().max(40).optional().or(z.literal("")),
   location: z.string().max(255).optional().or(z.literal("")),
   notes: z.string().optional().or(z.literal("")),
+  reconditioned: z.boolean().optional(),
   articleId: z.string().uuid("Artículo inválido").optional().or(z.literal("")),
   rmaId: z.string().uuid("RMA inválido").optional().or(z.literal("")),
   incidentId: z.string().uuid("Incidencia inválida").optional().or(z.literal("")),

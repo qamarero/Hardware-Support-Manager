@@ -48,6 +48,7 @@ export async function createAsset(
       status: d.status || "en_oficina",
       location: d.location || null,
       notes: d.notes || null,
+      reconditioned: d.reconditioned ?? false,
       articleId: d.articleId || null,
       rmaId: d.rmaId || null,
       incidentId: d.incidentId || null,
@@ -76,6 +77,7 @@ export async function updateAsset(
   if (d.status !== undefined && d.status) values.status = d.status;
   if (d.location !== undefined) values.location = d.location || null;
   if (d.notes !== undefined) values.notes = d.notes || null;
+  if (d.reconditioned !== undefined) values.reconditioned = d.reconditioned;
   if (d.articleId !== undefined) values.articleId = d.articleId || null;
   if (d.rmaId !== undefined) values.rmaId = d.rmaId || null;
   if (d.incidentId !== undefined) values.incidentId = d.incidentId || null;
