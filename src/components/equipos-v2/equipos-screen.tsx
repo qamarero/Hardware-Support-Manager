@@ -3,19 +3,18 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, Loader2, Tag, Printer, Save, CheckCircle2, History } from "lucide-react";
+import { Plus, Loader2, Tag, Printer, Save, CheckCircle2, History, Trash2 } from "lucide-react";
 import { Drawer, Field } from "@/components/proto/drawer";
 import { ArticleCombobox } from "@/components/proto/article-combobox";
 import { CopyId } from "@/components/proto/copy-id";
-import { fetchAssets, createAsset, updateAsset, fetchAssetEvents } from "@/server/actions/assets";
+import { fetchAssets, createAsset, updateAsset, deleteAsset, fetchAssetEvents } from "@/server/actions/assets";
 import type { AssetRow, AssetEventRow } from "@/server/queries/assets";
 import {
   ASSET_STATUSES,
   ASSET_STATUS_LABELS,
-  ASSET_STATUS_BADGE,
   assetStatusLabel,
+  assetStatusBadgeClass,
   assetWhereabouts,
-  type AssetStatus,
 } from "@/lib/constants/assets";
 import { formatDateTime } from "@/lib/utils/date-format";
 
@@ -62,6 +61,7 @@ export function EquiposScreen() {
   const [query, setQuery] = useState("");
   const [onlyRecond, setOnlyRecond] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [confirmDel, setConfirmDel] = useState(false);
 
   const { data: assets = [], isLoading } = useQuery({
     queryKey: ["assets"],
@@ -74,9 +74,9 @@ export function EquiposScreen() {
     enabled: !!editingId,
   });
 
-  const close = () => { setF({ ...EMPTY }); setEditingId(null); setFormOpen(false); };
-  const openNew = () => { setF({ ...EMPTY }); setEditingId(null); setFormOpen(true); };
-  const openEdit = (a: AssetRow) => { setF(fromAsset(a)); setEditingId(a.id); setFormOpen(true); };
+  const close = () => { setF({ ...EMPTY }); setEditingId(null); setConfirmDel(false); setFormOpen(false); };
+  const openNew = () => { setF({ ...EMPTY }); setEditingId(null); setConfirmDel(false); setFormOpen(true); };
+  const openEdit = (a: AssetRow) => { setF(fromAsset(a)); setEditingId(a.id); setConfirmDel(false); setFormOpen(true); };
 
   const saveM = useMutation({
     mutationFn: () => (editingId ? updateAsset(editingId, f) : createAsset(f)),
@@ -98,6 +98,17 @@ export function EquiposScreen() {
       close();
     },
     onError: () => toast.error("Error al guardar el equipo"),
+  });
+
+  const deleteM = useMutation({
+    mutationFn: () => deleteAsset(editingId as string),
+    onSuccess: (r) => {
+      if (!r.success) { toast.error(r.error); return; }
+      toast.success("Equipo eliminado");
+      qc.invalidateQueries({ queryKey: ["assets"] });
+      close();
+    },
+    onError: () => toast.error("Error al eliminar el equipo"),
   });
 
   const visible = assets.filter((a) => {
@@ -180,7 +191,7 @@ export function EquiposScreen() {
                   </td>
                   <td className="text-sm mono">{a.deviceSerialNumber ?? "—"}</td>
                   <td>
-                    <span className={`badge ${ASSET_STATUS_BADGE[a.status as AssetStatus] ?? "badge--gray"} badge--dot`}>
+                    <span className={`badge ${assetStatusBadgeClass(a.status)} badge--dot`}>
                       {assetStatusLabel(a.status)}
                     </span>
                   </td>
@@ -217,8 +228,23 @@ export function EquiposScreen() {
         width={640}
         footer={
           <>
-            <button className="btn btn--ghost btn--sm" onClick={close}>Cancelar</button>
+            {editingId ? (
+              confirmDel ? (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <span className="text-sm" style={{ color: "var(--red)" }}>¿Eliminar?</span>
+                  <button className="btn btn--danger btn--sm" onClick={() => deleteM.mutate()} disabled={deleteM.isPending}>
+                    {deleteM.isPending ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />} Sí, eliminar
+                  </button>
+                  <button className="btn btn--ghost btn--sm" onClick={() => setConfirmDel(false)}>No</button>
+                </span>
+              ) : (
+                <button className="btn btn--ghost btn--sm" style={{ color: "var(--red)" }} onClick={() => setConfirmDel(true)}>
+                  <Trash2 size={14} /> Eliminar
+                </button>
+              )
+            ) : null}
             <div style={{ flex: 1 }} />
+            <button className="btn btn--ghost btn--sm" onClick={close}>Cancelar</button>
             <button className="btn btn--primary btn--sm" onClick={() => saveM.mutate()} disabled={saveM.isPending || !canSave}>
               {saveM.isPending ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} {editingId ? "Guardar cambios" : "Registrar"}
             </button>

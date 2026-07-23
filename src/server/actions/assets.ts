@@ -10,6 +10,14 @@ import { generateSequentialId } from "@/lib/utils/id-generator";
 import { getAssets, getAssetById, getAssetEvents, type AssetRow, type AssetEventRow } from "@/server/queries/assets";
 import type { ActionResult } from "@/types";
 
+export async function deleteAsset(id: string): Promise<ActionResult<{ id: string }>> {
+  await getRequiredSession();
+  const [row] = await db.delete(assets).where(eq(assets.id, id)).returning({ id: assets.id });
+  if (!row) return { success: false, error: "Equipo no encontrado" };
+  revalidatePath("/equipos");
+  return { success: true, data: { id: row.id } };
+}
+
 export async function fetchAssets(): Promise<AssetRow[]> {
   await getRequiredSession();
   try {

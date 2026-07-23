@@ -31,8 +31,15 @@ export const ASSET_STATUS_BADGE: Record<AssetStatus, string> = {
 };
 
 export function assetStatusLabel(status: string | null | undefined): string {
-  if (!status) return "—";
+  // "en_oficina" es el valor antiguo (previo a las situaciones) → Disponible.
+  if (!status || status === "en_oficina") return "Disponible";
   return ASSET_STATUS_LABELS[status as AssetStatus] ?? status;
+}
+
+/** Clase de badge para una situación (tolera el valor antiguo "en_oficina"). */
+export function assetStatusBadgeClass(status: string | null | undefined): string {
+  if (!status || status === "en_oficina") return "badge--green";
+  return ASSET_STATUS_BADGE[status as AssetStatus] ?? "badge--gray";
 }
 
 /**
