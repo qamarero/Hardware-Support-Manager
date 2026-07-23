@@ -19,7 +19,7 @@ export const assets = hsmSchema.table(
     deviceModel: varchar("device_model", { length: 255 }),
     deviceSerialNumber: varchar("device_serial_number", { length: 255 }),
     clientName: varchar("client_name", { length: 500 }),
-    status: varchar("status", { length: 40 }).notNull().default("en_oficina"),
+    status: varchar("status", { length: 40 }).notNull().default("disponible"),
     location: varchar("location", { length: 255 }),
     notes: text("notes"),
     // Reacondicionado: el equipo está revisado y listo para reutilizar con clientes.

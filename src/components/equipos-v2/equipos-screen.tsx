@@ -3,18 +3,26 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, Loader2, Tag, Printer, Save, CheckCircle2 } from "lucide-react";
+import { Plus, Loader2, Tag, Printer, Save, CheckCircle2, History } from "lucide-react";
 import { Drawer, Field } from "@/components/proto/drawer";
 import { ArticleCombobox } from "@/components/proto/article-combobox";
 import { CopyId } from "@/components/proto/copy-id";
-import { fetchAssets, createAsset, updateAsset } from "@/server/actions/assets";
-import type { AssetRow } from "@/server/queries/assets";
+import { fetchAssets, createAsset, updateAsset, fetchAssetEvents } from "@/server/actions/assets";
+import type { AssetRow, AssetEventRow } from "@/server/queries/assets";
+import {
+  ASSET_STATUSES,
+  ASSET_STATUS_LABELS,
+  ASSET_STATUS_BADGE,
+  assetStatusLabel,
+  assetWhereabouts,
+  type AssetStatus,
+} from "@/lib/constants/assets";
 import { formatDateTime } from "@/lib/utils/date-format";
 
 const EMPTY = {
   articleId: "", deviceType: "", deviceBrand: "", deviceModel: "",
   deviceSerialNumber: "", clientName: "", location: "", notes: "",
-  reconditioned: false,
+  status: "disponible" as string, reconditioned: false,
 };
 
 type FormState = typeof EMPTY;
@@ -29,8 +37,21 @@ function fromAsset(a: AssetRow): FormState {
     clientName: a.clientName ?? "",
     location: a.location ?? "",
     notes: a.notes ?? "",
+    status: a.status ?? "disponible",
     reconditioned: a.reconditioned ?? false,
   };
+}
+
+function describeEvent(e: AssetEventRow): string {
+  const to = assetStatusLabel(e.toStatus);
+  const from = e.fromStatus ? assetStatusLabel(e.fromStatus) : null;
+  switch (e.action) {
+    case "created": return `Registrado · ${to}`;
+    case "assigned": return `Asignado a ${e.clientName || "cliente"}`;
+    case "returned": return `Devuelto · ahora ${to}`;
+    case "note": return e.note || "Nota";
+    default: return from ? `${from} → ${to}` : to;
+  }
 }
 
 export function EquiposScreen() {
@@ -40,10 +61,17 @@ export function EquiposScreen() {
   const [f, setF] = useState<FormState>({ ...EMPTY });
   const [query, setQuery] = useState("");
   const [onlyRecond, setOnlyRecond] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>("");
 
   const { data: assets = [], isLoading } = useQuery({
     queryKey: ["assets"],
     queryFn: () => fetchAssets(),
+  });
+
+  const { data: events = [] } = useQuery({
+    queryKey: ["asset-events", editingId],
+    queryFn: () => fetchAssetEvents(editingId as string),
+    enabled: !!editingId,
   });
 
   const close = () => { setF({ ...EMPTY }); setEditingId(null); setFormOpen(false); };
@@ -56,6 +84,7 @@ export function EquiposScreen() {
       if (!r.success) { toast.error(r.error); return; }
       if (editingId) {
         toast.success("Equipo actualizado");
+        qc.invalidateQueries({ queryKey: ["asset-events", editingId] });
       } else {
         const d = r.data as { id: string; assetCode: string };
         toast.success(`Equipo ${d.assetCode} registrado`, {
@@ -73,6 +102,7 @@ export function EquiposScreen() {
 
   const visible = assets.filter((a) => {
     if (onlyRecond && !a.reconditioned) return false;
+    if (statusFilter && a.status !== statusFilter) return false;
     if (!query.trim()) return true;
     const q = query.toLowerCase();
     return [a.assetCode, a.deviceBrand, a.deviceModel, a.deviceSerialNumber, a.clientName, a.notes]
@@ -87,22 +117,26 @@ export function EquiposScreen() {
     <div className="stack">
       <div className="topbar__title" style={{ marginBottom: 4 }}>
         <h1>Equipos</h1>
-        <p>Equipos físicos en oficina (con o sin RMA) — etiqueta con QR</p>
+        <p>Seguimiento individual: reparaciones y recambios reacondicionados para clientes</p>
       </div>
 
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <input
           className="input"
-          style={{ maxWidth: 300 }}
+          style={{ maxWidth: 280 }}
           placeholder="Buscar por código, equipo, serie, cliente, nota…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
+        <select className="select" style={{ maxWidth: 190 }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <option value="">Todas las situaciones</option>
+          {ASSET_STATUSES.map((s) => <option key={s} value={s}>{ASSET_STATUS_LABELS[s]}</option>)}
+        </select>
         <button
           type="button"
           className={`chip ${onlyRecond ? "is-active" : ""}`}
           onClick={() => setOnlyRecond((v) => !v)}
-          title="Mostrar solo equipos reacondicionados (listos para clientes)"
+          title="Solo equipos reacondicionados (listos para clientes)"
         >
           <CheckCircle2 size={13} /> Reacondicionados
           {recondCount > 0 && <span className="chip__count">{recondCount}</span>}
@@ -119,14 +153,14 @@ export function EquiposScreen() {
         <div className="card empty">
           <Tag size={28} color="var(--gray-400)" />
           <h4>Sin equipos</h4>
-          <div className="text-sm">{onlyRecond ? "Ningún equipo marcado como reacondicionado." : "Registra un equipo físico para etiquetarlo con un QR."}</div>
+          <div className="text-sm">{query || statusFilter || onlyRecond ? "Ningún equipo con esos filtros." : "Registra un equipo físico para etiquetarlo con un QR."}</div>
         </div>
       ) : (
         <div className="table-wrap">
           <table className="table">
             <thead>
               <tr>
-                <th>Código</th><th>Equipo</th><th>Serie</th><th>Cliente</th><th>Reacond.</th><th>Estado</th><th>Registrado</th><th />
+                <th>Código</th><th>Equipo</th><th>Serie</th><th>Situación</th><th>Dónde está</th><th>Reacond.</th><th>Registrado</th><th />
               </tr>
             </thead>
             <tbody>
@@ -145,13 +179,17 @@ export function EquiposScreen() {
                     ) : null}
                   </td>
                   <td className="text-sm mono">{a.deviceSerialNumber ?? "—"}</td>
-                  <td className="text-sm">{a.clientName ?? "—"}</td>
+                  <td>
+                    <span className={`badge ${ASSET_STATUS_BADGE[a.status as AssetStatus] ?? "badge--gray"} badge--dot`}>
+                      {assetStatusLabel(a.status)}
+                    </span>
+                  </td>
+                  <td className="text-sm">{assetWhereabouts(a.status, a.clientName, a.location)}</td>
                   <td>
                     {a.reconditioned
                       ? <span className="badge badge--green badge--dot">Reacond.</span>
                       : <span className="muted">—</span>}
                   </td>
-                  <td className="text-sm">{a.status}</td>
                   <td className="text-sm muted">{formatDateTime(a.createdAt)}</td>
                   <td style={{ textAlign: "right", whiteSpace: "nowrap" }} onClick={(e) => e.stopPropagation()}>
                     <a
@@ -175,8 +213,8 @@ export function EquiposScreen() {
         open={formOpen}
         onClose={close}
         title={editingId ? "Editar equipo" : "Nuevo equipo"}
-        subtitle={editingId ? "Edita datos, notas y estado del equipo" : "Registrar un equipo físico para etiquetarlo"}
-        width={620}
+        subtitle={editingId ? "Situación, cliente, notas e historial del equipo" : "Registrar un equipo físico para etiquetarlo"}
+        width={640}
         footer={
           <>
             <button className="btn btn--ghost btn--sm" onClick={close}>Cancelar</button>
@@ -210,10 +248,18 @@ export function EquiposScreen() {
             <Field label="Tipo"><input className="input" value={f.deviceType} onChange={(e) => setF({ ...f, deviceType: e.target.value })} /></Field>
             <Field label="Nº de serie"><input className="input mono" value={f.deviceSerialNumber} onChange={(e) => setF({ ...f, deviceSerialNumber: e.target.value })} /></Field>
           </div>
+
           <div className="row row--2">
-            <Field label="Cliente"><input className="input" value={f.clientName} onChange={(e) => setF({ ...f, clientName: e.target.value })} /></Field>
-            <Field label="Ubicación" hint="Dónde está físicamente"><input className="input" value={f.location} onChange={(e) => setF({ ...f, location: e.target.value })} /></Field>
+            <Field label="Situación" hint="Dónde está / en qué punto está el equipo">
+              <select className="select" value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })}>
+                {ASSET_STATUSES.map((s) => <option key={s} value={s}>{ASSET_STATUS_LABELS[s]}</option>)}
+              </select>
+            </Field>
+            <Field label="Cliente" hint={f.status === "en_cliente" ? "Quién lo tiene ahora" : "Cliente asociado (opcional)"}>
+              <input className="input" value={f.clientName} onChange={(e) => setF({ ...f, clientName: e.target.value })} />
+            </Field>
           </div>
+          <Field label="Ubicación" hint="Dónde está físicamente (si está en almacén)"><input className="input" value={f.location} onChange={(e) => setF({ ...f, location: e.target.value })} /></Field>
 
           <Field label="Reacondicionado" hint="Revisado y listo para reutilizar con clientes">
             <label style={{ display: "flex", gap: 8, alignItems: "center", cursor: "pointer" }}>
@@ -222,9 +268,31 @@ export function EquiposScreen() {
             </label>
           </Field>
 
-          <Field label="Notas" hint="Descripción del equipo, estado, accesorios…">
+          <Field label="Notas" hint="Descripción del equipo, avería, accesorios…">
             <textarea className="textarea" rows={4} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} />
           </Field>
+
+          {editingId && (
+            <Field label="Historial">
+              {events.length === 0 ? (
+                <p className="muted text-sm" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <History size={13} /> Sin movimientos registrados todavía.
+                </p>
+              ) : (
+                <div className="stack" style={{ gap: 8 }}>
+                  {events.map((e) => (
+                    <div key={e.id} style={{ display: "flex", gap: 10, fontSize: 12, alignItems: "baseline" }}>
+                      <span className="muted mono" style={{ minWidth: 118, flex: "0 0 auto" }}>{formatDateTime(e.createdAt)}</span>
+                      <span>
+                        {describeEvent(e)}
+                        {e.userName ? <span className="muted"> · {e.userName}</span> : null}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Field>
+          )}
         </div>
       </Drawer>
     </div>

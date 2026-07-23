@@ -15,6 +15,7 @@ export * from "./intercom-inbox";
 export * from "./support-submissions";
 export * from "./reminders";
 export * from "./assets";
+export * from "./asset-events";
 export * from "./daily-reviews";
 export * from "./rma-metric-reviews";
 export * from "./relations";
