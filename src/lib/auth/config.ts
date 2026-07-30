@@ -16,26 +16,38 @@ export const authConfig: NextAuthConfig = {
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
-      const isOnDashboard = nextUrl.pathname.startsWith("/dashboard") ||
-        nextUrl.pathname.startsWith("/incidents") ||
-        nextUrl.pathname.startsWith("/rmas") ||
-        nextUrl.pathname.startsWith("/providers") ||
-        nextUrl.pathname.startsWith("/clients") ||
-        nextUrl.pathname.startsWith("/users") ||
-        nextUrl.pathname.startsWith("/settings") ||
-        nextUrl.pathname.startsWith("/intercom") ||
-        nextUrl.pathname.startsWith("/warehouse") ||
-        nextUrl.pathname.startsWith("/analytics") ||
-        nextUrl.pathname.startsWith("/submissions") ||
-        nextUrl.pathname.startsWith("/equipos") ||
-        nextUrl.pathname.startsWith("/etiqueta");
+      const role = (auth?.user as { role?: string } | undefined)?.role;
+      const path = nextUrl.pathname;
+
+      // Rol "viewer" (compañeros de soporte): confinado a la pestaña Consulta
+      // (solo lectura + comentarios). Cualquier otra ruta → redirige a /consulta.
+      if (isLoggedIn && role === "viewer") {
+        if (path.startsWith("/consulta")) return true;
+        return Response.redirect(new URL("/consulta", nextUrl));
+      }
+
+      const isOnDashboard = path.startsWith("/dashboard") ||
+        path.startsWith("/metricas") ||
+        path.startsWith("/consulta") ||
+        path.startsWith("/incidents") ||
+        path.startsWith("/rmas") ||
+        path.startsWith("/providers") ||
+        path.startsWith("/clients") ||
+        path.startsWith("/users") ||
+        path.startsWith("/settings") ||
+        path.startsWith("/intercom") ||
+        path.startsWith("/warehouse") ||
+        path.startsWith("/analytics") ||
+        path.startsWith("/submissions") ||
+        path.startsWith("/equipos") ||
+        path.startsWith("/etiqueta");
 
       if (isOnDashboard) {
         if (isLoggedIn) return true;
         return false;
       }
 
-      if (isLoggedIn && nextUrl.pathname === "/login") {
+      if (isLoggedIn && path === "/login") {
         return Response.redirect(new URL("/dashboard", nextUrl));
       }
 

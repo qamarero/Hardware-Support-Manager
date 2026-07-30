@@ -6,11 +6,20 @@ vi.mock("@/lib/auth/get-session", () => ({
     user: { id: "user-1", name: "Técnico", role: "technician" },
   }),
   requireRole: vi.fn().mockResolvedValue(undefined),
+  requireWriteAccess: vi.fn().mockResolvedValue({
+    user: { id: "user-1", name: "Técnico", role: "technician" },
+  }),
 }));
 
 // Mock next/cache
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
+  revalidateTag: vi.fn(),
+}));
+
+// Mock next/server `after` (sync a Intercom fire-and-forget; sin request scope en tests)
+vi.mock("next/server", () => ({
+  after: vi.fn(),
 }));
 
 // Mock id generator

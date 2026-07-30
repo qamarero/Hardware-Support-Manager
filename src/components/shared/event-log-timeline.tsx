@@ -10,6 +10,7 @@ import {
   Loader2,
   StickyNote,
   Phone,
+  MessageSquare,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +32,7 @@ const ACTION_LABELS: Record<string, string> = {
   attachment_added: "Adjunto añadido",
   attachment_removed: "Adjunto eliminado",
   note: "Nota",
+  comment: "Comentario",
   contacted: "Contactó al cliente",
 };
 
@@ -41,6 +43,7 @@ const ACTION_ICONS: Record<string, typeof Plus> = {
   attachment_added: Paperclip,
   attachment_removed: Trash2,
   note: StickyNote,
+  comment: MessageSquare,
   contacted: Phone,
 };
 
@@ -117,7 +120,7 @@ export function EventLogTimeline({
                         {details.comment}
                       </p>
                     )}
-                    {log.action === "note" && details?.body && (
+                    {(log.action === "note" || log.action === "comment") && details?.body && (
                       <p className="mt-1 text-sm text-foreground whitespace-pre-wrap">
                         {details.body}
                       </p>

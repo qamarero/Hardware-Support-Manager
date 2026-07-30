@@ -16,3 +16,12 @@ export async function requireRole(...roles: UserRole[]) {
   }
   return session;
 }
+
+/**
+ * Exige permiso de ESCRITURA (admin o técnico). El rol "viewer" (compañeros de
+ * soporte) queda confinado a solo lectura + comentarios: cualquier mutación que
+ * llame a esto lo rechaza. Defensa server-side del confinamiento del Visor.
+ */
+export async function requireWriteAccess() {
+  return requireRole("admin", "technician");
+}

@@ -6,7 +6,7 @@ import { eq, isNull } from "drizzle-orm";
 import { after } from "next/server";
 import { syncRmaTransition } from "@/lib/intercom/sync";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { getRequiredSession, requireRole } from "@/lib/auth/get-session";
+import { getRequiredSession, requireRole, requireWriteAccess } from "@/lib/auth/get-session";
 import {
   createRmaSchema,
   updateRmaSchema,
@@ -35,7 +35,7 @@ function revalidateExternalRmaFeeds() {
 export async function createRma(
   input: unknown
 ): Promise<ActionResult<{ id: string }>> {
-  const session = await getRequiredSession();
+  const session = await requireWriteAccess();
 
   const parsed = createRmaSchema.safeParse(input);
   if (!parsed.success) {
@@ -103,7 +103,7 @@ export async function updateRma(
   id: string,
   input: unknown
 ): Promise<ActionResult<{ id: string }>> {
-  const session = await getRequiredSession();
+  const session = await requireWriteAccess();
 
   const parsed = updateRmaSchema.safeParse(input);
   if (!parsed.success) {
@@ -210,7 +210,7 @@ export async function updateRma(
 export async function transitionRma(
   input: unknown
 ): Promise<ActionResult<{ id: string }>> {
-  const session = await getRequiredSession();
+  const session = await requireWriteAccess();
   const userRole = (session.user.role ?? "viewer") as UserRole;
 
   const parsed = transitionRmaSchema.safeParse(input);
@@ -353,7 +353,7 @@ export async function transitionRma(
 export async function forceTransitionRma(
   input: unknown
 ): Promise<ActionResult<{ id: string }>> {
-  const session = await getRequiredSession();
+  const session = await requireWriteAccess();
   await requireRole("admin");
 
   const parsed = transitionRmaSchema.safeParse(input);

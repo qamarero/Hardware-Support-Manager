@@ -5,7 +5,7 @@ import { incidents, users, clients, eventLogs } from "@/lib/db/schema";
 import { eq, and, isNull, notInArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
-import { getRequiredSession, requireRole } from "@/lib/auth/get-session";
+import { getRequiredSession, requireRole, requireWriteAccess } from "@/lib/auth/get-session";
 import {
   createIncidentSchema,
   updateIncidentSchema,
@@ -26,7 +26,7 @@ import { PAUSED_INCIDENT_STATES } from "@/lib/constants/statuses";
 export async function createIncident(
   input: unknown
 ): Promise<ActionResult<{ id: string }>> {
-  const session = await getRequiredSession();
+  const session = await requireWriteAccess();
 
   const parsed = createIncidentSchema.safeParse(input);
   if (!parsed.success) {
@@ -95,7 +95,7 @@ export async function updateIncident(
   id: string,
   input: unknown
 ): Promise<ActionResult<{ id: string }>> {
-  const session = await getRequiredSession();
+  const session = await requireWriteAccess();
 
   const parsed = updateIncidentSchema.safeParse(input);
   if (!parsed.success) {
@@ -192,7 +192,7 @@ export async function updateIncident(
 export async function transitionIncident(
   input: unknown
 ): Promise<ActionResult<{ id: string }>> {
-  const session = await getRequiredSession();
+  const session = await requireWriteAccess();
   const userRole = (session.user.role ?? "viewer") as UserRole;
 
   const parsed = transitionIncidentSchema.safeParse(input);
@@ -312,7 +312,7 @@ export async function transitionIncident(
 export async function forceTransitionIncident(
   input: unknown
 ): Promise<ActionResult<{ id: string }>> {
-  const session = await getRequiredSession();
+  const session = await requireWriteAccess();
   await requireRole("admin");
 
   const parsed = transitionIncidentSchema.safeParse(input);
@@ -459,7 +459,7 @@ export async function quickAssignIncident(
   incidentId: string,
   userId: string | null
 ): Promise<ActionResult<{ id: string }>> {
-  const session = await getRequiredSession();
+  const session = await requireWriteAccess();
 
   try {
     // Verify the target user exists (if not null)
@@ -552,7 +552,7 @@ export async function quickTransitionToGestion(
   incidentId: string,
   comment?: string
 ): Promise<ActionResult<{ id: string }>> {
-  const session = await getRequiredSession();
+  const session = await requireWriteAccess();
 
   const result = await db.transaction(async (tx) => {
     const [current] = await tx
@@ -661,7 +661,7 @@ export async function quickTransitionToGestion(
 export async function createQuickConsultation(
   input: unknown,
 ): Promise<ActionResult<{ id: string }>> {
-  const session = await getRequiredSession();
+  const session = await requireWriteAccess();
 
   const parsed = createQuickConsultationSchema.safeParse(input);
   if (!parsed.success) {
@@ -738,7 +738,7 @@ export async function createQuickConsultation(
 export async function convertQuickConsultation(
   input: unknown,
 ): Promise<ActionResult<{ id: string }>> {
-  const session = await getRequiredSession();
+  const session = await requireWriteAccess();
 
   const parsed = convertQuickConsultationSchema.safeParse(input);
   if (!parsed.success) {

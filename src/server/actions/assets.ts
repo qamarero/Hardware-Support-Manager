@@ -4,14 +4,14 @@ import { db } from "@/lib/db";
 import { assets, assetEvents } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { getRequiredSession } from "@/lib/auth/get-session";
+import { getRequiredSession, requireWriteAccess } from "@/lib/auth/get-session";
 import { createAssetSchema, updateAssetSchema } from "@/lib/validators/asset";
 import { generateSequentialId } from "@/lib/utils/id-generator";
 import { getAssets, getAssetById, getAssetEvents, type AssetRow, type AssetEventRow } from "@/server/queries/assets";
 import type { ActionResult } from "@/types";
 
 export async function deleteAsset(id: string): Promise<ActionResult<{ id: string }>> {
-  await getRequiredSession();
+  await requireWriteAccess();
   const [row] = await db.delete(assets).where(eq(assets.id, id)).returning({ id: assets.id });
   if (!row) return { success: false, error: "Equipo no encontrado" };
   revalidatePath("/equipos");
@@ -46,7 +46,7 @@ export async function fetchAssetEvents(id: string): Promise<AssetEventRow[]> {
 export async function createAsset(
   input: unknown
 ): Promise<ActionResult<{ id: string; assetCode: string }>> {
-  const session = await getRequiredSession();
+  const session = await requireWriteAccess();
   const parsed = createAssetSchema.safeParse(input);
   if (!parsed.success) return { success: false, error: "Datos inválidos" };
 
@@ -89,7 +89,7 @@ export async function updateAsset(
   id: string,
   input: unknown
 ): Promise<ActionResult<{ id: string }>> {
-  const session = await getRequiredSession();
+  const session = await requireWriteAccess();
   const parsed = updateAssetSchema.safeParse(input);
   if (!parsed.success) return { success: false, error: "Datos inválidos" };
 

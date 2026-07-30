@@ -92,3 +92,39 @@ export async function addManualNote(
 
   return { success: true, data: { id: log.id } };
 }
+
+/**
+ * Comentario INTERNO (compañeros de soporte / pestaña Consulta). Queda en la
+ * timeline (event_logs, action "comment") pero NO se sincroniza a Intercom.
+ * Permitido para cualquier rol autenticado, incluido "viewer" — es la única
+ * escritura que puede hacer un Visor.
+ */
+export async function addComment(
+  input: unknown
+): Promise<ActionResult<{ id: string }>> {
+  const session = await getRequiredSession();
+
+  const parsed = addNoteSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+
+  const { entityType, entityId, body } = parsed.data;
+
+  const [log] = await db
+    .insert(eventLogs)
+    .values({
+      entityType,
+      entityId,
+      action: "comment",
+      userId: session.user.id,
+      details: { body },
+    })
+    .returning({ id: eventLogs.id });
+
+  const basePath = entityType === "incident" ? "/incidents" : "/rmas";
+  revalidatePath(`${basePath}/${entityId}`);
+  revalidatePath("/consulta");
+
+  return { success: true, data: { id: log.id } };
+}

@@ -7,6 +7,7 @@ import {
   CalendarCheck,
   LayoutDashboard,
   BarChart3,
+  Eye,
   Ticket,
   LayoutGrid,
   StickyNote,
@@ -44,6 +45,7 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
       { href: "/mi-dia", label: "Mi día", icon: CalendarCheck },
       { href: "/dashboard", label: "Panel", icon: LayoutDashboard },
       { href: "/metricas", label: "Métricas soporte", icon: BarChart3 },
+      { href: "/consulta", label: "Consulta", icon: Eye },
       { href: "/incidents", label: "Incidencias", icon: Ticket, badge: "incidents" },
       { href: "/tablero", label: "Tablero Kanban", icon: LayoutGrid },
       { href: "/corcho", label: "Corcho", icon: StickyNote },
@@ -98,6 +100,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isAdmin = session?.user?.role === "admin";
   const userName = session?.user?.name ?? "Usuario";
   const userRole = session?.user?.role ?? "viewer";
+  // Visor (compañeros de soporte): confinado a la pestaña Consulta.
+  const isViewer = userRole === "viewer";
 
   // Mapea cada badge del nav a su contador (incidencias = estancadas+SLA;
   // RMA = atascados en proveedor + almacén; intercom = pendientes de registrar).
@@ -122,7 +126,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         {SECTIONS.map((section) => {
-          const items = section.items.filter((it) => !it.adminOnly || isAdmin);
+          const items = section.items.filter(
+            (it) => (!it.adminOnly || isAdmin) && (!isViewer || it.href === "/consulta"),
+          );
           if (items.length === 0) return null;
           return (
             <div key={section.title}>
