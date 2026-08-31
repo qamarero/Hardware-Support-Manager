@@ -21,8 +21,10 @@ describe("Incident State Machine", () => {
       expect(transitions).toHaveLength(0);
     });
 
+    // "en_triaje" se conserva en INCIDENT_STATUSES por incidencias antiguas, pero ya no
+    // tiene transiciones definidas: el flujo actual va de "nuevo" directo a "en_gestion".
     it("admin can cancel from most states", () => {
-      const statesWithCancel = ["nuevo", "en_triaje", "en_gestion", "esperando_cliente", "esperando_proveedor"] as const;
+      const statesWithCancel = ["nuevo", "en_gestion", "esperando_cliente", "esperando_proveedor", "esperando_pieza"] as const;
       for (const state of statesWithCancel) {
         const transitions = getAvailableTransitions(state, "admin");
         expect(transitions.some((t) => t.to === "cancelado")).toBe(true);
@@ -42,7 +44,7 @@ describe("Incident State Machine", () => {
 
   describe("isValidTransition", () => {
     it("accepts valid transition", () => {
-      expect(isValidTransition("nuevo", "en_triaje", "technician")).toBe(true);
+      expect(isValidTransition("nuevo", "en_gestion", "technician")).toBe(true);
     });
 
     it("rejects invalid transition", () => {

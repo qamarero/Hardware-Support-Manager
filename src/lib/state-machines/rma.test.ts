@@ -29,7 +29,10 @@ describe("RMA State Machine", () => {
         ["enviado_proveedor", "en_proveedor"],
         ["en_proveedor", "devuelto"],
         ["devuelto", "recibido_oficina"],
-        ["recibido_oficina", "cerrado"],
+        // El equipo se entrega al cliente antes de cerrar el RMA: no hay salto
+        // directo de "recibido_oficina" a "cerrado".
+        ["recibido_oficina", "entregado_cliente"],
+        ["entregado_cliente", "cerrado"],
       ] as const;
       for (const [from, to] of expectedFlow) {
         expect(isValidRmaTransition(from, to, "technician")).toBe(true);

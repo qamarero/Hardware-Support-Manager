@@ -5,11 +5,20 @@ vi.mock("@/lib/auth/get-session", () => ({
   getRequiredSession: vi.fn().mockResolvedValue({
     user: { id: "user-1", name: "Técnico", role: "technician" },
   }),
+  requireRole: vi.fn().mockResolvedValue(undefined),
+  requireWriteAccess: vi.fn().mockResolvedValue({
+    user: { id: "user-1", name: "Técnico", role: "technician" },
+  }),
 }));
 
 // Mock next/cache
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
+}));
+
+// Mock next/server `after` (sync a Intercom fire-and-forget; sin request scope en tests)
+vi.mock("next/server", () => ({
+  after: vi.fn(),
 }));
 
 // Mock id generator
@@ -368,16 +377,16 @@ describe("Server Actions: Incidents", () => {
   });
 
   describe("transitionIncident", () => {
-    it("should transition from nuevo to en_triaje", async () => {
+    it("should transition from nuevo to en_gestion", async () => {
       const result = await transitionIncident({
         incidentId: VALID_UUID,
-        toStatus: "en_triaje",
+        toStatus: "en_gestion",
       });
 
       expect(result.success).toBe(true);
       expect(mockTxUpdateSet).toHaveBeenCalledWith(
         expect.objectContaining({
-          status: "en_triaje",
+          status: "en_gestion",
           stateChangedAt: expect.any(Date),
         })
       );
@@ -386,23 +395,23 @@ describe("Server Actions: Incidents", () => {
     it("should log transition with comment in event log", async () => {
       await transitionIncident({
         incidentId: VALID_UUID,
-        toStatus: "en_triaje",
-        comment: "Iniciando triaje del equipo",
+        toStatus: "en_gestion",
+        comment: "Iniciando gestion del equipo",
       });
 
       expect(mockTxInsertValues).toHaveBeenCalledWith(
         expect.objectContaining({
           action: "transition",
           fromState: "nuevo",
-          toState: "en_triaje",
-          details: { comment: "Iniciando triaje del equipo" },
+          toState: "en_gestion",
+          details: { comment: "Iniciando gestion del equipo" },
         })
       );
     });
 
     it("should reject invalid input (missing incidentId)", async () => {
       const result = await transitionIncident({
-        toStatus: "en_triaje",
+        toStatus: "en_gestion",
       });
 
       expect(result.success).toBe(false);
