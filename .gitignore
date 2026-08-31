@@ -63,3 +63,7 @@ venv/
 
 # Obsidian (bóveda enlazada a la raíz del repo — estado/UI local, no versionar)
 .obsidian/
+
+# Copias de seguridad de config con credenciales
+.mcp.json*
+*.bak

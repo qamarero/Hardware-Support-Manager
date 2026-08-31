@@ -264,14 +264,16 @@ npm run test:coverage # Coverage report
 
 > **DIRECTIVA OBLIGATORIA**: Antes de abordar cualquier tarea, consultar las herramientas disponibles (agentes, skills, comandos, MCP servers) y usar la más adecuada. No reinventar funcionalidad que ya existe en el tooling del proyecto. La selección de herramienta debe seguir la guía de selección al final de esta sección.
 
-### Agents (16) — `.claude/agents/`
+### Agents (18) — `.claude/agents/`
 
 | Agent | Propósito | Cuándo usar |
 |-------|-----------|-------------|
 | database-architect | Diseño de BD, schemas, migraciones | Cambios en schema Drizzle, optimización queries |
+| supabase-schema-architect | Schema Supabase + plan de migraciones | Nueva tabla/columna, `sql/0NN-*.sql`, índices |
+| vercel-deployment-specialist | Despliegue en Vercel | Build/deploy, variables de entorno, rollback |
 | frontend-developer | Desarrollo React/TypeScript frontend | Componentes nuevos, páginas, layouts |
 | ui-ux-designer | Crítica UI/UX basada en investigación | Revisión de diseño, accesibilidad, usabilidad |
-| backend-architect | Arquitectura servidor, APIs | Server actions, webhooks, integración servicios |
+| backend-architect | Server Actions, state machines, queries Drizzle | Nueva mutación, transición de estado, webhook Intercom, query lenta |
 | fullstack-developer | Desarrollo cross-stack completo | Features que tocan BD + API + UI a la vez |
 | code-reviewer | Revisión de código y calidad | Pre-merge, auditoría de seguridad, calidad |
 | typescript-pro | Patrones TypeScript avanzados | Generics complejos, type safety, inferencia |
@@ -285,23 +287,30 @@ npm run test:coverage # Coverage report
 | documentation-expert | Estándares de documentación | Actualizar docs, CLAUDE.md, proyecto_log |
 | ai-engineer | Ingeniería AI/ML | Solo si se añade componente IA al proyecto |
 
-### Skills (13) — `.claude/skills/`
+### Skills (10) — `.claude/skills/`
 
 | Skill | Propósito | Cuándo usar |
 |-------|-----------|-------------|
-| **senior-frontend** | Desarrollo frontend moderno (React, Next.js, TS, Tailwind) | Arquitectura de componentes, patterns React |
-| **senior-fullstack** | Desarrollo fullstack completo | Features end-to-end que cruzan capas |
-| **react-best-practices** | 40+ reglas performance React/Next.js | Optimización rendering, bundles, data fetching |
-| **supabase-postgres-best-practices** | Optimización Postgres y Supabase | Queries complejas, índices, full-text search |
+| **react-best-practices** | 40+ reglas performance React/Next.js, 47 ficheros de reglas | Optimización rendering, bundles, data fetching |
+| **supabase-postgres-best-practices** | Optimización Postgres y Supabase, 36 ficheros de reglas | Queries complejas, índices, full-text search |
 | **emil-design-eng** | Filosofía Emil Kowalski: UI polish, animaciones | Microinteracciones, transiciones, detalles visuales |
+| **ui-ux-pro-max** | Catálogo de estilos, paletas y tipografía (763 filas CSV) | Decisiones de diseño, paletas, tipografía |
 | **frontend-design** | Interfaces production-grade con alto diseño | Landing pages, componentes con diseño distintivo |
-| **ui-ux-pro-max** | 50 estilos, 21 paletas, 50 font pairings | Decisiones de diseño, paletas, tipografía |
-| **code-reviewer** | Revisión automática con checklist y scripts | Code review estructurado con antipatrones |
 | **mcp-builder** | Guía para crear servidores MCP | Integrar nuevos servicios externos vía MCP |
 | **git-commit-helper** | Mensajes de commit descriptivos | Análisis de diffs para generar mensajes |
 | **canvas-design** | Arte visual en .png/.pdf | Posters, diseños estáticos (poco uso en HSM) |
 | **theme-factory** | Toolkit de temas (10 presets) | Slides, docs, landing pages (poco uso en HSM) |
 | **file-organizer** | Organizar archivos y carpetas | Reestructuración de directorios |
+
+> **Eliminadas (2026-08-31)**: `code-reviewer`, `senior-frontend` y `senior-fullstack`. Eran
+> plantillas huecas: sus 9 scripts Python tenían el cuerpo vacío (`# Main logic here`,
+> `findings = []` fijo) y sus 9 `references/*.md` eran relleno (`Pattern 1`, `Scenario 1/2/3`,
+> `// Implementation details`). Reportaban "0 findings" siempre. Usar en su lugar
+> `react-best-practices`, `supabase-postgres-best-practices` y el comando `/code-review`.
+
+> **Nota Windows**: los scripts Python de las skills imprimen emoji y la consola es cp1252,
+> lo que provoca `UnicodeEncodeError`. Ejecutarlos con `PYTHONIOENCODING=utf-8`.
+> `ui-ux-pro-max` además solo busca en inglés (una query en español devuelve 0 resultados).
 
 ### Skills Built-in (del sistema)
 
@@ -315,7 +324,7 @@ npm run test:coverage # Coverage report
 | `simplify` | Revisar código para calidad y eficiencia |
 | `claude-api` | Construir apps con API Claude / Anthropic SDK |
 
-### Commands (8) — `.claude/commands/`
+### Commands (13) — `.claude/commands/`
 
 | Comando | Propósito | Cuándo usar |
 |---------|-----------|-------------|
@@ -327,27 +336,46 @@ npm run test:coverage # Coverage report
 | `/architecture-review` | Evaluación de arquitectura | Revisar decisiones de diseño del sistema |
 | `/update-docs` | Sincronización documentación | Tras cambios significativos |
 | `/explain-code` | Análisis y explicación de código | Entender código existente |
+| `/nextjs-performance-audit` | Auditoría de rendimiento (bundle/runtime) | Página lenta, regresión de rendimiento |
+| `/nextjs-bundle-analyzer` | Análisis del bundle y code splitting | Build pesado, imports que sobran |
+| `/nextjs-api-tester` | Pruebas de rutas API | Solo `/api/upload` y `/api/webhooks/intercom` |
+| `/supabase-migration-assistant` | Generar y validar migraciones | Cambio de schema con SQL versionado |
+| `/supabase-security-audit` | Auditoría de permisos y accesos | Revisar grants de `hsm_app` y roles en actions |
 
 ### MCP Servers — `.mcp.json`
 
-| Server | Tipo | Propósito |
-|--------|------|-----------|
-| supabase | HTTP | Gestión proyecto Supabase (BD principal) |
-| postgresql | Command | Conexión PostgreSQL directa |
-| web-fetch | Command | Obtención de contenido web |
-| github | Command | Integración API GitHub |
-| markitdown | Command | Conversión de documentos a markdown |
-| figma | Command | Modo desarrollo Figma |
+| Server | Tipo | Propósito | Estado |
+|--------|------|-----------|--------|
+| postgresql | Command | Conexión PostgreSQL directa al schema `hsm` | ✅ Funciona |
+| github | Command | API GitHub | ⚠️ Solo lectura pública: `GITHUB_PERSONAL_ACCESS_TOKEN` vacío. Crear PRs/issues falla |
+| supabase | HTTP | Gestión proyecto Supabase | ⚠️ Requiere OAuth interactivo (`/mcp` en terminal) |
+
+Disponible fuera de `.mcp.json`: **context7** (documentación actualizada de librerías —
+Next.js, Drizzle, TanStack). Para contenido web usar las herramientas integradas
+**WebFetch** / **WebSearch**, no un MCP.
+
+> **Eliminados (2026-08-31)**: `web-fetch`, `markitdown` y `figma`. Apuntaban a
+> `@anthropic-ai/fetch-mcp`, `@anthropic-ai/markitdown-mcp` y `@anthropic-ai/figma-mcp`,
+> paquetes que **no existen en npm (404)**: nunca pudieron arrancar. Sustitutos reales, si
+> algún día se necesitan: `markitdown` y el GitHub oficial requieren **Docker** (no instalado);
+> Figma Dev Mode es un servidor local en `http://127.0.0.1:3845/mcp` que exige la app de
+> escritorio de Figma.
+
+> **Credenciales**: `.mcp.json` contiene la contraseña de `hsm_app` en claro. El fichero está
+> en `.gitignore` (verificado: nunca se ha subido con credenciales reales; las versiones
+> históricas solo llevaban placeholders). No crear copias `.bak` — el `.gitignore` ya las cubre.
 
 ### Guía de Selección de Herramientas
 
 | Tipo de tarea | Herramienta principal | Complemento |
 |---------------|----------------------|-------------|
-| **Nuevo componente UI** | agente `frontend-developer` | skill `senior-frontend` + `emil-design-eng` |
-| **Feature fullstack** | agente `fullstack-developer` | skill `senior-fullstack` |
-| **Cambio en BD/schema** | agente `database-architect` | skill `supabase-postgres-best-practices` |
-| **Optimizar performance** | skill `react-best-practices` | agente `frontend-developer` |
-| **Code review** | comando `/code-review` | skill `code-reviewer` para checklist |
+| **Nuevo componente UI** | agente `frontend-developer` | skill `emil-design-eng` + `ui-ux-pro-max` |
+| **Feature fullstack** | agente `fullstack-developer` | agente `backend-architect` para la capa de Server Actions |
+| **Cambio en BD/schema** | agente `supabase-schema-architect` | comando `/supabase-migration-assistant` + skill `supabase-postgres-best-practices` |
+| **Server Actions / webhooks** | agente `backend-architect` | skill `supabase-postgres-best-practices` |
+| **Optimizar performance** | skill `react-best-practices` | comando `/nextjs-performance-audit` o `/nextjs-bundle-analyzer` |
+| **Auditar permisos/accesos** | comando `/supabase-security-audit` | agente `code-reviewer` |
+| **Code review** | comando `/code-review` | agente `code-reviewer` para revisión profunda |
 | **Bug fixing** | agente `debugger` | agente `error-detective` si es recurrente |
 | **Commit** | comando `/commit` | skill `git-commit-helper` para analizar diffs |
 | **Decisión arquitectural** | comando `/ultra-think` | comando `/architecture-review` |
@@ -355,17 +383,46 @@ npm run test:coverage # Coverage report
 | **Animaciones/polish** | skill `emil-design-eng` | skill `frontend-design` |
 | **Testing** | agente `test-engineer` | — |
 | **Documentación** | comando `/update-docs` | agente `documentation-expert` |
-| **Deploy** | agente `deployment-engineer` | — |
+| **Deploy** | agente `vercel-deployment-specialist` | `deployment-engineer` es genérico: preferir el de Vercel |
 | **Nuevo MCP server** | skill `mcp-builder` | agente `mcp-expert` |
 
 ### Sinergias y Prioridades entre Herramientas
 
 Cuando hay solapamiento entre herramientas:
-- **Performance React**: `react-best-practices` (40+ reglas específicas) tiene prioridad sobre `senior-frontend` (guía general)
-- **Code review**: `/code-review` (rápido) → skill `code-reviewer` (checklist) → agente `code-reviewer` (profundo)
+- **Performance React**: `react-best-practices` (40+ reglas específicas) es la referencia principal
+- **Code review**: `/code-review` (rápido) → agente `code-reviewer` (profundo)
 - **Commits**: `/commit` (workflow principal) → `git-commit-helper` (solo analizar diffs)
 - **UI/UX**: `ui-ux-pro-max` (catálogo de estilos) + agente `ui-ux-designer` (crítica investigativa) — usar juntos
 - **Postgres**: `supabase-postgres-best-practices` (reglas de referencia) + agente `database-architect` (aplica con contexto)
+- **Diseño**: la skill `frontend-design` del repo se solapa con el plugin de usuario del mismo
+  nombre; al invocarla por nombre puede haber ambigüedad
+
+### Componentes traídos de aitmpl.com (2026-08-31)
+
+De `davila7/claude-code-templates` (catálogo de aitmpl.com: 435 agentes, 346 comandos, 101 MCPs)
+se instalaron 2 agentes y 5 comandos. Cada uno lleva una sección **"Adaptaciones para HSM"**
+justo tras su título que corrige lo que el componente genérico daba por supuesto:
+
+- `supabase-schema-architect` y `/supabase-security-audit` asumían **RLS**. HSM **no usa RLS**:
+  controla el acceso con los GRANT del rol `hsm_app` y con comprobación de rol NextAuth dentro
+  de cada Server Action. La nota reinterpreta la auditoría en esos términos.
+- `supabase-schema-architect` y `/supabase-migration-assistant` asumían migraciones
+  **transaccionales**; el SQL Editor de Supabase no soporta `BEGIN`/`COMMIT`.
+- `/nextjs-api-tester` asumía una API REST completa; aquí solo existen 2 endpoints y el resto
+  son Server Actions que se prueban con Vitest.
+- Los comandos de rendimiento y bundle llevan recordatorio de **no arrancar servidores locales
+  sin preguntar**.
+
+**Al añadir componentes de este catálogo: leerlos enteros primero.** Tres skills de la misma
+fuente resultaron ser plantillas huecas y tres MCPs apuntaban a paquetes npm inexistentes.
+
+### Contexto de proyecto en los agentes
+
+Los 16 agentes llevan al inicio un bloque **"Project context: Hardware Support Manager (HSM)"**
+con el stack real y una lista explícita de lo que **no** deben proponer (REST/microservicios,
+GraphQL, Prisma, MongoDB, Redis, Redux, Express, NestJS, Kubernetes, Docker, Vue, Angular).
+Los agentes vienen de `claude-code-templates` y son genéricos; sin ese bloque contradecían la
+arquitectura de este proyecto. **Mantener el bloque al editar o añadir agentes.**
 
 ## Deployment
 
