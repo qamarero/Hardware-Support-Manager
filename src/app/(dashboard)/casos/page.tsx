@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { CasosContent } from "@/components/casos/casos-content";
 
-export const metadata: Metadata = { title: "Casos" };
+export const metadata: Metadata = { title: "Seguimiento RMA" };
 
 // Usa estado de URL (nuqs) en el cliente → renderizado dinámico.
 export const dynamic = "force-dynamic";

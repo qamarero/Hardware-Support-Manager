@@ -42,15 +42,15 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: "Operaciones",
     items: [
-      { href: "/mi-dia", label: "Mi día", icon: CalendarCheck },
       { href: "/dashboard", label: "Panel", icon: LayoutDashboard },
-      { href: "/metricas", label: "Métricas soporte", icon: BarChart3 },
-      { href: "/consulta", label: "Consulta", icon: Eye },
+      { href: "/mi-dia", label: "Mi día", icon: CalendarCheck },
       { href: "/incidents", label: "Incidencias", icon: Ticket, badge: "incidents" },
+      { href: "/rmas", label: "RMA", icon: RotateCcw, badge: "rmas" },
+      { href: "/casos", label: "Seguimiento RMA", icon: RefreshCw },
+      { href: "/consulta", label: "Consulta", icon: Eye },
       { href: "/tablero", label: "Tablero Kanban", icon: LayoutGrid },
       { href: "/corcho", label: "Corcho", icon: StickyNote },
-      { href: "/casos", label: "Casos · RMA", icon: RefreshCw },
-      { href: "/rmas", label: "RMA", icon: RotateCcw, badge: "rmas" },
+      { href: "/metricas", label: "Métricas soporte", icon: BarChart3 },
     ],
   },
   {

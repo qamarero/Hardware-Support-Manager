@@ -34,7 +34,7 @@ export function CasosContent() {
   return (
     <div className="stack">
       <div className="topbar__title" style={{ marginBottom: 4 }}>
-        <h1>Casos</h1>
+        <h1>Seguimiento RMA</h1>
         <p>Pipeline unificado: cada incidencia con su RMA vinculado</p>
       </div>
 
