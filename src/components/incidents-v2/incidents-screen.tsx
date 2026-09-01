@@ -88,11 +88,6 @@ export function IncidentsScreen() {
     onSuccess: (r) => { if (!r.success) { toast.error(r.error); return; } refreshList(); },
     onError: () => toast.error("Error al asignar"),
   });
-  const priorityM = useMutation({
-    mutationFn: ({ id, priority }: { id: string; priority: string }) => updateIncident(id, { priority }),
-    onSuccess: (r) => { if (!r.success) { toast.error(r.error); return; } refreshList(); },
-    onError: () => toast.error("Error al cambiar prioridad"),
-  });
 
   // Selección múltiple + acciones masivas.
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -273,13 +268,13 @@ export function IncidentsScreen() {
                   <input type="checkbox" checked={allSelected} onChange={toggleAll} aria-label="Seleccionar todo" />
                 </th>
                 <th>ID</th>
-                <th>Incidencia</th>
                 <th>Cliente</th>
                 <th>Contacto</th>
-                <th>Asignado</th>
-                <th>Prioridad</th>
-                <th>SLA</th>
+                <th>Incidencia</th>
                 <th>Estado</th>
+                <th>RMA</th>
+                <th>Asignado</th>
+                <th>SLA</th>
                 <th>Actualizada</th>
                 <th>Seguimiento</th>
               </tr>
@@ -326,6 +321,8 @@ export function IncidentsScreen() {
                     <input type="checkbox" checked={selected.has(i.id)} onChange={() => toggleSel(i.id)} aria-label={`Seleccionar ${i.incidentNumber}`} />
                   </td>
                   <td className="id-cell"><CopyId value={i.incidentNumber} /></td>
+                  <td className="text-md fw-600">{i.clientCompanyName ?? i.clientName ?? "—"}</td>
+                  <td className="text-sm">{i.contactName ?? "—"}</td>
                   <td>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span className="fw-600">{i.title}</span>
@@ -343,20 +340,23 @@ export function IncidentsScreen() {
                           <MessageSquare size={14} />
                         </button>
                       )}
-                      {(i.rmaCount ?? 0) > 0 && i.latestRmaId && (
-                        <button
-                          className="badge badge--outline"
-                          style={{ fontSize: 10, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap" }}
-                          title={`RMA vinculado: ${i.latestRmaNumber}${i.latestRmaStatus ? ` · ${RMA_STATUS_LABELS[i.latestRmaStatus as RmaStatus] ?? i.latestRmaStatus}` : ""}${(i.rmaCount ?? 0) > 1 ? ` (+${(i.rmaCount ?? 1) - 1} más)` : ""}`}
-                          onClick={(e) => { e.stopPropagation(); openRma(i.latestRmaId!); }}
-                        >
-                          {i.latestRmaNumber}{(i.rmaCount ?? 0) > 1 ? ` ×${i.rmaCount}` : ""}
-                        </button>
-                      )}
                     </div>
                   </td>
-                  <td className="text-sm">{i.clientCompanyName ?? i.clientName ?? "—"}</td>
-                  <td className="text-sm">{i.contactName ?? "—"}</td>
+                  <td><IncidentStatusBadge status={i.status} /></td>
+                  <td>
+                    {(i.rmaCount ?? 0) > 0 && i.latestRmaId ? (
+                      <button
+                        className="badge badge--outline"
+                        style={{ fontSize: 10, cursor: "pointer", whiteSpace: "nowrap" }}
+                        title={`RMA vinculado: ${i.latestRmaNumber}${i.latestRmaStatus ? ` · ${RMA_STATUS_LABELS[i.latestRmaStatus as RmaStatus] ?? i.latestRmaStatus}` : ""}${(i.rmaCount ?? 0) > 1 ? ` (+${(i.rmaCount ?? 1) - 1} más)` : ""}`}
+                        onClick={(e) => { e.stopPropagation(); openRma(i.latestRmaId!); }}
+                      >
+                        {i.latestRmaNumber}{(i.rmaCount ?? 0) > 1 ? ` ×${i.rmaCount}` : ""}
+                      </button>
+                    ) : (
+                      <span className="muted text-sm">—</span>
+                    )}
+                  </td>
                   <td onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-2">
                       {i.assignedUserName && <Avatar name={i.assignedUserName} size="sm" />}
@@ -372,20 +372,7 @@ export function IncidentsScreen() {
                       </select>
                     </div>
                   </td>
-                  <td onClick={(e) => e.stopPropagation()}>
-                    <select
-                      className="select"
-                      style={{ width: "auto", maxWidth: 110, fontSize: 12, padding: "4px 8px" }}
-                      value={priorityBucket(i.priority)}
-                      onChange={(e) => priorityM.mutate({ id: i.id, priority: e.target.value })}
-                      title="Cambiar prioridad"
-                    >
-                      <option value="critica">Cliente no puede operar</option>
-                      <option value="media">Cliente puede operar</option>
-                    </select>
-                  </td>
                   <td><SlaBar incident={i} /></td>
-                  <td><IncidentStatusBadge status={i.status} /></td>
                   <td className="text-sm muted">{formatRelativeTime(i.updatedAt)}</td>
                   <td onClick={(e) => e.stopPropagation()}><ReviewCell item={itemOf(i)} review={review} /></td>
                 </tr>

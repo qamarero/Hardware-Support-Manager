@@ -610,6 +610,7 @@ a { color: inherit; text-decoration: none; }
 .mono { font-family: var(--font-mono); }
 .muted { color: var(--fg-secondary); }
 .text-sm { font-size: 12px; }
+.text-md { font-size: 14px; }
 .text-xs { font-size: 11px; }
 .fw-700 { font-weight: 700; }
 .fw-600 { font-weight: 600; }

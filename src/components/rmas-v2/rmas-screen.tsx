@@ -8,6 +8,7 @@ import { fetchRmas } from "@/server/actions/rmas";
 import { RmaStatusBadge } from "@/components/proto/badges";
 import { CopyId } from "@/components/proto/copy-id";
 import { RmaDetailDrawer } from "./rma-detail-drawer";
+import { useDrawers } from "@/components/shell/drawers-provider";
 import { RMA_STATUS_LABELS, RMA_OUTCOME_LABELS, RMA_LOGISTICS_LABELS, type RmaStatus } from "@/lib/constants/rmas";
 import { CLOSED_RMA_STATUSES, PAUSED_RMA_STATES } from "@/lib/constants/statuses";
 import { formatRelativeTime } from "@/lib/utils/date-format";
@@ -34,6 +35,7 @@ const OUTCOME_BADGE: Record<string, string> = {
 
 export function RmasScreen() {
   const router = useRouter();
+  const { openIncident } = useDrawers();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [status, setStatus] = useState<string>("all");
   const [query, setQuery] = useState("");
@@ -127,13 +129,13 @@ export function RmasScreen() {
             <thead>
               <tr>
                 <th>ID interno</th>
-                <th>Nº proveedor</th>
+                <th>Cliente</th>
                 <th>Proveedor</th>
                 <th>Equipo</th>
-                <th>Cliente</th>
                 <th>Estado</th>
-                <th>Resultado</th>
                 <th>Incidencia</th>
+                <th>Nº proveedor</th>
+                <th>Resultado</th>
                 <th>Actualizado</th>
                 <th>Etiqueta</th>
               </tr>
@@ -156,7 +158,7 @@ export function RmasScreen() {
                 )}
                 <tr onClick={() => setSelectedId(r.id)} style={isRmaClosed(r.status) ? { opacity: 0.6 } : undefined}>
                   <td className="id-cell"><CopyId value={r.rmaNumber} /></td>
-                  <td className="mono text-sm fw-600">{r.providerRmaNumber ? <CopyId value={r.providerRmaNumber} /> : "—"}</td>
+                  <td className="text-md fw-600">{r.clientCompanyName ?? r.clientName ?? "—"}</td>
                   <td className="text-sm">{r.providerName ?? "—"}</td>
                   <td>
                     {r.deviceModel || r.deviceBrand ? (
@@ -169,7 +171,6 @@ export function RmasScreen() {
                       </div>
                     ) : "—"}
                   </td>
-                  <td className="text-sm">{r.clientCompanyName ?? r.clientName ?? "—"}</td>
                   <td>
                     <div className="flex items-center gap-2" style={{ flexWrap: "wrap" }}>
                       <RmaStatusBadge status={r.status} />
@@ -178,6 +179,21 @@ export function RmasScreen() {
                       )}
                     </div>
                   </td>
+                  <td>
+                    {r.incidentNumber && r.incidentId ? (
+                      <button
+                        className="badge badge--outline"
+                        style={{ fontSize: 10, cursor: "pointer", whiteSpace: "nowrap" }}
+                        title={`Abrir incidencia ${r.incidentNumber}`}
+                        onClick={(e) => { e.stopPropagation(); openIncident(r.incidentId!); }}
+                      >
+                        {r.incidentNumber}
+                      </button>
+                    ) : (
+                      <span className="muted text-sm">—</span>
+                    )}
+                  </td>
+                  <td className="mono text-sm fw-600">{r.providerRmaNumber ? <CopyId value={r.providerRmaNumber} /> : "—"}</td>
                   <td>
                     {r.outcome ? (
                       <div className="stack" style={{ gap: 2 }}>
@@ -194,7 +210,6 @@ export function RmasScreen() {
                       <span className="muted">—</span>
                     )}
                   </td>
-                  <td className="id-cell">{r.incidentNumber ? <CopyId value={r.incidentNumber} /> : "—"}</td>
                   <td className="text-sm muted">{formatRelativeTime(r.updatedAt)}</td>
                   <td onClick={(e) => e.stopPropagation()}>
                     <a
