@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -22,6 +22,8 @@ import { InboxStatusBadge } from "./inbox-status-badge";
 import { ConversationThread } from "./conversation-thread";
 import { convertToIncident, dismissInboxItem, recoverDiscardedInboxItem } from "@/server/actions/intercom-inbox";
 import { fetchClientsForSelect, fetchClientByExternalId } from "@/server/actions/clients";
+import { lookupPostalCode } from "@/server/actions/geo";
+import { DEVICE_TYPES, DEVICE_TYPE_LABELS } from "@/lib/constants/device-types";
 import {
   INCIDENT_CATEGORY_LABELS,
   HARDWARE_ORIGIN_LABELS,
@@ -207,6 +209,19 @@ export function ConversationDetail({ item, onConvert, onDismiss }: ConversationD
   const [pickupCity, setPickupCity] = useState("");
   const [pickupPostalCode, setPickupPostalCode] = useState("");
   const [hardwareOrigin, setHardwareOrigin] = useState<HardwareOrigin | "">("");
+
+  const cityAutoRef = useRef(true);
+  useEffect(() => {
+    const cp = pickupPostalCode.trim();
+    if (!/^\d{5}$/.test(cp)) return;
+    let cancelled = false;
+    (async () => {
+      const { municipio } = await lookupPostalCode(cp);
+      if (cancelled || !municipio) return;
+      setPickupCity((prev) => (!prev.trim() || cityAutoRef.current ? municipio : prev));
+    })();
+    return () => { cancelled = true; };
+  }, [pickupPostalCode]);
 
   // Set clientId when auto-match resolves
   useEffect(() => {
@@ -614,6 +629,98 @@ export function ConversationDetail({ item, onConvert, onDismiss }: ConversationD
                   <p className="text-sm text-muted-foreground">{ticketData.contactEmail ?? item.contactEmail}</p>
                 </div>
               )}
+
+              <div className="sm:col-span-2 pt-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Equipo</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Extraído del texto del ticket. Corrígelo si la detección falla: se guarda tal cual en la incidencia.
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">
+                  Tipo
+                  {detected.deviceType && deviceType === detected.deviceType && (
+                    <span className="ml-1.5 font-normal text-muted-foreground">· detectado</span>
+                  )}
+                </Label>
+                <Select value={deviceType} onValueChange={setDeviceType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sin especificar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEVICE_TYPES.map((t) => (
+                      <SelectItem key={t} value={t}>{DEVICE_TYPE_LABELS[t]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">
+                  Marca
+                  {detected.deviceBrand && deviceBrand === detected.deviceBrand && (
+                    <span className="ml-1.5 font-normal text-muted-foreground">· detectada</span>
+                  )}
+                </Label>
+                <Input
+                  value={deviceBrand}
+                  onChange={(e) => setDeviceBrand(e.target.value)}
+                  placeholder="Sin especificar"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">
+                  Modelo
+                  {detected.deviceModel && deviceModel === detected.deviceModel && (
+                    <span className="ml-1.5 font-normal text-muted-foreground">· detectado</span>
+                  )}
+                </Label>
+                <Input
+                  value={deviceModel}
+                  onChange={(e) => setDeviceModel(e.target.value)}
+                  placeholder="Sin especificar"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Nº de serie</Label>
+                <Input
+                  value={deviceSerialNumber}
+                  onChange={(e) => setDeviceSerialNumber(e.target.value)}
+                  placeholder="Sin especificar"
+                  className="font-mono"
+                />
+              </div>
+
+              <div className="sm:col-span-2 pt-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Recogida</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Dónde hay que recoger el equipo. La ciudad se rellena sola desde el código postal.
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Código postal</Label>
+                <Input
+                  value={pickupPostalCode}
+                  onChange={(e) => setPickupPostalCode(e.target.value.replace(/\D/g, "").slice(0, 5))}
+                  placeholder="28001"
+                  inputMode="numeric"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Ciudad</Label>
+                <Input
+                  value={pickupCity}
+                  onChange={(e) => { cityAutoRef.current = false; setPickupCity(e.target.value); }}
+                  placeholder="Desde el código postal"
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label className="text-xs">Dirección</Label>
+                <Input
+                  value={pickupAddress}
+                  onChange={(e) => setPickupAddress(e.target.value)}
+                  placeholder="Calle, número, piso"
+                />
+              </div>
             </div>
 
             {/* Actions */}
