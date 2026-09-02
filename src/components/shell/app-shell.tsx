@@ -7,6 +7,7 @@ import {
   CalendarCheck,
   LayoutDashboard,
   BarChart3,
+  PieChart,
   Eye,
   Ticket,
   LayoutGrid,
@@ -51,6 +52,7 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
       { href: "/tablero", label: "Tablero Kanban", icon: LayoutGrid },
       { href: "/corcho", label: "Corcho", icon: StickyNote },
       { href: "/metricas", label: "Métricas soporte", icon: BarChart3 },
+      { href: "/analytics", label: "Analítica", icon: PieChart },
     ],
   },
   {
