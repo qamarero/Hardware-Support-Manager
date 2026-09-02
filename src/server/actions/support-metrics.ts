@@ -8,17 +8,13 @@ import {
   type WeeklyIncidentActivity,
 } from "@/server/queries/incident-metrics";
 import {
-  getRmaAgingDistribution,
   getRmaStateChangeStats,
   getRmaTimeToSolicitado,
   getRmaClosedCount,
   getRmaOutcomeBreakdown,
 } from "@/server/queries/rma-metrics";
-import {
-  getSlaMetrics,
-  getDashboardStats,
-  getAgingDistribution,
-} from "@/server/queries/dashboard";
+import { getSlaMetrics } from "@/server/queries/dashboard";
+import { getIncidentStockAt, getRmaStockAt } from "@/server/queries/historical-metrics";
 import { getSlaThresholds } from "@/server/queries/settings";
 import { getRmasAggregates } from "@/server/queries/rmas";
 import { getProviderRmaTurnaround } from "@/server/queries/analytics";
@@ -29,6 +25,12 @@ import { RMA_STATUS_LABELS, type RmaStatus } from "@/lib/constants/rmas";
 export interface SupportMetricsDashboard {
   weekStart: string;
   range: { from: string; to: string; prevFrom: string; prevTo: string };
+  /**
+   * Fechas de corte con las que se han reconstruido las métricas de stock
+   * (abiertas, antigüedad, fuera de SLA) y momento de generación. Van al CSV
+   * para que un informe archivado diga a qué instante corresponde.
+   */
+  meta: { stockCutoff: string; prevStockCutoff: string; generatedAt: string };
   values: Record<string, number | null>;
   prevValues: Record<string, number | null>;
   rmaActive: number;
@@ -75,16 +77,21 @@ export async function fetchSupportMetricsDashboard(weekStart: string): Promise<S
   const current = { dateFrom: from, dateTo: to };
   const previous = { dateFrom: prevFrom, dateTo: prevTo };
 
-  // Lote 1 — snapshots (sin rango, una sola vez) + umbrales SLA.
-  const [dashStats, incidentAging, rmaAging, slaThresholds] = await Promise.all([
-    getDashboardStats(),
-    getAgingDistribution(),
-    getRmaAgingDistribution(),
-    getSlaThresholds(),
-  ]);
-  const incGt7 = incidentAging.find((b) => b.bucket === "7+ días")?.count ?? 0;
+  // Lote 1 — umbrales SLA (los necesita el cálculo de "fuera de SLA al corte").
+  const slaThresholds = await getSlaThresholds();
 
-  // Lote 2 — periodo actual.
+  // Lote 2 — stock reconstruido al CIERRE de cada periodo (domingo 23:59:59),
+  // no en el momento de abrir la pantalla. Así el informe de una semana pasada
+  // devuelve el estado que había esa semana y la comparativa con la anterior
+  // es un delta real. Ver `historical-metrics.ts`.
+  const [incStock, rmaStock, incStockPrev, rmaStockPrev] = await Promise.all([
+    getIncidentStockAt(to, slaThresholds),
+    getRmaStockAt(to),
+    getIncidentStockAt(prevTo, slaThresholds),
+    getRmaStockAt(prevTo),
+  ]);
+
+  // Lote 3 — periodo actual.
   const [slaCur, incActCur, rmaScCur, rmaTtCur, rmaClosedCur] = await Promise.all([
     getSlaMetrics(current, slaThresholds),
     getIncidentActivity(current),
@@ -93,7 +100,7 @@ export async function fetchSupportMetricsDashboard(weekStart: string): Promise<S
     getRmaClosedCount(current),
   ]);
 
-  // Lote 3 — periodo anterior.
+  // Lote 4 — periodo anterior.
   const [slaPrev, incActPrev, rmaScPrev, rmaTtPrev, rmaClosedPrev] = await Promise.all([
     getSlaMetrics(previous, slaThresholds),
     getIncidentActivity(previous),
@@ -102,7 +109,7 @@ export async function fetchSupportMetricsDashboard(weekStart: string): Promise<S
     getRmaClosedCount(previous),
   ]);
 
-  // Lote 4 — charts + anotaciones.
+  // Lote 5 — charts + anotaciones.
   const [aggregates, rmaOutcomes, rmaProviderTurnaround, reviews, users] = await Promise.all([
     getRmasAggregates({ dateRangeFrom: from, dateRangeTo: to }),
     getRmaOutcomeBreakdown(current),
@@ -112,27 +119,28 @@ export async function fetchSupportMetricsDashboard(weekStart: string): Promise<S
   ]);
 
   const values: Record<string, number | null> = {
-    inc_open: dashStats.openIncidents,
-    inc_aging_gt7: incGt7,
+    inc_open: incStock.openTotal,
+    inc_aging_gt7: incStock.gt7d,
     inc_sla_compliance: slaCur.slaCompliancePercent,
     inc_avg_resolution_h: slaCur.avgResolutionHours,
-    inc_overdue: slaCur.overdueCount,
+    inc_overdue: incStock.overdue,
     inc_resolved: incActCur.resolved,
     inc_state_changes: incActCur.stateChanges,
     rma_time_to_solicitado: rmaTtCur.avgHours,
     rma_solicitado_within_target: rmaTtCur.withinTargetPct,
-    rma_aging_gt7: rmaAging.gt7d,
+    rma_aging_gt7: rmaStock.gt7d,
     rma_state_changes: rmaScCur.total,
     rma_solicitudes: rmaScCur.solicitudes,
     rma_cerrados: rmaClosedCur,
   };
 
   const prevValues: Record<string, number | null> = {
-    // Snapshots: mismo valor (no dependen del rango) → delta neutro.
-    inc_open: dashStats.openIncidents,
-    inc_aging_gt7: incGt7,
-    inc_overdue: slaPrev.overdueCount,
-    rma_aging_gt7: rmaAging.gt7d,
+    // Stock al cierre de la semana ANTERIOR (antes se copiaba el valor actual,
+    // así que el delta siempre salía 0).
+    inc_open: incStockPrev.openTotal,
+    inc_aging_gt7: incStockPrev.gt7d,
+    inc_overdue: incStockPrev.overdue,
+    rma_aging_gt7: rmaStockPrev.gt7d,
     // De actividad (comparables con la semana anterior):
     inc_sla_compliance: slaPrev.slaCompliancePercent,
     inc_avg_resolution_h: slaPrev.avgResolutionHours,
@@ -148,10 +156,15 @@ export async function fetchSupportMetricsDashboard(weekStart: string): Promise<S
   return {
     weekStart,
     range: { from, to, prevFrom, prevTo },
+    meta: {
+      stockCutoff: incStock.cutoff,
+      prevStockCutoff: incStockPrev.cutoff,
+      generatedAt: new Date().toISOString(),
+    },
     values,
     prevValues,
-    rmaActive: rmaAging.openTotal,
-    incidentAging,
+    rmaActive: rmaStock.openTotal,
+    incidentAging: incStock.buckets,
     rmaByStatus: aggregates.byStatus.map((r) => ({
       status: r.status,
       label: RMA_STATUS_LABELS[r.status as RmaStatus] ?? r.status,

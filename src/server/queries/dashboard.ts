@@ -141,7 +141,19 @@ export async function getSlaMetrics(
 
   try {
     const sla = preloadedSla ?? (await getSlaThresholds());
-    const { incFrom, incTo, logFrom, logTo, rmaFrom, rmaTo } = rawDateFragments(range);
+    const { logFrom, logTo, rmaFrom, rmaTo } = rawDateFragments(range);
+    // Las métricas de resolución (media, cumplimiento SLA, total resueltas) se
+    // acotan por `resolved_at`, NO por `created_at`. Con `created_at` el
+    // universo era "creadas en el periodo y ya resueltas": una cohorte que
+    // excluye lo resuelto esta semana pero creado antes (justo lo más lento) y
+    // que además no cuadraba con `getIncidentActivity`, que ya filtra por
+    // `resolved_at`.
+    const resFrom = range?.dateFrom
+      ? sql`AND resolved_at >= ${range.dateFrom + "T00:00:00"}`
+      : sql``;
+    const resTo = range?.dateTo
+      ? sql`AND resolved_at <= ${range.dateTo + "T23:59:59"}`
+      : sql``;
 
     // Shared SLA expressions from the helper — single source of truth
     const resolvedHoursExpr = slaResolvedHoursRaw();
@@ -161,21 +173,21 @@ export async function getSlaMetrics(
          FROM hsm.incidents
          WHERE status = 'resuelto' AND resolved_at IS NOT NULL
          AND category != 'consulta_rapida'
-         ${incFrom} ${incTo}
+         ${resFrom} ${resTo}
         ) AS avg_hours,
 
         (SELECT count(*)
          FROM hsm.incidents
          WHERE status IN ('resuelto','cerrado') AND resolved_at IS NOT NULL
          AND category != 'consulta_rapida'
-         ${incFrom} ${incTo}
+         ${resFrom} ${resTo}
         ) AS comp_total,
 
         (SELECT count(*)
          FROM hsm.incidents
          WHERE status IN ('resuelto','cerrado') AND resolved_at IS NOT NULL
          AND category != 'consulta_rapida'
-         ${incFrom} ${incTo}
+         ${resFrom} ${resTo}
          AND ${complianceCondition}
         ) AS comp_compliant,
 
@@ -199,7 +211,7 @@ export async function getSlaMetrics(
          FROM hsm.incidents
          WHERE status IN ('resuelto','cerrado')
          AND category != 'consulta_rapida'
-         ${incFrom} ${incTo}
+         ${resFrom} ${resTo}
         ) AS total_resolved,
 
         (SELECT avg(extract(epoch from (updated_at - created_at)) / 86400)

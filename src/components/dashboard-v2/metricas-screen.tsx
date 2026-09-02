@@ -25,7 +25,7 @@ import {
   type RmaMetricStatus,
 } from "@/lib/constants/rma-metrics";
 import { addDaysIso, isoWeekStart, todayIso } from "@/lib/utils/date-periods";
-import { generateCSV, downloadCSV } from "@/lib/utils/csv-export";
+import { generateCSV, downloadCSV, generateMetaHeader, stripBom, CSV_BOM } from "@/lib/utils/csv-export";
 import { IncidentActivityReport } from "./incident-activity-report";
 
 const OUTCOME_LABELS: Record<string, string> = {
@@ -197,7 +197,9 @@ export function MetricasScreen() {
   function exportCsv() {
     if (!data) return;
     const report = generateCSV(
-      ["Grupo", "Métrica", "Objetivo", "Esta semana", "Semana anterior", "Responsable", "Estado", "Comentario"],
+      // "Universo" va al final para no desplazar las columnas que ya consumen
+      // los informes hechos sobre este formato.
+      ["Grupo", "Métrica", "Objetivo", "Esta semana", "Semana anterior", "Responsable", "Estado", "Comentario", "Universo"],
       SUPPORT_METRIC_CATALOG.map((m) => {
         const eff = effective(m.key);
         const owner = data.users.find((u) => u.id === eff.ownerUserId)?.name ?? "";
@@ -210,13 +212,30 @@ export function MetricasScreen() {
           owner,
           eff.status ? STATUS_LABELS[eff.status]?.replace(/^\W+\s/, "") ?? eff.status : "",
           eff.comment,
+          m.universe ?? "",
         ];
       }),
     );
     const incAging = generateCSV(["Antigüedad incidencias", "Cantidad"], data.incidentAging.map((b) => [b.bucket, b.count]));
     const byStatus = generateCSV(["Estado RMA", "Cantidad"], data.rmaByStatus.map((s) => [s.label, s.count]));
     const outcomes = generateCSV(["Resultado RMA", "Cantidad"], data.rmaOutcomes.map((o) => [OUTCOME_LABELS[o.outcome] ?? o.outcome, o.count]));
-    const csv = [report, "", "INCIDENCIAS POR ANTIGÜEDAD", incAging, "", "RMA POR ESTADO", byStatus, "", "RESULTADOS RMA", outcomes].join("\r\n");
+    // Cabecera de metadatos: el nombre del fichero solo lleva el lunes, así que
+    // sin esto un CSV archivado no dice qué periodo cubre ni a qué instante
+    // corresponden las métricas de stock.
+    const meta = generateMetaHeader([
+      ["Informe", "Metricas soporte"],
+      ["Periodo", data.range.from, data.range.to],
+      ["Corte metricas de stock", data.meta.stockCutoff],
+      ["Periodo anterior", data.range.prevFrom, data.range.prevTo],
+      ["Corte periodo anterior", data.meta.prevStockCutoff],
+      ["Generado", data.meta.generatedAt],
+      ["Nota", "Las fechas de corte van en hora del servidor; el stock es el estado a ese instante"],
+    ]);
+    // Un solo BOM al principio: cada bloque trae el suyo y en medio del fichero
+    // se vería como basura.
+    const csv =
+      CSV_BOM +
+      [meta, "", stripBom(report), "", "INCIDENCIAS POR ANTIGÜEDAD", stripBom(incAging), "", "RMA POR ESTADO", stripBom(byStatus), "", "RESULTADOS RMA", stripBom(outcomes)].join("\r\n");
     downloadCSV(csv, `metricas-soporte-${data.range.from}.csv`);
   }
 

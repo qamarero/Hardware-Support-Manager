@@ -32,6 +32,13 @@ export interface MetricDef {
   target: number | null;
   betterWhen: RmaMetricBetter;
   description?: string;
+  /**
+   * Universo sobre el que se mide, en una línea. Se exporta como columna del
+   * CSV: sin esto, "Cumplimiento SLA 100 %" junto a "9 fuera de SLA" parecía
+   * una contradicción cuando en realidad son universos disjuntos (resueltas
+   * del periodo vs. abiertas al cierre).
+   */
+  universe?: string;
 }
 
 /** Métricas de incidencias (soporte de primer nivel). */
@@ -43,7 +50,8 @@ export const INCIDENT_METRIC_CATALOG: MetricDef[] = [
     unit: "count",
     target: null,
     betterWhen: "info",
-    description: "Incidencias sin resolver (snapshot actual).",
+    description: "Incidencias sin resolver al cierre del periodo.",
+    universe: "Conteo. Incidencias en estado no cerrado a la fecha de corte",
   },
   {
     key: "inc_aging_gt7",
@@ -52,16 +60,19 @@ export const INCIDENT_METRIC_CATALOG: MetricDef[] = [
     unit: "count",
     target: 0,
     betterWhen: "lower",
-    description: "Incidencias abiertas estancadas más del umbral en su estado actual.",
+    description: "Incidencias abiertas estancadas más del umbral en su estado a la fecha de corte.",
+    universe: `Conteo. Abiertas al corte con más de ${INC_AGING_THRESHOLD_DAYS} días en su estado`,
   },
   {
     key: "inc_sla_compliance",
     group: "incidencias",
-    label: "Cumplimiento SLA",
+    label: "Cumplimiento SLA (resueltas del periodo)",
     unit: "pct",
     target: INC_SLA_TARGET_PCT,
     betterWhen: "higher",
-    description: "% de incidencias resueltas dentro de su umbral SLA en la semana.",
+    description: "% de las resueltas en el periodo que cumplieron su umbral SLA.",
+    universe:
+      "% sobre las resueltas o cerradas con resolved_at en el periodo (excluye consultas rápidas). 100 % si no hubo ninguna",
   },
   {
     key: "inc_avg_resolution_h",
@@ -71,15 +82,18 @@ export const INCIDENT_METRIC_CATALOG: MetricDef[] = [
     target: null,
     betterWhen: "lower",
     description: "Horas medias hasta resolver (descontando pausas).",
+    universe:
+      "Media sobre las resueltas con resolved_at en el periodo (excluye consultas rápidas)",
   },
   {
     key: "inc_overdue",
     group: "incidencias",
-    label: "Fuera de SLA (ahora)",
+    label: "Abiertas fuera de SLA al cierre",
     unit: "count",
     target: 0,
     betterWhen: "lower",
-    description: "Incidencias abiertas que ya superan su umbral SLA (snapshot).",
+    description: "Incidencias que a la fecha de corte seguían abiertas habiendo superado su umbral SLA.",
+    universe: "Conteo. Abiertas al corte con horas transcurridas (sin pausas) por encima del umbral de su prioridad",
   },
   {
     key: "inc_resolved",
@@ -89,6 +103,7 @@ export const INCIDENT_METRIC_CATALOG: MetricDef[] = [
     target: null,
     betterWhen: "info",
     description: "Incidencias resueltas/cerradas en la semana.",
+    universe: "Conteo. resolved_at dentro del periodo (excluye consultas rápidas)",
   },
   {
     key: "inc_state_changes",
@@ -98,6 +113,7 @@ export const INCIDENT_METRIC_CATALOG: MetricDef[] = [
     target: null,
     betterWhen: "info",
     description: "Transiciones de estado de incidencias en la semana.",
+    universe: "Conteo de eventos de transición registrados en el periodo",
   },
 ];
 
@@ -111,6 +127,7 @@ export const RMA_METRIC_CATALOG: MetricDef[] = [
     target: RMA_SOLICITADO_TARGET_HOURS,
     betterWhen: "lower",
     description: "Horas medias desde que se crea el RMA hasta que pasa a «Solicitado».",
+    universe: "Media sobre los RMA creados en el periodo que ya han sido solicitados",
   },
   {
     key: "rma_solicitado_within_target",
@@ -120,6 +137,7 @@ export const RMA_METRIC_CATALOG: MetricDef[] = [
     target: 90,
     betterWhen: "higher",
     description: "Porcentaje de RMA tramitados dentro del objetivo de tiempo.",
+    universe: `% sobre los RMA solicitados del periodo, objetivo ${RMA_SOLICITADO_TARGET_HOURS} h`,
   },
   {
     key: "rma_aging_gt7",
@@ -129,6 +147,7 @@ export const RMA_METRIC_CATALOG: MetricDef[] = [
     target: 0,
     betterWhen: "lower",
     description: "RMA abiertos cuya edad activa (descontando pausas) supera el umbral.",
+    universe: `Conteo. Activos al corte con edad activa mayor de ${RMA_AGING_THRESHOLD_DAYS} días`,
   },
   {
     key: "rma_state_changes",
@@ -138,6 +157,7 @@ export const RMA_METRIC_CATALOG: MetricDef[] = [
     target: null,
     betterWhen: "info",
     description: "Transiciones de estado de RMA registradas en la semana.",
+    universe: "Conteo de eventos de transición registrados en el periodo",
   },
   {
     key: "rma_solicitudes",
@@ -147,6 +167,7 @@ export const RMA_METRIC_CATALOG: MetricDef[] = [
     target: null,
     betterWhen: "info",
     description: "RMA que pasaron a «Solicitado» en la semana.",
+    universe: "Conteo de transiciones a «Solicitado» en el periodo",
   },
   {
     key: "rma_cerrados",
@@ -156,6 +177,7 @@ export const RMA_METRIC_CATALOG: MetricDef[] = [
     target: null,
     betterWhen: "info",
     description: "RMA que alcanzaron un estado de cierre en la semana.",
+    universe: "Conteo de RMA que entraron en estado de cierre en el periodo",
   },
 ];
 
