@@ -7,7 +7,6 @@ import { revalidatePath } from "next/cache";
 import { getRequiredSession } from "@/lib/auth/get-session";
 import { getConversation, getContact } from "@/lib/intercom/client";
 import { extractConversationId } from "@/lib/intercom/sync";
-import type { IntercomConversationPart } from "@/lib/intercom/types";
 import {
   convertToIncidentSchema,
   dismissInboxItemSchema,

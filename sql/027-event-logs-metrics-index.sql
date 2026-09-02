@@ -1,0 +1,57 @@
+-- 027 · Índice para la reconstrucción histórica de métricas
+--
+-- Ejecutar como `postgres` en el SQL Editor de Supabase: el rol `hsm_app` solo
+-- tiene SELECT/INSERT/UPDATE/DELETE y no puede crear índices.
+--
+-- POR QUÉ
+-- El informe semanal reconstruye el estado de cada incidencia y RMA al cierre
+-- del periodo leyendo `hsm.event_logs` (ver src/server/queries/historical-metrics.ts).
+-- Esas consultas filtran por `(entity_type, action)` sin `entity_id`, es decir
+-- recorriendo todas las entidades, y necesitan las filas ordenadas por
+-- `(entity_id, created_at)` para el `LEAD()` y los `DISTINCT ON`.
+--
+-- Los índices que ya existen (005-add-indexes.sql) no cubren ese patrón:
+--   idx_event_logs_entity      (entity_type, entity_id)  → sirve al detalle de
+--                              una incidencia concreta, no al barrido completo.
+--                              `entity_type` solo tiene 4 valores, así que como
+--                              prefijo apenas discrimina y no incluye `action`.
+--   idx_event_logs_created_at  (created_at)              → no ayuda al orden por
+--                              entidad.
+--
+-- Sin este índice el plan es: Seq Scan de toda la tabla + Sort completo por
+-- (entity_id, created_at) + WindowAgg. Es el mismo patrón de escaneo y orden
+-- que ya provocó un `statement timeout` en /metricas (commit a609e19), ahora
+-- sobre una consulta con función de ventana.
+--
+-- ORDEN DE LAS COLUMNAS
+--   entity_type, action  → igualdad: convierte el filtro en Index Cond.
+--   entity_id, created_at → deja las filas ya ordenadas como las necesitan el
+--                           LEAD() y los DISTINCT ON, ascendente o descendente
+--                           (un btree se recorre hacia atrás sin coste extra).
+--
+-- COSTE
+-- `hsm.event_logs` es de solo inserción (no hay ningún UPDATE ni DELETE sobre
+-- ella en todo el código), así que el índice no sufre bloat y lo único que
+-- encarece son los INSERT de transiciones, que son decenas al día.
+--
+-- Este índice también beneficia a consultas que ya existían y hoy hacen Seq
+-- Scan sobre la misma tabla: getIncidentActivity, getRmaStateChangeStats,
+-- getRmaTimeToSolicitado y el conteo de conversiones de consultas rápidas.
+--
+-- NO sustituye a idx_event_logs_entity: ese sigue siendo el correcto para la
+-- vista de auditoría de una incidencia o RMA concretos. Esto es añadir.
+
+CREATE INDEX IF NOT EXISTS idx_event_logs_type_action_entity_created
+  ON hsm.event_logs (entity_type, action, entity_id, created_at);
+
+-- COMPROBACIÓN (opcional, después de crearlo)
+-- Debería pasar de "Seq Scan on event_logs" + "Sort" a
+-- "Index Scan using idx_event_logs_type_action_entity_created".
+--
+--   EXPLAIN
+--   SELECT DISTINCT ON (entity_id) entity_id, to_state, created_at
+--   FROM hsm.event_logs
+--   WHERE entity_type = 'incident'
+--     AND action IN ('transition','converted_from_quick')
+--     AND created_at <= '2026-08-30T23:59:59'::timestamptz
+--   ORDER BY entity_id, created_at DESC, id DESC;

@@ -89,7 +89,7 @@ export async function fetchOverdueIncidents(
   await getRequiredSession();
   const sla = await getSlaThresholds();
 
-  const elapsedHours = slaElapsedHours(incidents.createdAt, incidents.slaPausedMs);
+  const elapsedHours = slaElapsedHours(incidents.createdAt, incidents.slaPausedMs, incidents.status, incidents.stateChangedAt);
   const overdueCondition = buildSlaPriorityCondition(
     incidents.priority,
     elapsedHours,

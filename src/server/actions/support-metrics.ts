@@ -120,9 +120,12 @@ export async function fetchSupportMetricsDashboard(weekStart: string): Promise<S
 
   const values: Record<string, number | null> = {
     inc_open: incStock.openTotal,
+    inc_open_inhouse: incStock.inHouse,
+    inc_open_waiting: incStock.waiting,
     inc_aging_gt7: incStock.gt7d,
     inc_sla_compliance: slaCur.slaCompliancePercent,
     inc_avg_resolution_h: slaCur.avgResolutionHours,
+    inc_avg_wait_h: slaCur.avgWaitHours,
     inc_overdue: incStock.overdue,
     inc_resolved: incActCur.resolved,
     inc_state_changes: incActCur.stateChanges,
@@ -138,12 +141,15 @@ export async function fetchSupportMetricsDashboard(weekStart: string): Promise<S
     // Stock al cierre de la semana ANTERIOR (antes se copiaba el valor actual,
     // así que el delta siempre salía 0).
     inc_open: incStockPrev.openTotal,
+    inc_open_inhouse: incStockPrev.inHouse,
+    inc_open_waiting: incStockPrev.waiting,
     inc_aging_gt7: incStockPrev.gt7d,
     inc_overdue: incStockPrev.overdue,
     rma_aging_gt7: rmaStockPrev.gt7d,
     // De actividad (comparables con la semana anterior):
     inc_sla_compliance: slaPrev.slaCompliancePercent,
     inc_avg_resolution_h: slaPrev.avgResolutionHours,
+    inc_avg_wait_h: slaPrev.avgWaitHours,
     inc_resolved: incActPrev.resolved,
     inc_state_changes: incActPrev.stateChanges,
     rma_time_to_solicitado: rmaTtPrev.avgHours,

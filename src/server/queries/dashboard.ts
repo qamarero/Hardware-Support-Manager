@@ -6,11 +6,9 @@ import type { SlaThresholds } from "@/lib/constants/sla";
 import { CLOSED_INCIDENT_STATUSES } from "@/lib/constants/statuses";
 import { incidentDateConds, rawDateFragments } from "@/lib/utils/date-conditions";
 import {
-  slaElapsedHours,
   slaResolvedHours,
   slaElapsedHoursRaw,
   slaResolvedHoursRaw,
-  buildSlaPriorityCondition,
   buildSlaPriorityConditionRaw,
 } from "@/lib/utils/sla-sql";
 
@@ -48,6 +46,13 @@ export interface TrendPoint {
 
 export interface SlaMetrics {
   avgResolutionHours: number | null;
+  /**
+   * Horas medias que las resueltas del periodo pasaron esperando a un tercero.
+   * Cuantifica el calendario que no depende del equipo: sin este dato, un
+   * "tiempo medio de resolución" alto parece lentitud nuestra cuando puede ser
+   * un cliente que tardó semanas en contestar.
+   */
+  avgWaitHours: number | null;
   slaCompliancePercent: number;
   overdueCount: number;
   reopenRate: number;
@@ -132,6 +137,7 @@ export async function getSlaMetrics(
 ): Promise<SlaMetrics> {
   const defaults: SlaMetrics = {
     avgResolutionHours: null,
+    avgWaitHours: null,
     slaCompliancePercent: 100,
     overdueCount: 0,
     reopenRate: 0,
@@ -171,7 +177,7 @@ export async function getSlaMetrics(
       SELECT
         (SELECT avg(${resolvedHoursExpr})
          FROM hsm.incidents
-         WHERE status = 'resuelto' AND resolved_at IS NOT NULL
+         WHERE status IN ('resuelto','cerrado') AND resolved_at IS NOT NULL
          AND category != 'consulta_rapida'
          ${resFrom} ${resTo}
         ) AS avg_hours,
@@ -214,6 +220,13 @@ export async function getSlaMetrics(
          ${resFrom} ${resTo}
         ) AS total_resolved,
 
+        (SELECT avg(COALESCE(NULLIF(sla_paused_ms, '')::bigint, 0) / 3600000.0)
+         FROM hsm.incidents
+         WHERE status IN ('resuelto','cerrado') AND resolved_at IS NOT NULL
+         AND category != 'consulta_rapida'
+         ${resFrom} ${resTo}
+        ) AS avg_wait_hours,
+
         (SELECT avg(extract(epoch from (updated_at - created_at)) / 86400)
          FROM hsm.rmas
          WHERE status IN ('cerrado','entregado_cliente','rechazado')
@@ -225,6 +238,7 @@ export async function getSlaMetrics(
     if (!row) return defaults;
 
     const avgHours = row.avg_hours ? parseFloat(row.avg_hours) : null;
+    const avgWait = row.avg_wait_hours ? parseFloat(row.avg_wait_hours) : null;
     const compTotal = Number(row.comp_total) || 0;
     const compCompliant = Number(row.comp_compliant) || 0;
     const compliancePercent = compTotal > 0
@@ -257,6 +271,7 @@ export async function getSlaMetrics(
 
     return {
       avgResolutionHours: avgHours ? Math.round(avgHours * 10) / 10 : null,
+      avgWaitHours: avgWait !== null ? Math.round(avgWait * 10) / 10 : null,
       slaCompliancePercent: compliancePercent,
       overdueCount,
       reopenRate,

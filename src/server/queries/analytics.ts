@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { incidents, rmas, providers } from "@/lib/db/schema";
-import { count, sql, desc, eq, and, isNull, not, inArray } from "drizzle-orm";
+import { count, sql, desc, eq, and, inArray } from "drizzle-orm";
 import type { DateRangeParams } from "./dashboard";
 import { dateConds } from "@/lib/utils/date-conditions";
 

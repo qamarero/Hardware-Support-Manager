@@ -183,7 +183,7 @@ Return Merchandise Authorizations for sending defective hardware to providers.
 - **Filters**: Only Hardware/RMA escalations are captured (keyword filtering in webhook)
 - **Dedup**: Unique constraint on `intercom_conversation_id` + check `incidents.intercomEscalationId` before creating
 - **API Client**: `src/lib/intercom/client.ts` — REST API v2.11 (getConversation, searchContacts, addNote, closeTicket)
-- **Bidirectional sync** (`src/lib/intercom/sync.ts`): On incident state transitions, if linked to Intercom, an internal note is posted back. On resolution/closure, the Intercom ticket is auto-closed.
+- **Bidirectional sync** (`src/lib/intercom/sync.ts`): On incident state transitions, if linked to Intercom, an internal note is posted back. On resolution/closure, that note asks the team to close the ticket: `closeTicket()` exists in `client.ts` but is **not wired up** — no code path calls it.
 - **Device detection** (`src/lib/intercom/device-detector.ts`): Regex-based extraction of device type, model, and serial number from Intercom conversation text for auto-fill.
 - **Conversation thread**: `ConversationThread` component renders full Intercom message timeline (client/admin/internal notes) in both Bandeja and incident detail.
 

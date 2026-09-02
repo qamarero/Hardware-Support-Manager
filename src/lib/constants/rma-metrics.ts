@@ -54,6 +54,27 @@ export const INCIDENT_METRIC_CATALOG: MetricDef[] = [
     universe: "Conteo. Incidencias en estado no cerrado a la fecha de corte",
   },
   {
+    key: "inc_open_inhouse",
+    group: "incidencias",
+    label: "Abiertas en nuestras manos",
+    unit: "count",
+    target: null,
+    betterWhen: "info",
+    description: "Abiertas al cierre que dependen del equipo, sin esperas pendientes.",
+    universe:
+      "Conteo. Abiertas al corte en cualquier estado que no sea de espera (nuevo, en triaje, en gestión). Es la carga real del equipo",
+  },
+  {
+    key: "inc_open_waiting",
+    group: "incidencias",
+    label: "Abiertas en espera de terceros",
+    unit: "count",
+    target: null,
+    betterWhen: "info",
+    description: "Abiertas al cierre paradas esperando al cliente, al proveedor o a una pieza.",
+    universe: "Conteo. Abiertas al corte en esperando_cliente, esperando_proveedor o esperando_pieza",
+  },
+  {
     key: "inc_aging_gt7",
     group: "incidencias",
     label: `Incidencias >${INC_AGING_THRESHOLD_DAYS} días`,
@@ -61,7 +82,7 @@ export const INCIDENT_METRIC_CATALOG: MetricDef[] = [
     target: 0,
     betterWhen: "lower",
     description: "Incidencias abiertas estancadas más del umbral en su estado a la fecha de corte.",
-    universe: `Conteo. Abiertas al corte con más de ${INC_AGING_THRESHOLD_DAYS} días en su estado`,
+    universe: `Conteo. Abiertas al corte con más de ${INC_AGING_THRESHOLD_DAYS} días de calendario en su estado, esperas de terceros incluidas`,
   },
   {
     key: "inc_sla_compliance",
@@ -72,7 +93,7 @@ export const INCIDENT_METRIC_CATALOG: MetricDef[] = [
     betterWhen: "higher",
     description: "% de las resueltas en el periodo que cumplieron su umbral SLA.",
     universe:
-      "% sobre las resueltas o cerradas con resolved_at en el periodo (excluye consultas rápidas). 100 % si no hubo ninguna",
+      "% sobre las resueltas o cerradas con resolved_at en el periodo (excluye consultas rápidas), según los umbrales de SLA vigentes hoy. 100 % si no hubo ninguna",
   },
   {
     key: "inc_avg_resolution_h",
@@ -83,7 +104,18 @@ export const INCIDENT_METRIC_CATALOG: MetricDef[] = [
     betterWhen: "lower",
     description: "Horas medias hasta resolver (descontando pausas).",
     universe:
-      "Media sobre las resueltas con resolved_at en el periodo (excluye consultas rápidas)",
+      "Media sobre las resueltas o cerradas con resolved_at en el periodo, descontando esperas (excluye consultas rápidas)",
+  },
+  {
+    key: "inc_avg_wait_h",
+    group: "incidencias",
+    label: "Tiempo medio en espera de terceros",
+    unit: "h",
+    target: null,
+    betterWhen: "info",
+    description: "Horas medias que las resueltas del periodo pasaron esperando a cliente, proveedor o pieza.",
+    universe:
+      "Media sobre las resueltas o cerradas con resolved_at en el periodo. Es la pausa acumulada de toda su vida, así que en una reabierta incluye ciclos anteriores. Este tiempo NO cuenta contra el SLA",
   },
   {
     key: "inc_overdue",
@@ -93,7 +125,8 @@ export const INCIDENT_METRIC_CATALOG: MetricDef[] = [
     target: 0,
     betterWhen: "lower",
     description: "Incidencias que a la fecha de corte seguían abiertas habiendo superado su umbral SLA.",
-    universe: "Conteo. Abiertas al corte con horas transcurridas (sin pausas) por encima del umbral de su prioridad",
+    universe:
+      "Conteo. Abiertas al corte cuyo tiempo de gestión (descontando esperas de cliente, proveedor y pieza) supera el umbral de su prioridad actual",
   },
   {
     key: "inc_resolved",

@@ -71,7 +71,7 @@ export async function getAlertItems(
     const rmaDateCondsArr = rmaDateConds(range);
 
     // SLA expression using the shared helper — accounts for sla_paused_ms
-    const elapsedHours = slaElapsedHours(incidents.createdAt, incidents.slaPausedMs);
+    const elapsedHours = slaElapsedHours(incidents.createdAt, incidents.slaPausedMs, incidents.status, incidents.stateChangedAt);
     const slaWarningCondition = buildSlaPriorityCondition(
       incidents.priority,
       elapsedHours,

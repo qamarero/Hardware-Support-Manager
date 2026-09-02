@@ -1,18 +1,38 @@
 import { sql, type SQL } from "drizzle-orm";
 import type { AnyColumn } from "drizzle-orm";
 import type { SlaThresholds } from "@/lib/constants/sla";
+import { PAUSED_INCIDENT_STATES } from "@/lib/constants/statuses";
 
 /**
- * SQL expression: elapsed hours since creation, minus paused time.
- * Used for OPEN incidents (compares against now()).
+ * Estados en los que el reloj SLA está parado, como lista SQL.
  *
- *   (extract(epoch from (now() - created_at)) * 1000 - CAST(sla_paused_ms AS bigint)) / 3600000.0
+ * El acumulador `sla_paused_ms` solo se suma al SALIR de una espera (ver
+ * `transitionIncident`), así que la espera EN CURSO no está en él. Sin
+ * descontarla aparte, una incidencia con tres semanas sin respuesta del cliente
+ * consume tres semanas de SLA nuestro. De ahí que casi todas las abiertas
+ * aparecieran fuera de umbral: no incumplíamos, el reloj no paraba.
+ */
+const PAUSED_STATES_SQL = sql`(${sql.join(
+  PAUSED_INCIDENT_STATES.map((st) => sql`${st}`),
+  sql`, `,
+)})`;
+
+/**
+ * SQL expression: elapsed hours since creation, minus paused time — including
+ * the pause currently in progress.
+ * Used for OPEN incidents (compares against now()).
  */
 export function slaElapsedHours(
   createdAtCol: AnyColumn,
   slaPausedMsCol: AnyColumn,
+  statusCol: AnyColumn,
+  stateChangedAtCol: AnyColumn,
 ): SQL<number> {
-  return sql<number>`(extract(epoch from (now() - ${createdAtCol})) * 1000 - CAST(${slaPausedMsCol} AS bigint)) / 3600000.0`;
+  return sql<number>`(extract(epoch from (now() - ${createdAtCol})) * 1000
+    - CAST(${slaPausedMsCol} AS bigint)
+    - CASE WHEN ${statusCol} IN ${PAUSED_STATES_SQL}
+           THEN extract(epoch from (now() - ${stateChangedAtCol})) * 1000
+           ELSE 0 END) / 3600000.0`;
 }
 
 /**
@@ -63,10 +83,15 @@ export function buildSlaPriorityCondition(
 
 /**
  * Raw SQL version of slaElapsedHours for use inside db.execute() templates.
- * References column names directly (not Drizzle column objects).
+ * References column names directly (not Drizzle column objects), so the query
+ * must expose `status` and `state_changed_at`.
  */
 export function slaElapsedHoursRaw(): SQL<number> {
-  return sql<number>`(extract(epoch from (now() - created_at)) * 1000 - CAST(sla_paused_ms AS bigint)) / 3600000.0`;
+  return sql<number>`(extract(epoch from (now() - created_at)) * 1000
+    - CAST(sla_paused_ms AS bigint)
+    - CASE WHEN status IN ${PAUSED_STATES_SQL}
+           THEN extract(epoch from (now() - state_changed_at)) * 1000
+           ELSE 0 END) / 3600000.0`;
 }
 
 /**

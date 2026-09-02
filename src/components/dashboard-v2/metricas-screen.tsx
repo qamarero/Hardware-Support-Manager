@@ -230,6 +230,14 @@ export function MetricasScreen() {
       ["Corte periodo anterior", data.meta.prevStockCutoff],
       ["Generado", data.meta.generatedAt],
       ["Nota", "Las fechas de corte van en hora del servidor; el stock es el estado a ese instante"],
+      [
+        "Regla SLA",
+        "El reloj se detiene mientras la incidencia espera al cliente, al proveedor o a una pieza, tambien durante la espera en curso. El tiempo de terceros no cuenta contra el SLA",
+      ],
+      [
+        "Regla antiguedad",
+        "Los buckets de antiguedad si cuentan dias de calendario, esperas incluidas: miden estancamiento, no incumplimiento",
+      ],
     ]);
     // Un solo BOM al principio: cada bloque trae el suyo y en medio del fichero
     // se vería como basura.
@@ -292,6 +300,8 @@ export function MetricasScreen() {
             <div className="ds-overline" style={{ marginBottom: 8 }}>Incidencias</div>
             <div className="kpi-grid">
               <Kpi label="Incidencias abiertas" value={v.inc_open ?? 0} sup="abiertas" />
+              <Kpi label="En nuestras manos" value={v.inc_open_inhouse ?? 0} sup="sin esperas" />
+              <Kpi label="En espera de terceros" value={v.inc_open_waiting ?? 0} sup="cliente/proveedor/pieza" />
               <Kpi label={`Incidencias >${7} días`} value={v.inc_aging_gt7 ?? 0} sup="aging" alert={(v.inc_aging_gt7 ?? 0) > 0} />
               <KpiDelta label="Cumplimiento SLA" value={v.inc_sla_compliance} prev={p.inc_sla_compliance} betterWhen="higher" unit="pct" />
               <KpiDelta label="Tiempo medio resolución" value={v.inc_avg_resolution_h} prev={p.inc_avg_resolution_h} betterWhen="lower" unit="h" />
@@ -342,7 +352,7 @@ export function MetricasScreen() {
                           </tr>
                         )}
                         <tr>
-                          <td title={m.description}>{m.label}</td>
+                          <td title={[m.description, m.universe].filter(Boolean).join(" — ")}>{m.label}</td>
                           <td className="mono">{m.target !== null ? formatMetricValue(m.unit, m.target) : "—"}</td>
                           <td className="num mono"><strong>{formatMetricValue(m.unit, cur)}</strong></td>
                           <td className="num mono" style={{ color: "var(--gray-500)" }}>{formatMetricValue(m.unit, data.prevValues[m.key] ?? null)}</td>
@@ -402,6 +412,13 @@ export function MetricasScreen() {
           </div>
 
           <p className="ds-body-sm print-only" style={{ color: "var(--gray-500)", marginTop: 8 }}>
+            Periodo {data.range.from} a {data.range.to} · stock al cierre del {data.meta.stockCutoff} ·
+            comparado con {data.range.prevFrom} a {data.range.prevTo} · generado el {data.meta.generatedAt}
+            <br />
+            El reloj SLA se detiene mientras la incidencia espera al cliente, al proveedor o a una pieza,
+            también durante la espera en curso: ese tiempo no cuenta contra el SLA. Los tramos de antigüedad
+            sí cuentan días de calendario, esperas incluidas, porque miden estancamiento y no incumplimiento.
+            <br />
             Generado desde Hardware Support Manager · {fmtWeek(data.range.from, data.range.to)}
           </p>
         </>
