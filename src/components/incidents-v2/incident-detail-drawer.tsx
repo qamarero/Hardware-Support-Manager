@@ -34,7 +34,7 @@ import { incidentMissingFields } from "@/lib/utils/incident-completeness";
 import { INCIDENT_STATUS_LABELS, priorityBucket, type IncidentStatus } from "@/lib/constants/incidents";
 import { RMA_STATUS_LABELS, type RmaStatus } from "@/lib/constants/rmas";
 import { PAUSED_INCIDENT_STATES } from "@/lib/constants/statuses";
-import { formatDateTime } from "@/lib/utils/date-format";
+import { formatDateTime, formatRelativeTime } from "@/lib/utils/date-format";
 
 /** Estados seleccionables en transición libre (sin en_triaje, legacy). */
 const SELECTABLE_STATUSES: IncidentStatus[] = [
@@ -226,8 +226,17 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
     <Drawer
       open={!!incidentId}
       onClose={onClose}
-      title={inc?.title ?? "Cargando…"}
-      subtitle={inc ? `${inc.incidentNumber} · ${formatDateTime(inc.createdAt)}` : undefined}
+      title={inc ? (inc.clientCompanyName ?? inc.clientName ?? "Sin cliente asignado") : "Cargando…"}
+      subtitle={
+        inc ? (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+            {inc.contactName && <><span>{inc.contactName}</span><span aria-hidden>·</span></>}
+            <span className="mono"><CopyId value={inc.incidentNumber} /></span>
+            <span aria-hidden>·</span>
+            <span title={formatDateTime(inc.createdAt)}>abierta {formatRelativeTime(inc.createdAt)}</span>
+          </span>
+        ) : undefined
+      }
       footer={footer}
       width={760}
     >
@@ -237,23 +246,32 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
         </div>
       ) : (
         <div className="stack" style={{ gap: 20 }}>
-          {/* Strip */}
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            <span className="id-cell"><CopyId value={inc.incidentNumber} /></span>
+          {/* Una sola tira: estado, prioridad, SLA y RMA vinculado. */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <IncidentStatusBadge status={inc.status} />
             <PriorityPill priority={inc.priority} />
-            <SlaBar incident={inc} />
+            {isPaused ? (
+              <span
+                className="badge badge--blue"
+                title={`El tiempo en ${INCIDENT_STATUS_LABELS[inc.status as IncidentStatus]} no cuenta para el plazo de resolución`}
+              >
+                <Clock size={12} /> SLA en pausa{inc.slaHours ? ` · ${inc.slaHours} h` : ""}
+              </span>
+            ) : (
+              <SlaBar incident={inc} />
+            )}
+            {linkedRmas.map((r) => (
+              <button
+                key={r.id}
+                className="badge badge--outline"
+                style={{ cursor: "pointer" }}
+                onClick={() => openRma(r.id)}
+                title={`Abrir ${r.rmaNumber} · ${RMA_STATUS_LABELS[r.status as RmaStatus] ?? r.status}`}
+              >
+                <RotateCcw size={11} /> {r.rmaNumber} ↗
+              </button>
+            ))}
           </div>
-
-          {/* SLA pausado */}
-          {isPaused && (
-            <div style={{ padding: "10px 14px", background: "var(--blue-50)", border: "1px solid var(--blue-500)", borderRadius: 10, display: "flex", gap: 10, fontSize: 13 }}>
-              <Clock size={14} color="var(--blue-500)" style={{ flexShrink: 0, marginTop: 2 }} />
-              <div style={{ color: "var(--blue-900)" }}>
-                <strong>SLA en pausa.</strong> El tiempo en <em>{INCIDENT_STATUS_LABELS[inc.status as IncidentStatus]}</em> no cuenta para el plazo de resolución.
-              </div>
-            </div>
-          )}
 
           {/* Tabs */}
           <div className="tabs">
@@ -264,33 +282,16 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
 
           {tab === "detalle" && (
             <div className="stack" style={{ gap: 20 }}>
-              {/* RMA(s) vinculados — visible y navegable desde la propia ficha */}
-              {linkedRmas.length > 0 && (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "10px 14px", background: "var(--purple-50)", border: "1px solid var(--purple-500)", borderRadius: 10 }}>
-                  <RotateCcw size={14} style={{ color: "var(--purple-900)", flexShrink: 0 }} />
-                  <span className="text-xs fw-700" style={{ color: "var(--purple-900)" }}>
-                    {linkedRmas.length > 1 ? "RMAs vinculados:" : "RMA vinculado:"}
-                  </span>
-                  {linkedRmas.map((r) => (
-                    <button key={r.id} className="badge badge--outline" style={{ cursor: "pointer" }} onClick={() => openRma(r.id)}>
-                      {r.rmaNumber} · {RMA_STATUS_LABELS[r.status as RmaStatus] ?? r.status}
-                    </button>
-                  ))}
+              {/* En edicion, guardar y cancelar arriba. En lectura el boton de
+                  editar vive dentro del grupo de gestion, no flotando aqui. */}
+              {editing && (
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                  <button className="btn btn--ghost btn--sm" onClick={() => setEditing(false)}><X size={14} /> Cancelar</button>
+                  <button className="btn btn--primary btn--sm" onClick={saveEdit} disabled={updateM.isPending || !form.title.trim()}>
+                    {updateM.isPending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Guardar
+                  </button>
                 </div>
               )}
-              {/* Toggle editar datos */}
-              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: -8 }}>
-                {editing ? (
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button className="btn btn--ghost btn--sm" onClick={() => setEditing(false)}><X size={14} /> Cancelar</button>
-                    <button className="btn btn--primary btn--sm" onClick={saveEdit} disabled={updateM.isPending || !form.title.trim()}>
-                      {updateM.isPending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Guardar
-                    </button>
-                  </div>
-                ) : (
-                  <button className="btn btn--outline btn--sm" onClick={startEdit}><Pencil size={14} /> Editar datos</button>
-                )}
-              </div>
 
               {!editing && missing.length > 0 && (
                 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "var(--amber-50)", border: "1px solid var(--warning)", borderRadius: 10, fontSize: 13 }}>
@@ -353,103 +354,113 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
                 </div>
               ) : (
                 <>
-                  {inc.description && (
-                    <div>
-                      <div className="field__label" style={{ marginBottom: 6 }}>Descripción</div>
-                      <div style={{ background: "var(--gray-50)", padding: "12px 14px", borderRadius: 10, fontSize: 13, lineHeight: 1.55, whiteSpace: "pre-line" }}>
-                        {inc.description}
-                      </div>
-                    </div>
-                  )}
-
-                  {(inc.deviceBrand || inc.deviceModel || inc.deviceSerialNumber) && (
-                    <div>
-                      <div className="field__label" style={{ marginBottom: 8 }}>Equipo afectado</div>
-                      <div className="card" style={{ padding: 16, display: "flex", alignItems: "center", gap: 14 }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div className="fw-700" style={{ fontSize: 14 }}>{[inc.deviceBrand, inc.deviceModel].filter(Boolean).join(" ") || "—"}</div>
-                          {inc.deviceSerialNumber && <div className="text-xs muted mono" style={{ marginTop: 2 }}>Serie: {inc.deviceSerialNumber}{inc.deviceType ? ` · ${inc.deviceType}` : ""}</div>}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="row row--2">
-                    <Field label="Técnico asignado">
-                      <select className="select" value={inc.assignedUserId ?? ""} onChange={(e) => updateM.mutate({ assignedUserId: e.target.value })}>
-                        <option value="">Sin asignar</option>
-                        {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-                      </select>
-                    </Field>
-                    <Field label="Prioridad">
-                      <select className="select" value={priorityBucket(inc.priority)} onChange={(e) => updateM.mutate({ priority: e.target.value })}>
-                        <option value="critica">Cliente no puede operar</option>
-                        <option value="media">Cliente puede operar</option>
-                      </select>
-                    </Field>
+                  {/* La frase de la incidencia encabeza su propia descripcion,
+                      que es su contexto natural. El local va en la cabecera. */}
+                  <div className="grp">
+                    <div className="grp__title">El problema</div>
+                    <div className="grp__lead">{inc.title}</div>
+                    {inc.description && (
+                      <div style={{ fontSize: 13, lineHeight: 1.55, whiteSpace: "pre-line" }}>{inc.description}</div>
+                    )}
                   </div>
 
-                  <dl className="dl">
-                    <dt>Cliente</dt>
-                    <dd style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                      <span>{inc.clientCompanyName ?? inc.clientName ?? "—"}</span>
-                      {inc.clientExternalId && (
-                        <span title="ID de cliente (Qamarero)" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", color: "var(--fg-tertiary)" }}>ID</span>
-                          <span style={{ fontFamily: "var(--font-mono, ui-monospace, monospace)", fontSize: 12 }}>
-                            <CopyId value={inc.clientExternalId} label={`${inc.clientExternalId.slice(0, 8)}…`} />
-                          </span>
+                  {(inc.deviceBrand || inc.deviceModel || inc.deviceSerialNumber) && (
+                    <div className="grp">
+                      <div className="grp__title">Equipo</div>
+                      <div style={{ display: "flex", gap: 9, alignItems: "baseline", flexWrap: "wrap" }}>
+                        <span className="fw-700" style={{ fontSize: 13 }}>
+                          {[inc.deviceBrand, inc.deviceModel].filter(Boolean).join(" ") || "Sin especificar"}
                         </span>
+                        {inc.deviceType && <span className="badge badge--gray">{inc.deviceType}</span>}
+                      </div>
+                      {inc.deviceSerialNumber && <div className="text-xs muted mono">{inc.deviceSerialNumber}</div>}
+                    </div>
+                  )}
+
+                  <div className="grp">
+                    <div className="grp__title">Gestión</div>
+                    <div className="row row--2">
+                      <Field label="Técnico asignado">
+                        <select className="select" value={inc.assignedUserId ?? ""} onChange={(e) => updateM.mutate({ assignedUserId: e.target.value })}>
+                          <option value="">Sin asignar</option>
+                          {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                        </select>
+                      </Field>
+                      <Field label="Prioridad">
+                        <select className="select" value={priorityBucket(inc.priority)} onChange={(e) => updateM.mutate({ priority: e.target.value })}>
+                          <option value="critica">Cliente no puede operar</option>
+                          <option value="media">Cliente puede operar</option>
+                        </select>
+                      </Field>
+                    </div>
+
+                    {/* Meta en dos lineas de texto en vez de una lista de
+                        definicion de seis filas: el local, el contacto y la
+                        apertura ya estan en la cabecera. */}
+                    <div className="text-xs muted" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                      {intercomConversationUrl(conversationId) && (
+                        <>
+                          <a href={intercomConversationUrl(conversationId)!} target="_blank" rel="noopener noreferrer" className="ds-link">
+                            Abrir en Intercom ↗
+                          </a>
+                          <span aria-hidden>·</span>
+                        </>
                       )}
-                    </dd>
-                    <dt>Intercom</dt>
-                    <dd>
-                      {intercomConversationUrl(conversationId) ? (
-                        <a href={intercomConversationUrl(conversationId)!} target="_blank" rel="noopener noreferrer" className="ds-link">
-                          Abrir conversación ↗
-                        </a>
-                      ) : "—"}
-                    </dd>
-                    <dt>Persona de contacto</dt><dd>{inc.contactName ?? "—"}</dd>
-                    <dt>Abierta</dt><dd>{formatDateTime(inc.createdAt)}</dd>
-                    <dt>Última actualización</dt><dd>{formatDateTime(inc.updatedAt)}</dd>
-                    <dt>SLA</dt><dd>{inc.slaHours ? `${inc.slaHours}h` : "Según prioridad"} · {slaProgress(inc).label}</dd>
-                  </dl>
+                      <span title={formatDateTime(inc.updatedAt)}>actualizada {formatRelativeTime(inc.updatedAt)}</span>
+                      <span aria-hidden>·</span>
+                      <span>SLA {inc.slaHours ? `${inc.slaHours} h` : "según prioridad"} · {slaProgress(inc).label}</span>
+                      {inc.clientExternalId && (
+                        <>
+                          <span aria-hidden>·</span>
+                          <span title="ID de cliente (Qamarero)" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                            ID <CopyId value={inc.clientExternalId} label={`${inc.clientExternalId.slice(0, 8)}…`} />
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    <div>
+                      <button className="btn btn--outline btn--sm" onClick={startEdit}><Pencil size={14} /> Editar datos</button>
+                    </div>
+                  </div>
+
+                  {/* Lo que solo se rellena a veces, plegado: antes dos areas de
+                      texto vacias ocupaban mas alto que toda la informacion. */}
+                  <details className="fold">
+                    <summary>Diagnóstico y solución aplicada</summary>
+                    <div className="fold__body">
+                      <Field label="Diagnóstico">
+                        <textarea className="textarea" placeholder="Pasos de diagnóstico, hallazgos…" value={diagnosis}
+                          onChange={(e) => setDiagnosis(e.target.value)}
+                          onBlur={() => diagnosis !== (inc.diagnosis ?? "") && updateM.mutate({ diagnosis })} />
+                      </Field>
+                      <Field label="Solución aplicada">
+                        <textarea className="textarea" placeholder="Solución final (rellenar al cerrar)…" value={resolution}
+                          onChange={(e) => setResolution(e.target.value)}
+                          onBlur={() => resolution !== (inc.resolution ?? "") && updateM.mutate({ resolution })} />
+                      </Field>
+                    </div>
+                  </details>
+
+                  <details className="fold">
+                    <summary>Historial del cliente, recordatorios y notas</summary>
+                    <div className="fold__body">
+                      {inc.clientId && (
+                        <ClientContext clientId={inc.clientId} clientName={inc.clientCompanyName ?? inc.clientName} currentIncidentId={inc.id} />
+                      )}
+                      <ReminderSection entityType="incident" entityId={inc.id} defaultTitle={`Seguimiento ${inc.incidentNumber}`} />
+                      {conversationId && (
+                        <button type="button" className="btn btn--outline" style={{ justifyContent: "flex-start", gap: 8 }} onClick={() => setChatOpen(true)}>
+                          <MessageSquare size={16} /> Ver conversación de Intercom
+                        </button>
+                      )}
+                      <div className="stack" style={{ gap: 8 }}>
+                        <div className="field__label">Añadir nota</div>
+                        <ManualNoteForm entityType="incident" entityId={inc.id} intercomConversationId={conversationId} />
+                      </div>
+                    </div>
+                  </details>
                 </>
               )}
-
-              <Field label="Diagnóstico">
-                <textarea className="textarea" placeholder="Pasos de diagnóstico, hallazgos…" value={diagnosis}
-                  onChange={(e) => setDiagnosis(e.target.value)}
-                  onBlur={() => diagnosis !== (inc.diagnosis ?? "") && updateM.mutate({ diagnosis })} />
-              </Field>
-              <Field label="Solución aplicada">
-                <textarea className="textarea" placeholder="Solución final (rellenar al cerrar)…" value={resolution}
-                  onChange={(e) => setResolution(e.target.value)}
-                  onBlur={() => resolution !== (inc.resolution ?? "") && updateM.mutate({ resolution })} />
-              </Field>
-
-              {/* Historial del cliente */}
-              {inc.clientId && (
-                <ClientContext clientId={inc.clientId} clientName={inc.clientCompanyName ?? inc.clientName} currentIncidentId={inc.id} />
-              )}
-
-              {/* Recordatorios / seguimientos */}
-              <ReminderSection entityType="incident" entityId={inc.id} defaultTitle={`Seguimiento ${inc.incidentNumber}`} />
-
-              {/* Intercom (conservado) — en popup para no alargar el scroll del drawer */}
-              {conversationId && (
-                <div className="stack" style={{ gap: 8 }}>
-                  <div className="field__label">Conversación Intercom</div>
-                  <button type="button" className="btn btn--outline" style={{ justifyContent: "flex-start", gap: 8 }} onClick={() => setChatOpen(true)}>
-                    <MessageSquare size={16} /> Ver conversación de Intercom
-                  </button>
-                </div>
-              )}
-              <div className="stack" style={{ gap: 8 }}>
-                <div className="field__label">Añadir nota</div>
-                <ManualNoteForm entityType="incident" entityId={inc.id} intercomConversationId={conversationId} />
-              </div>
             </div>
           )}
 

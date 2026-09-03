@@ -606,6 +606,28 @@ a { color: inherit; text-decoration: none; }
 }
 @keyframes slideup { from { transform: translate(-50%, 20px); opacity: 0; } }
 
+/* Fichas de detalle: grupo con rótulo. Sustituye a la mezcla de cajas grises,
+   tarjetas y listas de definición que competían entre sí en los drawers. */
+.grp { display: flex; flex-direction: column; gap: 7px; }
+.grp__title {
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--fg-tertiary); display: flex; align-items: center; gap: 8px;
+}
+.grp__title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+.grp__lead { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.3; }
+
+/* Plegable para secciones que solo se rellenan a veces (diagnóstico, notas…). */
+.fold { border: 1px dashed var(--border); border-radius: 8px; }
+.fold > summary {
+  cursor: pointer; list-style: none; padding: 9px 12px; font-size: 12.5px;
+  color: var(--fg-secondary); display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.fold > summary::-webkit-details-marker { display: none; }
+.fold > summary::after { content: "be"; font-size: 10px; }
+.fold[open] > summary::after { content: "b4"; }
+.fold[open] > summary { border-bottom: 1px solid var(--border); }
+.fold__body { padding: 12px; display: flex; flex-direction: column; gap: 14px; }
+
 /* Misc utilities */
 .mono { font-family: var(--font-mono); }
 .muted { color: var(--fg-secondary); }
