@@ -23,6 +23,25 @@ import type { EntityType } from "@/lib/constants/attachments";
 interface EventLogTimelineProps {
   entityType: EntityType;
   entityId: string;
+  /**
+   * Formulario para escribir una nota, opcional. Lo pinta el propio timeline
+   * encima de la lista para que se pueda anotar sin salir de esta pestaña: la
+   * nota que escribes aparece justo debajo, en su sitio de la cronología.
+   */
+  composer?: React.ReactNode;
+}
+
+/** Acciones que escribe una persona, no el sistema. */
+const HUMAN_ACTIONS = new Set(["note", "comment", "contacted"]);
+
+/** Iniciales para el avatar del autor de una nota. */
+function initials(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
 }
 
 const ACTION_LABELS: Record<string, string> = {
@@ -107,6 +126,7 @@ function getStatusLabel(status: string | null, entityType: EntityType): string {
 export function EventLogTimeline({
   entityType,
   entityId,
+  composer,
 }: EventLogTimelineProps) {
   const { data: logs = [], isLoading } = useQuery({
     queryKey: ["event-logs", entityType, entityId],
@@ -118,7 +138,8 @@ export function EventLogTimeline({
       <CardHeader>
         <CardTitle className="text-lg">Historial de actividad</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-5">
+        {composer}
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -132,6 +153,8 @@ export function EventLogTimeline({
             <div className="absolute left-[15px] top-2 bottom-2 w-px bg-gradient-to-b from-primary/20 via-border to-transparent" />
             {logs.map((log, index) => {
               const Icon = ACTION_ICONS[log.action] ?? Plus;
+              const isHuman = HUMAN_ACTIONS.has(log.action);
+              const author = log.userName ?? "Sistema";
               const details = log.details as Record<string, unknown> | null;
               const changed = log.action === "updated" ? describeFields(details?.fields) : null;
               const quickAssign = log.action === "updated" && details?.quickAssign === true;
@@ -145,14 +168,28 @@ export function EventLogTimeline({
                      el final del historial casi dos segundos en blanco. */
                   style={{ animation: `slideInLeft 250ms cubic-bezier(0.16, 1, 0.3, 1) ${Math.min(index, 8) * 40}ms both` }}
                 >
-                  <div className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${isFirst ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
-                    <Icon className={`h-4 w-4 ${isFirst ? "text-primary-foreground" : "text-muted-foreground"}`} />
+                  <div
+                    className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                      isHuman ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                    } ${isFirst ? "ring-2 ring-primary/30 ring-offset-2 ring-offset-background" : ""}`}
+                    title={isFirst ? "Lo más reciente" : undefined}
+                  >
+                    {isHuman && log.userName ? (
+                      <span className="text-[11px] font-semibold">{initials(log.userName)}</span>
+                    ) : (
+                      <Icon className="h-4 w-4" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0 pt-0.5">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium">
-                        {quickAssign ? "Técnico reasignado" : (ACTION_LABELS[log.action] ?? log.action)}
+                      <span className={isHuman ? "text-sm font-semibold" : "text-sm font-medium text-muted-foreground"}>
+                        {isHuman ? author : (quickAssign ? "Técnico reasignado" : (ACTION_LABELS[log.action] ?? log.action))}
                       </span>
+                      {isHuman && (
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                          {ACTION_LABELS[log.action] ?? log.action}
+                        </span>
+                      )}
                       {changed && !quickAssign && (
                         <span className="text-sm text-muted-foreground">{changed}</span>
                       )}
@@ -179,9 +216,9 @@ export function EventLogTimeline({
                       </p>
                     )}
                     {(log.action === "note" || log.action === "comment") && text("body") && (
-                      <p className="mt-1 text-sm text-foreground whitespace-pre-wrap">
+                      <div className="mt-1.5 rounded-lg border bg-muted/40 px-3 py-2 text-sm text-foreground whitespace-pre-wrap">
                         {text("body")}
-                      </p>
+                      </div>
                     )}
                     {log.action === "contacted" && (text("channel") || text("note")) && (
                       <p className="mt-1 text-sm text-muted-foreground">
@@ -196,7 +233,8 @@ export function EventLogTimeline({
                     {/* La hora exacta importa: en un mismo día ocho eventos
                         decían todos «hace 2 días» y no se veía el orden. */}
                     <p className="mt-1 text-xs text-muted-foreground" title={formatDateTime(log.createdAt)}>
-                      {log.userName ?? "Sistema"} &middot; {formatRelativeTime(log.createdAt)} &middot;{" "}
+                      {!isHuman && <>{author} &middot; </>}
+                      {formatRelativeTime(log.createdAt)} &middot;{" "}
                       {new Date(log.createdAt).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
                     </p>
                   </div>

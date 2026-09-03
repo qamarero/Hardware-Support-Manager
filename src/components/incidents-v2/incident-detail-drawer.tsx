@@ -442,7 +442,7 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
                   </details>
 
                   <details className="fold">
-                    <summary>Historial del cliente, recordatorios y notas</summary>
+                    <summary>Historial del cliente y recordatorios</summary>
                     <div className="fold__body">
                       {inc.clientId && (
                         <ClientContext clientId={inc.clientId} clientName={inc.clientCompanyName ?? inc.clientName} currentIncidentId={inc.id} />
@@ -453,10 +453,6 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
                           <MessageSquare size={16} /> Ver conversación de Intercom
                         </button>
                       )}
-                      <div className="stack" style={{ gap: 8 }}>
-                        <div className="field__label">Añadir nota</div>
-                        <ManualNoteForm entityType="incident" entityId={inc.id} intercomConversationId={conversationId} />
-                      </div>
                     </div>
                   </details>
                 </>
@@ -464,7 +460,13 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
             </div>
           )}
 
-          {tab === "timeline" && <EventLogTimeline entityType="incident" entityId={inc.id} />}
+          {tab === "timeline" && (
+            <EventLogTimeline
+              entityType="incident"
+              entityId={inc.id}
+              composer={<ManualNoteForm entityType="incident" entityId={inc.id} intercomConversationId={conversationId} />}
+            />
+          )}
 
           {tab === "adjuntos" && (
             <div className="stack">

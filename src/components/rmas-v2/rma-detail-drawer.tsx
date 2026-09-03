@@ -507,12 +507,6 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
                   onBlur={() => notes !== (rma.notes ?? "") && updateM.mutate({ notes })} />
               </Field>
 
-              {/* Notas de técnicos (historial) */}
-              <div className="stack" style={{ gap: 8 }}>
-                <div className="field__label">Añadir nota al historial</div>
-                <ManualNoteForm entityType="rma" entityId={rma.id} />
-              </div>
-
               {/* Recordatorios / seguimientos */}
               <ReminderSection entityType="rma" entityId={rma.id} defaultTitle={`Seguimiento RMA ${rma.rmaNumber}`} />
             </div>
@@ -527,7 +521,13 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
             />
           )}
 
-          {tab === "timeline" && <EventLogTimeline entityType="rma" entityId={rma.id} />}
+          {tab === "timeline" && (
+            <EventLogTimeline
+              entityType="rma"
+              entityId={rma.id}
+              composer={<ManualNoteForm entityType="rma" entityId={rma.id} />}
+            />
+          )}
 
           {tab === "adjuntos" && (
             <div className="stack">
