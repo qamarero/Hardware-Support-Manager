@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Check, Clock, Ticket, Pencil, X, MessageSquare, Printer, ExternalLink } from "lucide-react";
+import { Loader2, Check, Clock, Pencil, X, MessageSquare, Printer, ExternalLink } from "lucide-react";
 import { Drawer, Field } from "@/components/proto/drawer";
 import { RmaStatusBadge } from "@/components/proto/badges";
 import { CopyId } from "@/components/proto/copy-id";
@@ -30,7 +30,7 @@ import { fetchRmaById, updateRma, transitionRma, fetchProvidersForSelect } from 
 import { getRmaAvailableTransitions } from "@/lib/state-machines/rma";
 import { RMA_STATUS_LABELS, RMA_OUTCOME_LABELS, RMA_LOGISTICS_LABELS, RMA_REPAIR_PATH_LABELS, type RmaStatus } from "@/lib/constants/rmas";
 import { PAUSED_RMA_STATES } from "@/lib/constants/statuses";
-import { formatDateTime } from "@/lib/utils/date-format";
+import { formatDateTime, formatRelativeTime } from "@/lib/utils/date-format";
 
 interface Props {
   rmaId: string | null;
@@ -199,6 +199,18 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
     transitionM.mutate({ toStatus, force });
   }
 
+  const isEarly = rma ? ["borrador", "solicitado"].includes(rma.status) : false;
+  const shipping = rma?.shipping ?? null;
+  const hasShipping = Boolean(
+    shipping &&
+      (shipping.contactName ||
+        shipping.contactPhone ||
+        shipping.contactEmail ||
+        shipping.address ||
+        shipping.destination?.address ||
+        shipping.destination?.name)
+  );
+
   const footer = rma ? (
     closingTo ? (
       <>
@@ -229,6 +241,8 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
       </>
     ) : (
       <>
+        {/* Las acciones viven aquí: quedan a mano al hacer scroll y dejan de
+            empujar la información hacia el fondo del panel. */}
         <select
           className="select"
           style={{ width: "auto" }}
@@ -245,6 +259,21 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
             <option key={s} value={s}>{RMA_STATUS_LABELS[s]}</option>
           ))}
         </select>
+        <a
+          href={`/etiqueta/rma/${rma.id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn btn--outline btn--sm"
+          title="Imprimir etiqueta física (100×150) u hoja A4 de envío"
+        >
+          <Printer size={14} /> Etiqueta
+        </a>
+        <RmaProviderEmail rma={rma} />
+        {conversationId && (
+          <button type="button" className="btn btn--outline btn--sm" onClick={() => setChatOpen(true)}>
+            <MessageSquare size={14} /> Conversación
+          </button>
+        )}
         <div style={{ flex: 1 }} />
         {nextStage && canAdvance && (
           <button className="btn btn--primary btn--sm" onClick={() => requestTransition(nextStage)} disabled={transitionM.isPending}>
@@ -259,8 +288,33 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
     <Drawer
       open={!!rmaId}
       onClose={onClose}
-      title={rma ? `RMA ${rma.rmaNumber}` : "Cargando…"}
-      subtitle={rma ? (rma.providerRmaNumber ? `Nº proveedor ${rma.providerRmaNumber}` : formatDateTime(rma.createdAt)) : undefined}
+      title={rma ? (rma.clientCompanyName ?? rma.clientName ?? "Sin cliente asignado") : "Cargando…"}
+      subtitle={
+        rma ? (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+            <span className="mono"><CopyId value={rma.rmaNumber} /></span>
+            {rma.incidentNumber && (
+              <>
+                <span aria-hidden>·</span>
+                {rma.incidentId ? (
+                  <button
+                    type="button"
+                    onClick={() => openIncident(rma.incidentId!)}
+                    title="Abrir la incidencia vinculada"
+                    style={{ background: "none", border: 0, padding: 0, cursor: "pointer", color: "var(--primary)", font: "inherit" }}
+                  >
+                    {rma.incidentNumber} ↗
+                  </button>
+                ) : (
+                  <span>{rma.incidentNumber}</span>
+                )}
+              </>
+            )}
+            <span aria-hidden>·</span>
+            <span title={formatDateTime(rma.createdAt)}>abierto {formatRelativeTime(rma.createdAt)}</span>
+          </span>
+        ) : undefined
+      }
       footer={footer}
       width={760}
     >
@@ -269,71 +323,30 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
           <Loader2 className="animate-spin" size={16} /> Cargando RMA…
         </div>
       ) : (
-        <div className="stack" style={{ gap: 20 }}>
-          {/* Strip */}
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            <span className="id-cell"><CopyId value={rma.rmaNumber} /></span>
+        <div className="stack" style={{ gap: 18 }}>
+          {/* Una sola tira: estado, SLA, proveedor y lo que bloquea el caso.
+              El identificador ya está en la cabecera. */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <RmaStatusBadge status={rma.status} />
-            {rma.incidentNumber && (
-              rma.incidentId ? (
-                <button
-                  type="button"
-                  className="badge badge--outline"
-                  style={{ cursor: "pointer" }}
-                  onClick={() => openIncident(rma.incidentId!)}
-                  title="Abrir la incidencia vinculada"
-                >
-                  <Ticket size={12} /> Incidencia {rma.incidentNumber}
-                </button>
-              ) : (
-                <span className="badge badge--outline">
-                  <Ticket size={12} /> Incidencia {rma.incidentNumber}
-                </span>
-              )
+            {isPaused && (
+              <span
+                className="badge badge--blue"
+                title={`El tiempo en ${RMA_STATUS_LABELS[rma.status as RmaStatus]} no cuenta para el plazo: el equipo está fuera de nuestro alcance`}
+              >
+                <Clock size={12} /> SLA en pausa
+              </span>
             )}
-          </div>
-
-          {isPaused && (
-            <div style={{ padding: "10px 14px", background: "var(--blue-50)", border: "1px solid var(--blue-500)", borderRadius: 10, display: "flex", gap: 10, fontSize: 13 }}>
-              <Clock size={14} color="var(--blue-500)" style={{ flexShrink: 0, marginTop: 2 }} />
-              <div style={{ color: "var(--blue-900)" }}>
-                <strong>SLA en pausa.</strong> El tiempo en <em>{RMA_STATUS_LABELS[rma.status as RmaStatus]}</em> no cuenta para el plazo (el equipo está en el proveedor).
-              </div>
-            </div>
-          )}
-
-          {/* Estado (no secuencial): píldoras de estados, solo se resalta el actual.
-              El flujo RMA no es lineal — reflejamos la situación, no un orden fijo. */}
-          <div className="card" style={{ padding: 20 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-              <div className="field__label">Estado</div>
-              {isPaused && <span className="badge badge--blue" title="En este estado el SLA está en pausa (fuera de nuestro alcance)">⏸ SLA en pausa</span>}
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {SELECTABLE_RMA_STATUSES.map((s) => {
-                const active = s === rma.status;
-                return (
-                  <span
-                    key={s}
-                    style={{
-                      display: "inline-flex", alignItems: "center", gap: 6,
-                      padding: "5px 12px", borderRadius: 999, fontSize: 12,
-                      fontWeight: active ? 700 : 500,
-                      background: active ? "var(--primary)" : "var(--gray-50)",
-                      color: active ? "#fff" : "var(--gray-600)",
-                      border: `1px solid ${active ? "var(--primary)" : "var(--border)"}`,
-                      opacity: active ? 1 : 0.85,
-                    }}
-                  >
-                    {active && <span style={{ width: 6, height: 6, borderRadius: 50, background: "#fff" }} />}
-                    {RMA_STATUS_LABELS[s]}
-                  </span>
-                );
-              })}
-            </div>
-            <div className="text-xs muted" style={{ marginTop: 10 }}>
-              Los estados no son secuenciales: marcan la situación actual, no un orden por el que haya que pasar.
-            </div>
+            {rma.providerName && <span className="badge badge--purple">{rma.providerName}</span>}
+            {!rma.providerRmaNumber && !isEarly && (
+              <span className="badge badge--amber" title="El proveedor aún no ha devuelto su número de RMA">
+                Nº proveedor pendiente
+              </span>
+            )}
+            {rma.outcome && (
+              <span className="badge badge--green">
+                {RMA_OUTCOME_LABELS[rma.outcome as keyof typeof RMA_OUTCOME_LABELS] ?? rma.outcome}
+              </span>
+            )}
           </div>
 
           {/* Tabs */}
@@ -344,39 +357,15 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
           </div>
 
           {tab === "detalle" && (
-            <div className="stack" style={{ gap: 20 }}>
-              {rma.providerId && <ProviderRmaProcedure providerId={rma.providerId} />}
-              <div style={{ display: "flex", justifyContent: "flex-start", gap: 8, flexWrap: "wrap" }}>
-                <a
-                  href={`/etiqueta/rma/${rma.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn btn--primary btn--sm"
-                  title="Imprimir etiqueta física (100×150) u hoja A4 de envío"
-                >
-                  <Printer size={14} /> Etiqueta
-                </a>
-                <RmaShippingDialog rma={rma} />
-                <RmaProviderEmail rma={rma} />
-                {conversationId && (
-                  <button type="button" className="btn btn--outline btn--sm" onClick={() => setChatOpen(true)}>
-                    <MessageSquare size={14} /> Ver conversación
+            <div className="stack" style={{ gap: 18 }}>
+              {editing && (
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                  <button className="btn btn--ghost btn--sm" onClick={() => setEditing(false)}><X size={14} /> Cancelar</button>
+                  <button className="btn btn--primary btn--sm" onClick={saveEdit} disabled={updateM.isPending}>
+                    {updateM.isPending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Guardar
                   </button>
-                )}
-              </div>
-              {/* Toggle editar datos */}
-              <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: -8 }}>
-                {editing ? (
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button className="btn btn--ghost btn--sm" onClick={() => setEditing(false)}><X size={14} /> Cancelar</button>
-                    <button className="btn btn--primary btn--sm" onClick={saveEdit} disabled={updateM.isPending}>
-                      {updateM.isPending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Guardar
-                    </button>
-                  </div>
-                ) : (
-                  <button className="btn btn--outline btn--sm" onClick={startEdit}><Pencil size={14} /> Editar datos</button>
-                )}
-              </div>
+                </div>
+              )}
 
               {editing ? (
                 <div className="stack" style={{ gap: 16 }}>
@@ -422,100 +411,166 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
                 </div>
               ) : (
                 <>
-                  {(rma.deviceBrand || rma.deviceModel || rma.deviceSerialNumber) && (
-                    <div>
-                      <div className="field__label" style={{ marginBottom: 8 }}>Equipo afectado</div>
-                      <div className="card" style={{ padding: 16 }}>
-                        <div className="fw-700" style={{ fontSize: 14 }}>{[rma.deviceBrand, rma.deviceModel].filter(Boolean).join(" ") || "—"}</div>
-                        {rma.deviceSerialNumber && <div className="text-xs muted mono" style={{ marginTop: 2 }}>Serie: {rma.deviceSerialNumber}{rma.deviceType ? ` · ${rma.deviceType}` : ""}</div>}
+                  {/* El equipo: qué se envía y por qué. El motivo estaba enterrado
+                      en «Notas generales», al final del panel. */}
+                  <div className="grp">
+                    <div className="grp__title">El equipo</div>
+                    <div style={{ display: "flex", gap: 9, alignItems: "baseline", flexWrap: "wrap" }}>
+                      <span className="fw-700" style={{ fontSize: 13 }}>
+                        {[rma.deviceBrand, rma.deviceModel].filter(Boolean).join(" ") || "Sin especificar"}
+                      </span>
+                      {rma.deviceType && <span className="badge badge--gray">{rma.deviceType}</span>}
+                    </div>
+                    {rma.deviceSerialNumber && <div className="text-xs muted mono">{rma.deviceSerialNumber}</div>}
+                    {rma.notes && (
+                      <div style={{ fontSize: 12.5, whiteSpace: "pre-line" }}>{rma.notes}</div>
+                    )}
+                  </div>
+
+                  <div className="grp">
+                    <div className="grp__title">Con el proveedor</div>
+                    <div className="row row--2">
+                      <Field label="Nº RMA del proveedor" hint="Código que devuelve el proveedor al autorizar">
+                        <input className="input mono" placeholder="Pendiente" value={providerRma}
+                          onChange={(e) => setProviderRma(e.target.value)}
+                          onBlur={() => providerRma !== (rma.providerRmaNumber ?? "") && updateM.mutate({ providerRmaNumber: providerRma })} />
+                      </Field>
+                      <Field label="Seguimiento (envío)">
+                        <input className="input mono" placeholder="Tracking salida" value={trackingOut}
+                          onChange={(e) => setTrackingOut(e.target.value)}
+                          onBlur={() => trackingOut !== (rma.trackingNumberOutgoing ?? "") && updateM.mutate({ trackingNumberOutgoing: trackingOut })} />
+                      </Field>
+                    </div>
+                    <div className="row row--2">
+                      <Field label="Seguimiento (retorno)">
+                        <input className="input mono" placeholder="Tracking retorno" value={trackingIn}
+                          onChange={(e) => setTrackingIn(e.target.value)}
+                          onBlur={() => trackingIn !== (rma.trackingNumberReturn ?? "") && updateM.mutate({ trackingNumberReturn: trackingIn })} />
+                      </Field>
+                      <div className="text-xs muted" style={{ alignSelf: "end", paddingBottom: 8 }}>
+                        {[
+                          rma.logistics ? RMA_LOGISTICS_LABELS[rma.logistics as keyof typeof RMA_LOGISTICS_LABELS] ?? rma.logistics : null,
+                          rma.repairPath ? RMA_REPAIR_PATH_LABELS[rma.repairPath as keyof typeof RMA_REPAIR_PATH_LABELS] ?? rma.repairPath : null,
+                        ].filter(Boolean).join(" · ")}
+                      </div>
+                    </div>
+                    {/* Las instrucciones se abren solas solo mientras se está
+                        tramitando: con el equipo ya enviado, esos pasos ya se dieron. */}
+                    {rma.providerId && (
+                      <details className="fold" open={isEarly}>
+                        <summary>Cómo tramitar con {rma.providerName ?? "el proveedor"}</summary>
+                        <div className="fold__body">
+                          <ProviderRmaProcedure providerId={rma.providerId} />
+                        </div>
+                      </details>
+                    )}
+                  </div>
+
+                  {hasShipping && shipping && (
+                    <div className="grp">
+                      <div className="grp__title">Recogida</div>
+                      {(shipping.address || shipping.city || shipping.postalCode) && (
+                        <div style={{ fontSize: 12.5 }}>
+                          {[shipping.address, [shipping.postalCode, shipping.city].filter(Boolean).join(" "), shipping.province].filter(Boolean).join(", ")}
+                        </div>
+                      )}
+                      {(shipping.contactName || shipping.contactPhone || shipping.contactEmail) && (
+                        <div className="text-xs muted">
+                          {shipping.contactName ? <>Recoger con <span className="fw-600" style={{ color: "var(--fg-primary)" }}>{shipping.contactName}</span></> : "Contacto de recogida"}
+                          {shipping.contactPhone ? ` · ${shipping.contactPhone}` : ""}
+                          {shipping.contactEmail ? ` · ${shipping.contactEmail}` : ""}
+                        </div>
+                      )}
+                      {shipping.instructions && <div className="text-xs muted">{shipping.instructions}</div>}
+                      {shipping.destination && (shipping.destination.address || shipping.destination.name) && (
+                        <div className="text-xs muted">
+                          Destino: {[shipping.destination.name, shipping.destination.address, [shipping.destination.postalCode, shipping.destination.city].filter(Boolean).join(" ")].filter(Boolean).join(", ")}
+                        </div>
+                      )}
+                      <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginTop: 2 }}>
+                        <RmaShippingDialog rma={rma} />
                       </div>
                     </div>
                   )}
 
-                  <dl className="dl">
-                    <dt>Proveedor</dt><dd>{rma.providerName ?? "—"}</dd>
-                    <dt>Cliente</dt><dd>{rma.clientCompanyName ?? rma.clientName ?? "—"}</dd>
-                    <dt>Persona de contacto</dt><dd>{rma.contactName ?? "—"}</dd>
-                    {conversationId && (
-                      <>
-                        <dt>Conversación</dt>
-                        <dd>
+                  <div className="grp">
+                    <div className="grp__title">Gestión</div>
+                    <div className="text-xs muted" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                      {rma.contactName && <><span>Contacto de la incidencia: {rma.contactName}</span><span aria-hidden>·</span></>}
+                      {conversationId && (
+                        <>
                           <a
                             href={intercomConversationUrl(conversationId) ?? "#"}
                             target="_blank"
                             rel="noopener noreferrer"
-                            style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#ff592f", fontWeight: 600 }}
+                            className="ds-link"
+                            style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
                           >
                             Abrir en Intercom <ExternalLink size={12} />
                           </a>
-                        </dd>
-                      </>
-                    )}
-                    {rma.logistics && (<><dt>Logística</dt><dd>{RMA_LOGISTICS_LABELS[rma.logistics as keyof typeof RMA_LOGISTICS_LABELS] ?? rma.logistics}</dd></>)}
-                    {rma.repairPath && (<><dt>Vía de reparación</dt><dd>{RMA_REPAIR_PATH_LABELS[rma.repairPath as keyof typeof RMA_REPAIR_PATH_LABELS] ?? rma.repairPath}</dd></>)}
-                    {rma.outcome && (<><dt>Resultado</dt><dd>{RMA_OUTCOME_LABELS[rma.outcome as keyof typeof RMA_OUTCOME_LABELS] ?? rma.outcome}</dd></>)}
-                    <dt>Abierto</dt><dd>{formatDateTime(rma.createdAt)}</dd>
-                    <dt>Última actualización</dt><dd>{formatDateTime(rma.updatedAt)}</dd>
-                  </dl>
-
-                  {/* Datos de recogida/envío guardados (solo lectura). Se editan con el botón "Datos de recogida/envío". */}
-                  {rma.shipping && (rma.shipping.locationName || rma.shipping.contactName || rma.shipping.contactPhone || rma.shipping.contactEmail || rma.shipping.address || rma.shipping.destination?.address || rma.shipping.destination?.name) ? (
-                    <div>
-                      <div className="field__label" style={{ marginBottom: 8 }}>Datos de recogida y envío</div>
-                      <div className="card" style={{ padding: 16 }}>
-                        <dl className="dl" style={{ margin: 0 }}>
-                          {rma.shipping.locationName && (<><dt>Local</dt><dd>{rma.shipping.locationName}</dd></>)}
-                          {rma.shipping.contactName && (<><dt>Contacto</dt><dd>{rma.shipping.contactName}</dd></>)}
-                          {rma.shipping.contactPhone && (<><dt>Teléfono</dt><dd className="mono">{rma.shipping.contactPhone}</dd></>)}
-                          {rma.shipping.contactEmail && (<><dt>Email</dt><dd>{rma.shipping.contactEmail}</dd></>)}
-                          {(rma.shipping.address || rma.shipping.city || rma.shipping.postalCode) && (
-                            <><dt>Dirección</dt><dd>{[rma.shipping.address, [rma.shipping.postalCode, rma.shipping.city].filter(Boolean).join(" "), rma.shipping.province].filter(Boolean).join(", ")}</dd></>
-                          )}
-                          {rma.shipping.instructions && (<><dt>Instrucciones</dt><dd>{rma.shipping.instructions}</dd></>)}
-                          {rma.shipping.destination && (rma.shipping.destination.address || rma.shipping.destination.name) && (
-                            <><dt>Destino</dt><dd>{[rma.shipping.destination.name, rma.shipping.destination.address, [rma.shipping.destination.postalCode, rma.shipping.destination.city].filter(Boolean).join(" ")].filter(Boolean).join(", ")}</dd></>
-                          )}
-                        </dl>
-                      </div>
+                          <span aria-hidden>·</span>
+                        </>
+                      )}
+                      <span title={formatDateTime(rma.updatedAt)}>actualizado {formatRelativeTime(rma.updatedAt)}</span>
                     </div>
-                  ) : null}
+                    <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+                      <button className="btn btn--outline btn--sm" onClick={startEdit}><Pencil size={14} /> Editar datos</button>
+                      {!hasShipping && <RmaShippingDialog rma={rma} />}
+                    </div>
+
+                    {/* La rejilla completa se queda accesible, plegada: el estado
+                        actual ya está en la tira y cambiarlo se hace abajo. */}
+                    <details className="fold">
+                      <summary>Ver todos los estados del RMA</summary>
+                      <div className="fold__body">
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                          {SELECTABLE_RMA_STATUSES.map((st) => {
+                            const active = st === rma.status;
+                            return (
+                              <span
+                                key={st}
+                                style={{
+                                  display: "inline-flex", alignItems: "center", gap: 6,
+                                  padding: "5px 12px", borderRadius: 999, fontSize: 12,
+                                  fontWeight: active ? 700 : 500,
+                                  background: active ? "var(--primary)" : "var(--gray-50)",
+                                  color: active ? "#fff" : "var(--gray-600)",
+                                  border: `1px solid ${active ? "var(--primary)" : "var(--border)"}`,
+                                }}
+                              >
+                                {active && <span style={{ width: 6, height: 6, borderRadius: 50, background: "#fff" }} />}
+                                {RMA_STATUS_LABELS[st]}
+                              </span>
+                            );
+                          })}
+                        </div>
+                        <div className="text-xs muted">
+                          Los estados no son secuenciales: marcan la situación actual, no un orden por el que haya que pasar.
+                        </div>
+                      </div>
+                    </details>
+
+                    <details className="fold">
+                      <summary>Notas generales del RMA y recordatorios</summary>
+                      <div className="fold__body">
+                        <Field label="Notas generales" hint="Nota fija del RMA — para el historial, usa el cuadro de abajo">
+                          <textarea className="textarea" placeholder="Notas internas del RMA…" value={notes}
+                            onChange={(e) => setNotes(e.target.value)}
+                            onBlur={() => notes !== (rma.notes ?? "") && updateM.mutate({ notes })} />
+                        </Field>
+                        <ReminderSection entityType="rma" entityId={rma.id} defaultTitle={`Seguimiento RMA ${rma.rmaNumber}`} />
+                      </div>
+                    </details>
+                  </div>
+
+                  {/* La nota está en las dos pestañas a propósito: se deja la
+                      información desde donde uno esté, sin cambiar de sitio. */}
+                  <div className="grp">
+                    <div className="grp__title">Añadir nota al historial</div>
+                    <ManualNoteForm entityType="rma" entityId={rma.id} />
+                  </div>
                 </>
               )}
-
-              <Field label="Nº RMA del proveedor" hint="Código que devuelve el proveedor al autorizar">
-                <input className="input mono" placeholder="Pendiente" value={providerRma}
-                  onChange={(e) => setProviderRma(e.target.value)}
-                  onBlur={() => providerRma !== (rma.providerRmaNumber ?? "") && updateM.mutate({ providerRmaNumber: providerRma })} />
-              </Field>
-
-              <div className="row row--2">
-                <Field label="Seguimiento (envío)">
-                  <input className="input mono" placeholder="Tracking salida" value={trackingOut}
-                    onChange={(e) => setTrackingOut(e.target.value)}
-                    onBlur={() => trackingOut !== (rma.trackingNumberOutgoing ?? "") && updateM.mutate({ trackingNumberOutgoing: trackingOut })} />
-                </Field>
-                <Field label="Seguimiento (retorno)">
-                  <input className="input mono" placeholder="Tracking retorno" value={trackingIn}
-                    onChange={(e) => setTrackingIn(e.target.value)}
-                    onBlur={() => trackingIn !== (rma.trackingNumberReturn ?? "") && updateM.mutate({ trackingNumberReturn: trackingIn })} />
-                </Field>
-              </div>
-
-              <Field label="Notas generales">
-                <textarea className="textarea" placeholder="Notas internas del RMA…" value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  onBlur={() => notes !== (rma.notes ?? "") && updateM.mutate({ notes })} />
-              </Field>
-
-              {/* La nota está en las dos pestañas a propósito: se deja la
-                  información desde donde uno esté, sin cambiar de sitio. */}
-              <div className="stack" style={{ gap: 8 }}>
-                <div className="field__label">Añadir nota al historial</div>
-                <ManualNoteForm entityType="rma" entityId={rma.id} />
-              </div>
-
-              {/* Recordatorios / seguimientos */}
-              <ReminderSection entityType="rma" entityId={rma.id} defaultTitle={`Seguimiento RMA ${rma.rmaNumber}`} />
             </div>
           )}
 
