@@ -507,6 +507,13 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
                   onBlur={() => notes !== (rma.notes ?? "") && updateM.mutate({ notes })} />
               </Field>
 
+              {/* La nota está en las dos pestañas a propósito: se deja la
+                  información desde donde uno esté, sin cambiar de sitio. */}
+              <div className="stack" style={{ gap: 8 }}>
+                <div className="field__label">Añadir nota al historial</div>
+                <ManualNoteForm entityType="rma" entityId={rma.id} />
+              </div>
+
               {/* Recordatorios / seguimientos */}
               <ReminderSection entityType="rma" entityId={rma.id} defaultTitle={`Seguimiento RMA ${rma.rmaNumber}`} />
             </div>

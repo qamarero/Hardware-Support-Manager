@@ -441,6 +441,13 @@ export function IncidentDetailDrawer({ incidentId, onClose, onDeriveRma }: Props
                     </div>
                   </details>
 
+                  {/* La nota está en las dos pestañas a propósito: se deja la
+                      información desde donde uno esté, sin cambiar de sitio. */}
+                  <div className="grp">
+                    <div className="grp__title">Añadir nota al historial</div>
+                    <ManualNoteForm entityType="incident" entityId={inc.id} intercomConversationId={conversationId} />
+                  </div>
+
                   <details className="fold">
                     <summary>Historial del cliente y recordatorios</summary>
                     <div className="fold__body">

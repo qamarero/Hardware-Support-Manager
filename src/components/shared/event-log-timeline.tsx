@@ -15,6 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchEventLogs } from "@/server/actions/event-logs";
+import { FileThumb } from "./file-thumb";
 import { formatRelativeTime, formatDateTime } from "@/lib/utils/date-format";
 import { INCIDENT_STATUS_LABELS } from "@/lib/constants/incidents";
 import { RMA_STATUS_LABELS } from "@/lib/constants/rmas";
@@ -225,10 +226,24 @@ export function EventLogTimeline({
                         {[text("channel") ? `Vía ${text("channel")}` : null, text("note")].filter(Boolean).join(" · ")}
                       </p>
                     )}
-                    {text("fileName") && (
+                    {text("fileName") && log.attachments.length === 0 && (
                       <p className="mt-1 text-sm text-muted-foreground">
                         {text("fileName")}
                       </p>
+                    )}
+                    {/* Capturas y fotos de la entrada, visibles sin abrirlas. */}
+                    {log.attachments.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {log.attachments.map((a) => (
+                          <FileThumb
+                            key={a.id}
+                            fileUrl={a.fileUrl}
+                            fileName={a.fileName}
+                            fileType={a.fileType}
+                            size={72}
+                          />
+                        ))}
+                      </div>
                     )}
                     {/* La hora exacta importa: en un mismo día ocho eventos
                         decían todos «hace 2 días» y no se veía el orden. */}

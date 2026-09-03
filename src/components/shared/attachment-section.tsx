@@ -6,9 +6,6 @@ import {
   Paperclip,
   Upload,
   Trash2,
-  FileText,
-  Image,
-  File,
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -21,6 +18,7 @@ import {
   deleteAttachment,
 } from "@/server/actions/attachments";
 import { formatRelativeTime } from "@/lib/utils/date-format";
+import { FileThumb } from "./file-thumb";
 import {
   MAX_FILE_SIZE,
   ALLOWED_FILE_TYPES,
@@ -36,13 +34,6 @@ function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function getFileIcon(fileType: string) {
-  if (fileType.startsWith("image/")) return Image;
-  if (fileType.includes("pdf") || fileType.includes("document") || fileType.includes("text"))
-    return FileText;
-  return File;
 }
 
 export function AttachmentSection({
@@ -190,14 +181,18 @@ export function AttachmentSection({
         ) : (
           <ul className="divide-y">
             {attachments.map((att) => {
-              const Icon = getFileIcon(att.fileType);
               return (
                 <li
                   key={att.id}
                   className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <Icon className="h-5 w-5 shrink-0 text-muted-foreground" />
+                    <FileThumb
+                      fileUrl={att.fileUrl}
+                      fileName={att.fileName}
+                      fileType={att.fileType}
+                      size={56}
+                    />
                     <div className="min-w-0">
                       <a
                         href={att.fileUrl}
