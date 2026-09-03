@@ -108,7 +108,7 @@ function Kpi({ label, value, sup, alert }: { label: string; value: string | numb
     <div className="kpi">
       <div className="kpi__label">{label}</div>
       <div className="kpi__value">{value}{sup ? <sup>{sup}</sup> : null}</div>
-      {alert ? <div className="kpi__delta kpi__delta--down">requiere atención</div> : <div className="kpi__delta kpi__delta--flat">snapshot</div>}
+      {alert ? <div className="kpi__delta kpi__delta--down">requiere atención</div> : <div className="kpi__delta kpi__delta--flat">al cierre del periodo</div>}
     </div>
   );
 }

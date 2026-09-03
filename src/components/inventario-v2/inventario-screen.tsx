@@ -8,6 +8,7 @@ import { fetchRmas } from "@/server/actions/rmas";
 import { IncidentDetailDrawer } from "@/components/incidents-v2/incident-detail-drawer";
 import { RmaDetailDrawer } from "@/components/rmas-v2/rma-detail-drawer";
 import { formatRelativeTime } from "@/lib/utils/date-format";
+import { DEVICE_TYPE_LABELS, type DeviceType } from "@/lib/constants/device-types";
 
 const OPEN_INCIDENT = ["nuevo", "en_triaje", "en_gestion", "esperando_cliente", "esperando_proveedor", "esperando_pieza"];
 
@@ -153,7 +154,7 @@ export function InventarioScreen() {
                     </div>
                   </td>
                   <td className="mono text-xs">{d.serial || "—"}</td>
-                  <td className="text-sm muted">{d.type || "—"}</td>
+                  <td className="text-sm muted">{d.type ? (DEVICE_TYPE_LABELS[d.type as DeviceType] ?? d.type) : "—"}</td>
                   <td className="text-sm">{d.client || "—"}</td>
                   <td className="text-sm">{d.provider || "—"}</td>
                   <td>

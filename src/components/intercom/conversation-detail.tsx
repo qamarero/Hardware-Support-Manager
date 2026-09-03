@@ -23,6 +23,7 @@ import { ConversationThread } from "./conversation-thread";
 import { convertToIncident, dismissInboxItem, recoverDiscardedInboxItem } from "@/server/actions/intercom-inbox";
 import { fetchClientsForSelect, fetchClientByExternalId } from "@/server/actions/clients";
 import { lookupPostalCode } from "@/server/actions/geo";
+import { stripHtml } from "@/lib/utils/strip-html";
 import { DEVICE_TYPES, DEVICE_TYPE_LABELS } from "@/lib/constants/device-types";
 import {
   INCIDENT_CATEGORY_LABELS,
@@ -97,7 +98,7 @@ function extractTicketData(payload: unknown) {
 
   // Snippet from the conversation source — the customer's first message.
   // Used as fallback when no ticket_attributes summary was provided by CX.
-  const snippet = item?.source?.body?.slice?.(0, 500) ?? "";
+  const snippet = stripHtml(item?.source?.body).slice(0, 500);
 
   // "Problema reportado" must ALWAYS appear if there's any information
   // about what the customer reported. Order of preference:
@@ -180,10 +181,12 @@ export function ConversationDetail({ item, onConvert, onDismiss }: ConversationD
   });
 
   // Pre-fill form from ticket data + enriched contact
-  const [title, setTitle] = useState(ticketData.resumenIncidencia || ticketData.problemSummary || item.subject || "");
+  const [title, setTitle] = useState(
+    ticketData.resumenIncidencia || ticketData.problemSummary || stripHtml(item.subject) || ""
+  );
   const [description, setDescription] = useState(ticketData.description);
   const [category, setCategory] = useState<IncidentCategory>(
-    detectCategory(ticketData.description || ticketData.ticketTypeName || item.subject || "", ticketData.categoria2)
+    detectCategory(ticketData.description || ticketData.ticketTypeName || stripHtml(item.subject) || "", ticketData.categoria2)
   );
   const [priority, setPriority] = useState(
     ticketData.urgencia ? mapPriority(ticketData.urgencia) : "media"
@@ -195,7 +198,7 @@ export function ConversationDetail({ item, onConvert, onDismiss }: ConversationD
   const [previewOpen, setPreviewOpen] = useState(true);
 
   // Device detection from ticket text and Intercom company data
-  const allText = [ticketData.description, ticketData.problemSummary, item.subject].filter(Boolean).join(" ");
+  const allText = stripHtml([ticketData.description, ticketData.problemSummary, item.subject].filter(Boolean).join(" "));
   const detected = detectDevice(allText);
   const [deviceType, setDeviceType] = useState(detected.deviceType ?? "");
   const [deviceBrand, setDeviceBrand] = useState(detected.deviceBrand ?? "");
@@ -238,7 +241,7 @@ export function ConversationDetail({ item, onConvert, onDismiss }: ConversationD
       }
       return convertToIncident({
         inboxItemId: item.id,
-        title: title.trim() || item.subject || "Incidencia desde Intercom",
+        title: title.trim() || stripHtml(item.subject) || "Incidencia desde Intercom",
         description,
         category,
         hardwareOrigin,

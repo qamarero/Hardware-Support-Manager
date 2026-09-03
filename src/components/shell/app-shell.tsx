@@ -27,6 +27,7 @@ import {
 import { QamareroLogo } from "@/components/layout/qamarero-logo";
 import { GlobalSearch } from "@/components/shell/global-search";
 import { NotificationsBell } from "@/components/shell/notifications-bell";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { useAlertBadges } from "@/components/layout/sidebar-badges";
 
 type BadgeKey = "incidents" | "rmas" | "intercom" | "submissions";
@@ -181,6 +182,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="topbar">
           <GlobalSearch />
           <div style={{ flex: 1 }} />
+          {/* next-themes estaba activo desde el principio pero sin ningún
+              control para cambiar de tema: el interruptor ya existía. */}
+          <ThemeToggle />
           <NotificationsBell />
         </div>
 

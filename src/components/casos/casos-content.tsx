@@ -72,8 +72,12 @@ export function CasosContent() {
                     </button>
                   )}
                 </div>
-                <div className="text-sm" style={{ marginTop: 6, fontWeight: 600 }}>{c.title}</div>
-                {c.clientName && <div className="text-xs muted" style={{ marginBottom: 10 }}>{c.clientName}</div>}
+                {/* El local manda, igual que en las tablas y en las fichas: es
+                    como se identifica el caso al hablar de él. */}
+                {c.clientName && (
+                  <div style={{ marginTop: 6, fontSize: 14, fontWeight: 600, letterSpacing: "-0.01em" }}>{c.clientName}</div>
+                )}
+                <div className="text-sm muted" style={{ marginBottom: 10 }}>{c.title}</div>
 
                 <div style={{ marginTop: 10 }}>
                   <CaseStepper incidentStatus={c.status} rmaStatus={c.rma?.status ?? null} />

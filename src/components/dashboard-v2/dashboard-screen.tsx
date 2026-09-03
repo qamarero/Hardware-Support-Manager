@@ -11,6 +11,7 @@ import { IncidentStatusBadge, PriorityPill, Avatar, slaProgress } from "@/compon
 import { IncidentDetailDrawer } from "@/components/incidents-v2/incident-detail-drawer";
 import { formatRelativeTime } from "@/lib/utils/date-format";
 import type { IncidentRow } from "@/server/queries/incidents";
+import { INCIDENT_STATUS_LABELS } from "@/lib/constants/incidents";
 
 function greeting(hour: number): string {
   if (hour < 6) return "Buenas noches";
@@ -163,9 +164,12 @@ export function DashboardScreen() {
           <div className={`kpi__delta ${stats.overdue > 0 ? "kpi__delta--up" : "kpi__delta--flat"}`}><AlertTriangle size={12} /> {stats.overdue} fuera de SLA</div>
         </div>
         <div className="kpi">
-          <div className="kpi__label">Esperando pieza</div>
-          <div className="kpi__value">{stats.waiting}<sup>tickets</sup></div>
-          <div className="kpi__delta kpi__delta--flat"><Package size={12} /> {stats.activeRmas} RMA en curso</div>
+          {/* El estado se llama igual que en el resto de la app: la etiqueta de
+              `esperando_pieza` es «Esperando resolución del RMA». Y el pie habla
+              de lo mismo que el número de arriba, no de los RMA en curso. */}
+          <div className="kpi__label">{INCIDENT_STATUS_LABELS.esperando_pieza}</div>
+          <div className="kpi__value">{stats.waiting}<sup>incidencias</sup></div>
+          <div className="kpi__delta kpi__delta--flat"><Package size={12} /> a la espera del proveedor</div>
         </div>
         <div className="kpi">
           <div className="kpi__label">Resueltas (7d)</div>

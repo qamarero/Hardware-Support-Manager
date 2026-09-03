@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { InboxStatusBadge } from "./inbox-status-badge";
 import { formatRelativeTime } from "@/lib/utils/date-format";
+import { stripHtml } from "@/lib/utils/strip-html";
 import type { IntercomInboxRow } from "@/server/queries/intercom-inbox";
 import type { IntercomInboxStatus } from "@/lib/constants/intercom";
 
@@ -82,7 +83,7 @@ export function ConversationList({
                     {item.contactName ?? item.contactEmail ?? "Desconocido"}
                   </p>
                   <p className="text-xs text-muted-foreground truncate mt-0.5">
-                    {item.subject ?? "Sin asunto"}
+                    {stripHtml(item.subject) || "Sin asunto"}
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
