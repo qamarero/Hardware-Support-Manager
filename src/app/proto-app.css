@@ -623,8 +623,8 @@ a { color: inherit; text-decoration: none; }
   color: var(--fg-secondary); display: flex; align-items: center; justify-content: space-between; gap: 8px;
 }
 .fold > summary::-webkit-details-marker { display: none; }
-.fold > summary::after { content: "be"; font-size: 10px; }
-.fold[open] > summary::after { content: "b4"; }
+.fold > summary::after { content: "▾"; font-size: 10px; }
+.fold[open] > summary::after { content: "▴"; }
 .fold[open] > summary { border-bottom: 1px solid var(--border); }
 .fold__body { padding: 12px; display: flex; flex-direction: column; gap: 14px; }
 
