@@ -176,7 +176,7 @@ export function RmaProviderEmail({ rma }: { rma: RmaRow }) {
 
   const tpl = providerTemplates.find((t) => t.id === templateId) ?? null;
 
-  const defaultSubject = `RMA ${rma.rmaNumber} — ${device}`;
+  const defaultSubject = `${rma.rmaNumber} — ${device}`;
   const defaultBody = [
     "Buenos días,",
     "",

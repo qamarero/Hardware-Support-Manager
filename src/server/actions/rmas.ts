@@ -303,7 +303,7 @@ export async function transitionRma(
         await transitionIncident({
           incidentId: link.incidentId,
           toStatus: "resuelto",
-          comment: `Resuelta automáticamente al ${toStatus === "cerrado" ? "cerrar" : "entregar"} el RMA ${link.rmaNumber}.`,
+          comment: `Resuelta automáticamente al ${toStatus === "cerrado" ? "cerrar" : "entregar"} el ${link.rmaNumber}.`,
           // force: el auto-cierre no debe quedar bloqueado por el grafo si la
           // incidencia está en un estado sin transición directa a "resuelto".
           force: true,

@@ -84,7 +84,7 @@ export function MiDiaScreen() {
         kind: "rma" as const,
         id: r.id,
         number: r.rmaNumber,
-        title: [r.deviceBrand, r.deviceModel].filter(Boolean).join(" ") || `RMA ${r.rmaNumber}`,
+        title: [r.deviceBrand, r.deviceModel].filter(Boolean).join(" ") || "Equipo sin identificar",
         client: r.clientCompanyName ?? r.clientName ?? null,
         status: r.status,
         createdAt: r.createdAt,

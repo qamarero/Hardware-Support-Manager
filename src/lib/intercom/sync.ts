@@ -184,7 +184,7 @@ export async function syncRmaTransition(opts: {
   const conversationId = resolveConversationId(opts);
   if (!conversationId) {
     console.info(
-      `[Intercom sync] Skipped — no Intercom reference for RMA ${opts.rmaNumber}`
+      `[Intercom sync] Skipped — no Intercom reference for ${opts.rmaNumber}`
     );
     return;
   }
@@ -196,7 +196,7 @@ export async function syncRmaTransition(opts: {
   const toLabel = RMA_STATUS_LABELS[opts.toStatus as keyof typeof RMA_STATUS_LABELS] ?? opts.toStatus;
 
   const lines = [
-    `📦 [HSM] RMA ${opts.rmaNumber} actualizado`,
+    `📦 [HSM] ${opts.rmaNumber} actualizado`,
     `Estado: ${fromLabel} → ${toLabel}`,
   ];
   if (opts.comment) lines.push(`Comentario: ${opts.comment}`);

@@ -155,7 +155,7 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
               const res = await createReminder({
                 entityType: "rma",
                 entityId: rma.id,
-                title: `Seguir RMA ${rma.rmaNumber} (proveedor)`,
+                title: `Seguir ${rma.rmaNumber} (proveedor)`,
                 dueAt: rmaFollowUpInDays(3),
               });
               if (res.success) {
@@ -558,7 +558,7 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
                             onChange={(e) => setNotes(e.target.value)}
                             onBlur={() => notes !== (rma.notes ?? "") && updateM.mutate({ notes })} />
                         </Field>
-                        <ReminderSection entityType="rma" entityId={rma.id} defaultTitle={`Seguimiento RMA ${rma.rmaNumber}`} />
+                        <ReminderSection entityType="rma" entityId={rma.id} defaultTitle={`Seguimiento ${rma.rmaNumber}`} />
                       </div>
                     </details>
                   </div>
@@ -577,7 +577,7 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
           {conversationId && chatOpen && (
             <ConversationPopup
               conversationId={conversationId}
-              title={`Conversación · RMA ${rma.rmaNumber}`}
+              title={`Conversación · ${rma.rmaNumber}`}
               intercomUrl={rma.clientIntercomUrl}
               onClose={() => setChatOpen(false)}
             />

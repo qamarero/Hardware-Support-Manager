@@ -304,7 +304,7 @@ export function ConsultaScreen() {
           selected?.type === "incident"
             ? `Incidencia ${selected.row.incidentNumber}`
             : selected?.type === "rma"
-              ? `RMA ${selected.row.rmaNumber}`
+              ? selected.row.rmaNumber
               : ""
         }
         subtitle="Solo lectura · puedes dejar un comentario"
