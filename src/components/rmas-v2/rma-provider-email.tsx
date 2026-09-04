@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Mail, Copy, Check, ExternalLink, AlertTriangle } from "lucide-react";
@@ -42,6 +43,7 @@ import type { ProviderRmaProcess } from "@/lib/db/schema/providers";
  * y los datos del RMA + recogida. Abre el cliente de correo (mailto) o copia.
  */
 export function RmaProviderEmail({ rma }: { rma: RmaRow }) {
+  const { data: session } = useSession();
   const [open, setOpen] = useState(false);
   const [templateId, setTemplateId] = useState("");
   const [copied, setCopied] = useState(false);
@@ -201,6 +203,24 @@ export function RmaProviderEmail({ rma }: { rma: RmaRow }) {
     : defaultBody;
   const missing = unresolvedVariables(`${subject}\n${body}`);
 
+  /**
+   * Abre el redactor de Gmail en otra pestaña con el correo ya montado.
+   *
+   * `mailto:` abre el cliente de correo del sistema, que no es donde se
+   * escribe aquí. La cuenta se fija con la del usuario de HSM para no acabar
+   * redactando desde una cuenta personal; si Gmail no la reconoce, saca su
+   * propio selector y no se pierde nada.
+   *
+   * Sigue sin enviarse nada desde la app: el correo queda abierto en el
+   * redactor y lo manda una persona.
+   */
+  function openGmail() {
+    const params = new URLSearchParams({ view: "cm", fs: "1", to: emailTo, su: subject, body });
+    if (emailCc) params.set("cc", emailCc);
+    if (session?.user?.email) params.set("authuser", session.user.email);
+    window.open(`https://mail.google.com/mail/?${params.toString()}`, "_blank", "noopener,noreferrer");
+  }
+
   function openMail() {
     const mailto = `mailto:${encodeURIComponent(emailTo)}?cc=${encodeURIComponent(emailCc)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.location.href = mailto;
@@ -228,7 +248,7 @@ export function RmaProviderEmail({ rma }: { rma: RmaRow }) {
         <DialogHeader>
           <DialogTitle>Correo al proveedor</DialogTitle>
           <DialogDescription>
-            Ábrelo en tu cliente de correo o copia el contenido. Se rellena con los datos del RMA y de recogida.
+            Ábrelo en Gmail para revisarlo y enviarlo tú, o copia el contenido. Se rellena con los datos del RMA y de recogida.
           </DialogDescription>
         </DialogHeader>
 
@@ -281,11 +301,15 @@ export function RmaProviderEmail({ rma }: { rma: RmaRow }) {
         </div>
 
         <DialogFooter>
+          {/* Se queda como salida para quien use un cliente de escritorio. */}
+          <Button variant="ghost" size="sm" onClick={openMail} disabled={!emailTo}>
+            Otro cliente de correo
+          </Button>
           <Button variant="outline" onClick={copyAll}>
             {copied ? <Check className="mr-1 h-4 w-4" /> : <Copy className="mr-1 h-4 w-4" />} Copiar
           </Button>
-          <Button onClick={openMail} disabled={!emailTo}>
-            <ExternalLink className="mr-1 h-4 w-4" /> Abrir en correo
+          <Button onClick={openGmail} disabled={!emailTo}>
+            <ExternalLink className="mr-1 h-4 w-4" /> Abrir en Gmail
           </Button>
         </DialogFooter>
       </DialogContent>

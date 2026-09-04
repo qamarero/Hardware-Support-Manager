@@ -54,14 +54,17 @@ Si el destino no coincide con la dirección de recogida, se rellena el bloque de
 
 Botón **"Generar correo"** (icono sobre). Abre `RmaProviderEmail` (`src/components/rmas-v2/rma-provider-email.tsx`), que arma el correo con:
 
-- **Destinatario (Para)** y **CC**: del procedimiento del proveedor (`emailTo`/`emailCc`); si no hay `emailTo` cae al `email` general del proveedor. Si sigue sin haber email, avisa y deshabilita "Abrir en correo" (hay que configurarlo en la ficha del proveedor).
+- **Destinatario (Para)** y **CC**: del procedimiento del proveedor (`emailTo`/`emailCc`); si no hay `emailTo` cae al `email` general del proveedor. Si sigue sin haber email, avisa y deshabilita los botones de envío (hay que configurarlo en la ficha del proveedor).
 - **Plantilla** (opcional): si existen plantillas de categoría **proveedor** (`fetchActiveTemplates` filtradas por `category === "proveedor"`, ver [[Operativa]]), se puede elegir una; si no, usa el **mensaje por defecto**. Las plantillas se rellenan con `renderTemplate` usando el contexto del RMA **y el de la incidencia de origen**, que se carga al abrir el pop-up: nº de RMA y de incidencia, proveedor, nº de RMA del proveedor, trackings, equipo (con su etiqueta de tipo), serie, cliente, **descripción y título del problema**, categoría, prioridad, origen del hardware, asignado, contacto y datos de recogida, notas. El editor de plantillas solo ofrece las variables que su categoría puede rellenar. Si aun así queda un `{{hueco}}` —plantilla antigua, o variable mal escrita—, el pop-up **avisa en ámbar** antes de enviar y dice cuál.
 - **Bloques de recogida y destino**: disponibles como variables `{{recogida}}` y `{{destino}}`, con el bloque completo (provincia, email de contacto e instrucciones incluidos). El **mensaje por defecto** los lleva siempre; tras una **plantilla** se añaden como apéndice **solo si la plantilla no los trae ya**. Antes se añadían siempre y la plantilla de proveedor, que tiene su propia «Dirección de recogida», la repetía dos veces y después de la firma. El proveedor sigue recibiendo siempre **dónde recoger** el equipo y, si aplica, el **destino del envío**.
 
 Acciones del pop-up:
 
 - **Copiar**: copia asunto + cuerpo al portapapeles.
-- **Abrir en correo**: abre el cliente de correo con un enlace `mailto:` (para, CC, asunto y cuerpo ya rellenos).
+- **Abrir en Gmail**: abre el redactor de Gmail en otra pestaña con destinatario, CC, asunto y cuerpo ya rellenos. Fija la cuenta con el email de tu usuario de HSM (`authuser`), para no redactar sin darte cuenta desde una cuenta personal; si Gmail no la reconoce, saca su propio selector.
+- **Otro cliente de correo**: la vía anterior, un enlace `mailto:` que abre el cliente de correo del sistema. Se mantiene para quien use uno de escritorio.
+
+El correo **nunca se envía desde la app**: queda abierto en el redactor y lo manda una persona. HSM no tiene credenciales de correo.
 
 ## Notas operativas
 
