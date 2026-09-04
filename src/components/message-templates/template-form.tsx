@@ -214,7 +214,7 @@ export function TemplateForm({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <FormLabel>Cuerpo del mensaje *</FormLabel>
-            <VariableInserter onInsert={insertVariable} />
+            <VariableInserter onInsert={insertVariable} category={form.watch("category")} />
           </div>
           <FormField
             control={form.control}

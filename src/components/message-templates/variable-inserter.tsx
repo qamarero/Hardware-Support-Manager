@@ -8,13 +8,25 @@ import {
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { Code } from "lucide-react";
-import { ALL_TEMPLATE_VARIABLES } from "@/lib/constants/message-templates";
+import {
+  variablesForCategory,
+  TEMPLATE_CATEGORY_LABELS,
+  type TemplateCategory,
+} from "@/lib/constants/message-templates";
 
 interface VariableInserterProps {
   onInsert: (variable: string) => void;
+  /**
+   * Categoría de la plantilla que se está editando. Solo se ofrecen las
+   * variables que su generador sabe rellenar: ofrecerlas todas era lo que
+   * dejaba `{{incidentNumber}}` literal en los correos al proveedor.
+   */
+  category: TemplateCategory;
 }
 
-export function VariableInserter({ onInsert }: VariableInserterProps) {
+export function VariableInserter({ onInsert, category }: VariableInserterProps) {
+  const variables = variablesForCategory(category);
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -26,14 +38,17 @@ export function VariableInserter({ onInsert }: VariableInserterProps) {
       <PopoverContent className="w-80 max-h-64 overflow-y-auto" align="start">
         <div className="space-y-1">
           <p className="text-xs font-medium text-muted-foreground mb-2">
-            Haz clic para insertar en el cursor
+            Disponibles en plantillas de{" "}
+            {TEMPLATE_CATEGORY_LABELS[category]?.toLowerCase() ?? category} — haz
+            clic para insertar en el cursor
           </p>
           <div className="flex flex-wrap gap-1">
-            {ALL_TEMPLATE_VARIABLES.map((v) => (
+            {variables.map((v) => (
               <Badge
                 key={v.key}
                 variant="secondary"
                 className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                title={`{{${v.key}}}`}
                 onClick={() => onInsert(`{{${v.key}}}`)}
               >
                 {v.label}

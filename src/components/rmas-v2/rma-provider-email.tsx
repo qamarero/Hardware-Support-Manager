@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Mail, Copy, Check, ExternalLink } from "lucide-react";
+import { Mail, Copy, Check, ExternalLink, AlertTriangle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -16,8 +16,22 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { fetchProviderById } from "@/server/actions/providers";
+import { fetchIncidentById } from "@/server/actions/incidents";
 import { fetchActiveTemplates } from "@/server/actions/message-templates";
-import { renderTemplate } from "@/lib/constants/message-templates";
+import {
+  renderTemplate,
+  unresolvedVariables,
+} from "@/lib/constants/message-templates";
+import { RMA_STATUS_LABELS, type RmaStatus } from "@/lib/constants/rmas";
+import {
+  INCIDENT_CATEGORY_LABELS,
+  INCIDENT_PRIORITY_LABELS,
+  HARDWARE_ORIGIN_LABELS,
+  type IncidentCategory,
+  type IncidentPriority,
+  type HardwareOrigin,
+} from "@/lib/constants/incidents";
+import { DEVICE_TYPE_LABELS, type DeviceType } from "@/lib/constants/device-types";
 import type { RmaRow } from "@/server/queries/rmas";
 import type { RmaShipping } from "@/lib/db/schema/rmas";
 import type { ProviderRmaProcess } from "@/lib/db/schema/providers";
@@ -37,6 +51,14 @@ export function RmaProviderEmail({ rma }: { rma: RmaRow }) {
     queryFn: () => fetchProviderById(rma.providerId),
     enabled: open && !!rma.providerId,
   });
+  // La incidencia de origen: de ella salen la descripción del problema y el
+  // resto de datos del caso. Sin cargarla, una plantilla que use
+  // `{{description}}` se enviaba con el hueco sin rellenar.
+  const { data: incident } = useQuery({
+    queryKey: ["rma-origin-incident", rma.incidentId],
+    queryFn: () => fetchIncidentById(rma.incidentId as string),
+    enabled: open && !!rma.incidentId,
+  });
   const { data: templates = [] } = useQuery({
     queryKey: ["message-templates", "active"],
     queryFn: () => fetchActiveTemplates(),
@@ -50,50 +72,95 @@ export function RmaProviderEmail({ rma }: { rma: RmaRow }) {
   const emailCc = proc.emailCc || "";
 
   const clientName = rma.clientCompanyName ?? rma.clientName ?? "";
-  const device = [rma.deviceBrand, rma.deviceModel].filter(Boolean).join(" ") || rma.deviceType || "equipo";
+  const deviceTypeLabel = rma.deviceType
+    ? DEVICE_TYPE_LABELS[rma.deviceType as DeviceType] ?? rma.deviceType
+    : "";
+  const device =
+    [rma.deviceBrand, rma.deviceModel].filter(Boolean).join(" ") ||
+    deviceTypeLabel ||
+    "equipo";
+
+  const contactName = ship.contactName ?? rma.contactName ?? "";
+  const contactPhone = ship.contactPhone ?? rma.contactPhone ?? "";
+  const contactEmail = ship.contactEmail ?? "";
+  const pickupAddress = ship.address ?? rma.pickupAddress ?? "";
+  const pickupCity = ship.city ?? rma.pickupCity ?? "";
+  const pickupPostalCode = ship.postalCode ?? rma.pickupPostalCode ?? "";
+
+  // Bloque de recogida y bloque de destino, por separado: una plantilla puede
+  // traer ya la dirección de recogida y necesitar solo el destino.
+  const dest = ship.destination;
+  const recogidaBlock = [
+    "Datos de recogida:",
+    `- ${ship.locationName || clientName || "—"}${contactName ? " · " + contactName : ""}`,
+    `- ${[pickupAddress, [pickupPostalCode, pickupCity].filter(Boolean).join(" "), ship.province].filter(Boolean).join(", ") || "—"}`,
+    `- Tel: ${contactPhone || "—"}${contactEmail ? " · " + contactEmail : ""}`,
+    ...(ship.instructions ? [`- Instrucciones: ${ship.instructions}`] : []),
+  ].join("\n");
+  const destinoBlock =
+    dest && (dest.address || dest.name)
+      ? [
+          "Destino del envío:",
+          ...(dest.name || dest.contact
+            ? [`- ${[dest.name, dest.contact].filter(Boolean).join(" · ")}`]
+            : []),
+          ...(dest.address || dest.city || dest.postalCode
+            ? [
+                `- ${[dest.address, [dest.postalCode, dest.city].filter(Boolean).join(" "), dest.province].filter(Boolean).join(", ")}`,
+              ]
+            : []),
+          ...(dest.phone ? [`- Tel: ${dest.phone}`] : []),
+        ].join("\n")
+      : "";
 
   const context: Record<string, string> = {
+    // Del RMA
     rmaNumber: rma.rmaNumber,
     providerName: provider?.name ?? "",
     providerRmaNumber: rma.providerRmaNumber ?? "",
-    deviceType: rma.deviceType ?? "",
+    trackingNumberOutgoing: rma.trackingNumberOutgoing ?? "",
+    trackingNumberReturn: rma.trackingNumberReturn ?? "",
+    // `{{status}}` es el estado del RMA: es el documento que se está generando.
+    status: RMA_STATUS_LABELS[rma.status as RmaStatus] ?? rma.status,
+    notes: rma.notes ?? "",
+    deviceType: deviceTypeLabel,
     deviceBrand: rma.deviceBrand ?? "",
     deviceModel: rma.deviceModel ?? "",
     deviceSerialNumber: rma.deviceSerialNumber ?? "",
     clientName,
-    contactName: ship.contactName ?? rma.contactName ?? "",
-    contactPhone: ship.contactPhone ?? rma.contactPhone ?? "",
-    contactEmail: ship.contactEmail ?? "",
-    pickupAddress: ship.address ?? rma.pickupAddress ?? "",
-    pickupCity: ship.city ?? rma.pickupCity ?? "",
-    pickupPostalCode: ship.postalCode ?? rma.pickupPostalCode ?? "",
-    notes: rma.notes ?? "",
+    // De la incidencia de origen
+    incidentNumber: rma.incidentNumber ?? "",
+    title: incident?.title ?? "",
+    description: incident?.description ?? "",
+    category: incident?.category
+      ? INCIDENT_CATEGORY_LABELS[incident.category as IncidentCategory] ??
+        incident.category
+      : "",
+    priority: incident?.priority
+      ? INCIDENT_PRIORITY_LABELS[incident.priority as IncidentPriority] ??
+        incident.priority
+      : "",
+    hardwareOrigin: incident?.hardwareOrigin
+      ? HARDWARE_ORIGIN_LABELS[incident.hardwareOrigin as HardwareOrigin] ??
+        incident.hardwareOrigin
+      : "",
+    assignedUserName: incident?.assignedUserName ?? "",
+    // Enlaces internos: no se sugieren para proveedor, pero se rellenan si una
+    // plantilla antigua los usa, para que no viajen como hueco literal.
+    intercomUrl: incident?.intercomUrl ?? "",
+    intercomEscalationId: incident?.intercomEscalationId ?? "",
+    // Contacto y recogida
+    contactName,
+    contactPhone,
+    contactEmail,
+    pickupAddress,
+    pickupCity,
+    pickupPostalCode,
+    recogida: recogidaBlock,
+    destino: destinoBlock,
   };
 
   const tpl = providerTemplates.find((t) => t.id === templateId) ?? null;
-
-  // Bloque de recogida/envío: se incluye SIEMPRE — en el mensaje por defecto y
-  // también como apéndice tras una plantilla de proveedor (que no suele llevar
-  // estos campos). Así el proveedor siempre recibe dónde recoger el equipo.
-  const dest = ship.destination;
-  const recogidaBlock = [
-    "Datos de recogida:",
-    `- ${ship.locationName || clientName || "—"}${context.contactName ? " · " + context.contactName : ""}`,
-    `- ${[context.pickupAddress, [context.pickupPostalCode, context.pickupCity].filter(Boolean).join(" "), ship.province].filter(Boolean).join(", ") || "—"}`,
-    `- Tel: ${context.contactPhone || "—"}${context.contactEmail ? " · " + context.contactEmail : ""}`,
-    ...(ship.instructions ? [`- Instrucciones: ${ship.instructions}`] : []),
-    ...(dest && (dest.address || dest.name)
-      ? [
-          "",
-          "Destino del envío:",
-          ...(dest.name || dest.contact ? [`- ${[dest.name, dest.contact].filter(Boolean).join(" · ")}`] : []),
-          ...(dest.address || dest.city || dest.postalCode
-            ? [`- ${[dest.address, [dest.postalCode, dest.city].filter(Boolean).join(" "), dest.province].filter(Boolean).join(", ")}`]
-            : []),
-          ...(dest.phone ? [`- Tel: ${dest.phone}`] : []),
-        ]
-      : []),
-  ].join("\n");
 
   const defaultSubject = `RMA ${rma.rmaNumber} — ${device}`;
   const defaultBody = [
@@ -106,6 +173,7 @@ export function RmaProviderEmail({ rma }: { rma: RmaRow }) {
     ...(rma.notes ? [`- Motivo: ${rma.notes}`] : []),
     "",
     recogidaBlock,
+    ...(destinoBlock ? ["", destinoBlock] : []),
     "",
     "Quedamos a la espera de la autorización y del número de RMA.",
     "",
@@ -113,8 +181,25 @@ export function RmaProviderEmail({ rma }: { rma: RmaRow }) {
     "Soporte Hardware — Qamarero",
   ].join("\n");
 
+  // Con plantilla, los bloques se añaden al final SOLO si no los cubre ya. El
+  // apéndice incondicional repetía la dirección de recogida y la colocaba
+  // detrás de la firma, así que el correo terminaba con datos sueltos.
+  const PICKUP_KEYS = ["recogida", "pickupAddress", "pickupCity", "pickupPostalCode"];
+  const tplSource = tpl ? `${tpl.subject ?? ""}\n${tpl.body}` : "";
+  const mentions = (keys: string[]) =>
+    keys.some((k) => tplSource.includes(`{{${k}}}`));
+  const appendix = tpl
+    ? [
+        ...(mentions(PICKUP_KEYS) ? [] : [recogidaBlock]),
+        ...(destinoBlock && !mentions(["destino"]) ? [destinoBlock] : []),
+      ]
+    : [];
+
   const subject = tpl?.subject ? renderTemplate(tpl.subject, context) : defaultSubject;
-  const body = tpl ? `${renderTemplate(tpl.body, context)}\n\n${recogidaBlock}` : defaultBody;
+  const body = tpl
+    ? [renderTemplate(tpl.body, context), ...appendix].join("\n\n")
+    : defaultBody;
+  const missing = unresolvedVariables(`${subject}\n${body}`);
 
   function openMail() {
     const mailto = `mailto:${encodeURIComponent(emailTo)}?cc=${encodeURIComponent(emailCc)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -170,6 +255,23 @@ export function RmaProviderEmail({ rma }: { rma: RmaRow }) {
           </div>
           {emailCc && (
             <div><span className="text-muted-foreground">CC: </span>{emailCc}</div>
+          )}
+
+          {/* Un hueco sin rellenar se lee mal en un correo largo: mejor decirlo
+              antes de enviarlo que descubrirlo cuando responda el proveedor. */}
+          {missing.length > 0 && (
+            <div className="flex gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-300">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>
+                Esta plantilla usa{" "}
+                {missing.length === 1 ? "una variable" : "variables"} que no se
+                puede rellenar desde un RMA:{" "}
+                <span className="font-mono">
+                  {missing.map((m) => `{{${m}}}`).join(" ")}
+                </span>
+                . Se enviaría así — edítala en Configuración › Plantillas.
+              </span>
+            </div>
           )}
 
           <div className="rounded-md bg-muted p-2 font-medium">{subject}</div>
