@@ -38,10 +38,21 @@ import type { RmaRow } from "@/server/queries/rmas";
 import type { RmaShipping } from "@/lib/db/schema/rmas";
 import type { ProviderRmaProcess } from "@/lib/db/schema/providers";
 
+/** Aviso de lo que le falta al correo antes de mandarlo. */
+function Warn({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-300">
+      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+      <span>{children}</span>
+    </div>
+  );
+}
+
 /**
  * Genera el correo de RMA al proveedor: usa el email TO/CC del procedimiento
  * del proveedor, una plantilla (categoría proveedor) o un mensaje por defecto,
- * y los datos del RMA + recogida. Abre el cliente de correo (mailto) o copia.
+ * y los datos del RMA + recogida. Se abre en Gmail o se copia; nunca se envía
+ * desde la app.
  */
 export function RmaProviderEmail({ rma }: { rma: RmaRow }) {
   const { data: session } = useSession();
@@ -206,6 +217,15 @@ export function RmaProviderEmail({ rma }: { rma: RmaRow }) {
   );
   const missing = unresolvedVariables(`${subject}\n${body}`);
 
+  // Sin dirección el proveedor no sabe dónde recoger, y sin teléfono el
+  // transportista no puede avisar al local. El bloque salía con «—» en su
+  // lugar, que es peor que no decir nada: parece un dato y no lo es. Suele
+  // pasar por generar el correo antes de capturar la recogida.
+  const missingPickup = [
+    ...(pickupAddress.trim() ? [] : ["la dirección"]),
+    ...(contactPhone.trim() ? [] : ["el teléfono"]),
+  ];
+
   /**
    * Abre el redactor de Gmail en otra pestaña con el correo ya montado.
    *
@@ -283,18 +303,23 @@ export function RmaProviderEmail({ rma }: { rma: RmaRow }) {
           {/* Un hueco sin rellenar se lee mal en un correo largo: mejor decirlo
               antes de enviarlo que descubrirlo cuando responda el proveedor. */}
           {missing.length > 0 && (
-            <div className="flex gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-300">
-              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              <span>
-                Esta plantilla usa{" "}
-                {missing.length === 1 ? "una variable" : "variables"} que no se
-                puede rellenar desde un RMA:{" "}
-                <span className="font-mono">
-                  {missing.map((m) => `{{${m}}}`).join(" ")}
-                </span>
-                . Se enviaría así — edítala en Configuración › Plantillas.
+            <Warn>
+              Esta plantilla usa{" "}
+              {missing.length === 1 ? "una variable" : "variables"} que no se
+              puede rellenar desde un RMA:{" "}
+              <span className="font-mono">
+                {missing.map((m) => `{{${m}}}`).join(" ")}
               </span>
-            </div>
+              . Se enviaría así — edítala en Configuración › Plantillas.
+            </Warn>
+          )}
+
+          {missingPickup.length > 0 && (
+            <Warn>
+              Falta {missingPickup.join(" y ")} de la recogida: el proveedor
+              recibiría «—» en su lugar. Captúralos en «Datos de
+              recogida/envío» antes de enviar.
+            </Warn>
           )}
 
           <div className="rounded-md bg-muted p-2 font-medium">{subject}</div>
