@@ -22,6 +22,7 @@ import { fetchActiveTemplates } from "@/server/actions/message-templates";
 import {
   renderTemplate,
   unresolvedVariables,
+  tidyRendered,
 } from "@/lib/constants/message-templates";
 import { RMA_STATUS_LABELS, type RmaStatus } from "@/lib/constants/rmas";
 import {
@@ -198,9 +199,11 @@ export function RmaProviderEmail({ rma }: { rma: RmaRow }) {
     : [];
 
   const subject = tpl?.subject ? renderTemplate(tpl.subject, context) : defaultSubject;
-  const body = tpl
-    ? [renderTemplate(tpl.body, context), ...appendix].join("\n\n")
-    : defaultBody;
+  const body = tidyRendered(
+    tpl
+      ? [renderTemplate(tpl.body, context), ...appendix].join("\n\n")
+      : defaultBody
+  );
   const missing = unresolvedVariables(`${subject}\n${body}`);
 
   /**

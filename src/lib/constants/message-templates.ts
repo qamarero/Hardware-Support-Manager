@@ -119,3 +119,18 @@ export function unresolvedVariables(text: string): string[] {
   for (const match of text.matchAll(/\{\{(\w+)\}\}/g)) found.add(match[1]);
   return [...found];
 }
+
+/**
+ * Limpia el resultado de renderizar una plantilla.
+ *
+ * Una variable que queda vacía en su propia línea deja un hueco:
+ * `{{destino}}` en un RMA que se recoge y se devuelve al mismo sitio, o un
+ * tracking que todavía no se ha capturado. Se colapsan los saltos de más
+ * para que el correo no salga con huecos donde no hay nada que decir.
+ */
+export function tidyRendered(text: string): string {
+  return text
+    .replace(/[ \t]+$/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}

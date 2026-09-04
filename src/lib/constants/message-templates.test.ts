@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   renderTemplate,
   unresolvedVariables,
+  tidyRendered,
   variablesForCategory,
   INCIDENT_TEMPLATE_VARIABLES,
   RMA_TEMPLATE_VARIABLES,
@@ -43,6 +44,36 @@ describe("unresolvedVariables", () => {
 
   it("does not repeat a placeholder used twice", () => {
     expect(unresolvedVariables("{{a}} {{a}}")).toEqual(["a"]);
+  });
+});
+
+describe("tidyRendered", () => {
+  /**
+   * What a template with {{recogida}} + {{destino}} renders for an RMA that is
+   * picked up and returned to the same address: the destination block comes out
+   * empty and would otherwise leave a hole in the middle of the e-mail.
+   */
+  it("collapses the gap left by an empty placeholder on its own line", () => {
+    expect(tidyRendered("Datos de recogida:\n- Bar Pepe\n\n\n\nQuedo a la espera.")).toBe(
+      "Datos de recogida:\n- Bar Pepe\n\nQuedo a la espera."
+    );
+  });
+
+  it("keeps a deliberate blank line between paragraphs", () => {
+    expect(tidyRendered("Uno\n\nDos")).toBe("Uno\n\nDos");
+  });
+
+  it("strips the trailing spaces an empty value leaves behind", () => {
+    expect(tidyRendered("Tracking:   \nFin")).toBe("Tracking:\nFin");
+  });
+
+  it("trims the edges", () => {
+    expect(tidyRendered("\n\nHola\n\n")).toBe("Hola");
+  });
+
+  it("leaves clean text untouched", () => {
+    const clean = "Buenos días,\n\nSolicitamos un RMA.\n\nUn saludo";
+    expect(tidyRendered(clean)).toBe(clean);
   });
 });
 
