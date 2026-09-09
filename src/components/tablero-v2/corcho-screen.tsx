@@ -18,7 +18,7 @@ import { Avatar } from "@/components/proto/badges";
 import { IncidentDetailDrawer } from "@/components/incidents-v2/incident-detail-drawer";
 import { RmaDetailDrawer } from "@/components/rmas-v2/rma-detail-drawer";
 import { corkPaper } from "@/lib/constants/corcho";
-import { formatRelativeTime } from "@/lib/utils/date-format";
+import { formatRelativeShort } from "@/lib/utils/date-format";
 import { NoteEditor } from "./note-editor";
 import type { CorkNoteRow } from "@/server/queries/reminders";
 
@@ -201,14 +201,19 @@ export function CorchoScreen() {
         </div>
       )}
 
-      <NoteEditor
-        open={creating || !!editing}
-        note={editing}
-        users={users}
-        saving={saveM.isPending}
-        onSave={(values) => saveM.mutate(values)}
-        onClose={() => { setEditing(null); setCreating(false); }}
-      />
+      {/* Se monta al abrir y se desmonta al cerrar: así el formulario nace
+          limpio (o con la nota que toca) sin depender de un efecto. */}
+      {(creating || editing) && (
+        <NoteEditor
+          key={editing?.id ?? "nueva"}
+          open
+          note={editing}
+          users={users}
+          saving={saveM.isPending}
+          onSave={(values) => saveM.mutate(values)}
+          onClose={() => { setEditing(null); setCreating(false); }}
+        />
+      )}
 
       <IncidentDetailDrawer incidentId={incidentId} onClose={() => setIncidentId(null)} />
       <RmaDetailDrawer rmaId={rmaId} onClose={() => setRmaId(null)} />
@@ -277,15 +282,15 @@ function NoteCard({
 
       <div className="postit__foot">
         {note.assignedUserName ? (
-          <span className="postit__audience">
-            <Avatar name={note.assignedUserName} size="sm" />
-            {note.assignedUserName.split(" ")[0]}
+          <span className="postit__audience" title={note.assignedUserName}>
+            <Avatar name={note.assignedUserName} src={note.assignedUserAvatar} size="sm" />
+            <span>{note.assignedUserName.split(" ")[0]}</span>
           </span>
         ) : (
           <span className="postit__audience postit__audience--all">Para todos</span>
         )}
         <span className="postit__date" title={note.createdByName ? `Escrita por ${note.createdByName}` : undefined}>
-          {note.dueAt ? new Date(note.dueAt).toLocaleDateString("es-ES", { day: "2-digit", month: "short" }) : formatRelativeTime(note.createdAt)}
+          {note.dueAt ? new Date(note.dueAt).toLocaleDateString("es-ES", { day: "2-digit", month: "short" }) : formatRelativeShort(note.createdAt)}
         </span>
       </div>
     </article>

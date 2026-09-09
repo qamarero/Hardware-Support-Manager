@@ -13,6 +13,7 @@ export type ReminderRow = typeof reminders.$inferSelect & {
 /** Nota del corcho: recordatorio + quién la escribió, para quién y si la he visto. */
 export type CorkNoteRow = ReminderRow & {
   assignedUserName: string | null;
+  assignedUserAvatar: string | null;
   createdByName: string | null;
   seenByMe: boolean;
 };
@@ -64,6 +65,7 @@ export async function getCorkNotes(viewerId: string): Promise<CorkNoteRow[]> {
       entityNumber: sql<string | null>`coalesce(${incidents.incidentNumber}, ${rmas.rmaNumber})`,
       entityTitle: incidents.title,
       assignedUserName: assignee.name,
+      assignedUserAvatar: assignee.avatarUrl,
       createdByName: author.name,
       seenByMe: sql<boolean>`(${myView.id} is not null)`,
     })

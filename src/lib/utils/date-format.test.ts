@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatDate, formatDateTime, formatRelativeTime } from "./date-format";
+import { formatDate, formatDateTime, formatRelativeTime, formatRelativeShort } from "./date-format";
 
 describe("formatDate", () => {
   it("returns '-' for null/undefined", () => {
@@ -60,5 +60,44 @@ describe("formatRelativeTime", () => {
   it("uses singular form for 1 unit", () => {
     const date = new Date(Date.now() - 1 * 60 * 60 * 1000);
     expect(formatRelativeTime(date)).toBe("hace 1 hora");
+  });
+});
+
+describe("formatRelativeShort", () => {
+  const ago = (ms: number) => new Date(Date.now() - ms);
+  const SEC = 1000, MIN = 60 * SEC, HOUR = 60 * MIN, DAY = 24 * HOUR;
+
+  it("returns '-' for null/undefined", () => {
+    expect(formatRelativeShort(null)).toBe("-");
+    expect(formatRelativeShort(undefined)).toBe("-");
+  });
+
+  it("says 'ahora' under a minute", () => {
+    expect(formatRelativeShort(ago(5 * SEC))).toBe("ahora");
+    expect(formatRelativeShort(ago(59 * SEC))).toBe("ahora");
+  });
+
+  it("uses minutes, hours and days without the 'hace' prefix", () => {
+    expect(formatRelativeShort(ago(2 * MIN))).toBe("2 min");
+    expect(formatRelativeShort(ago(59 * MIN))).toBe("59 min");
+    expect(formatRelativeShort(ago(3 * HOUR))).toBe("3 h");
+    expect(formatRelativeShort(ago(23 * HOUR))).toBe("23 h");
+    expect(formatRelativeShort(ago(5 * DAY))).toBe("5 d");
+    expect(formatRelativeShort(ago(29 * DAY))).toBe("29 d");
+  });
+
+  it("falls back to an absolute date past 30 days", () => {
+    const old = ago(40 * DAY);
+    expect(formatRelativeShort(old)).toBe(formatDate(old));
+  });
+
+  it("stays short enough for a post-it footer", () => {
+    for (const d of [ago(5 * SEC), ago(45 * MIN), ago(7 * HOUR), ago(12 * DAY)]) {
+      expect(formatRelativeShort(d).length).toBeLessThanOrEqual(6);
+    }
+  });
+
+  it("accepts an ISO string", () => {
+    expect(formatRelativeShort(ago(2 * HOUR).toISOString())).toBe("2 h");
   });
 });

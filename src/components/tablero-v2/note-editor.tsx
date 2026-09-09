@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Check, Loader2 } from "lucide-react";
 import { Drawer, Field } from "@/components/proto/drawer";
@@ -13,6 +13,12 @@ import type { CorkNoteRow } from "@/server/queries/reminders";
 type LinkType = "" | "incident" | "rma";
 
 interface NoteEditorProps {
+  /**
+   * El editor se MONTA al abrirse (ver CorchoScreen): el estado arranca de
+   * `note` en el propio useState, no en un efecto. Con un efecto, el
+   * formulario mostraba los datos de la nota anterior hasta que corría, y
+   * al escribir rápido el texto se concatenaba con el viejo.
+   */
   open: boolean;
   /** null = crear una nota nueva. */
   note: CorkNoteRow | null;
@@ -31,27 +37,14 @@ function toDateInput(d: Date | string | null): string {
 }
 
 export function NoteEditor({ open, note, users, saving, onSave, onClose }: NoteEditorProps) {
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [color, setColor] = useState<CorkColor>(DEFAULT_CORK_COLOR);
-  const [userId, setUserId] = useState("");
-  const [dueAt, setDueAt] = useState("");
-  const [linkType, setLinkType] = useState<LinkType>("");
-  const [linkId, setLinkId] = useState("");
+  const [title, setTitle] = useState(note?.title ?? "");
+  const [body, setBody] = useState(note?.note ?? "");
+  const [color, setColor] = useState<CorkColor>((note?.color as CorkColor) ?? DEFAULT_CORK_COLOR);
+  const [userId, setUserId] = useState(note?.userId ?? "");
+  const [dueAt, setDueAt] = useState(toDateInput(note?.dueAt ?? null));
+  const [linkType, setLinkType] = useState<LinkType>((note?.entityType as LinkType) ?? "");
+  const [linkId, setLinkId] = useState(note?.entityId ?? "");
   const [error, setError] = useState<string | null>(null);
-
-  // Rellena (o limpia) el formulario cada vez que se abre.
-  useEffect(() => {
-    if (!open) return;
-    setTitle(note?.title ?? "");
-    setBody(note?.note ?? "");
-    setColor((note?.color as CorkColor) ?? DEFAULT_CORK_COLOR);
-    setUserId(note?.userId ?? "");
-    setDueAt(toDateInput(note?.dueAt ?? null));
-    setLinkType((note?.entityType as LinkType) ?? "");
-    setLinkId(note?.entityId ?? "");
-    setError(null);
-  }, [open, note]);
 
   // Las listas para vincular solo se piden cuando hacen falta.
   const { data: incData } = useQuery({

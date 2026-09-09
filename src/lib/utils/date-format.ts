@@ -41,3 +41,23 @@ export function formatRelativeTime(date: Date | string | null | undefined): stri
 
   return formatDate(d);
 }
+
+/**
+ * Relativo COMPACTO, para sitios estrechos donde "hace unos segundos" no cabe
+ * (p. ej. el pie de un post-it del corcho): "ahora", "3 min", "2 h", "5 d".
+ */
+export function formatRelativeShort(date: Date | string | null | undefined): string {
+  if (!date) return "-";
+  const d = typeof date === "string" ? new Date(date) : date;
+  const diffSeconds = Math.floor((new Date().getTime() - d.getTime()) / 1000);
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  const diffHours = Math.floor(diffMinutes / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffSeconds < 60) return "ahora";
+  if (diffMinutes < 60) return `${diffMinutes} min`;
+  if (diffHours < 24) return `${diffHours} h`;
+  if (diffDays < 30) return `${diffDays} d`;
+
+  return formatDate(d);
+}
