@@ -1625,3 +1625,51 @@ y (2) dar visibilidad interna con una pestaña exportable.
   `src/lib/constants/rma-metrics.ts` (`SUPPORT_METRIC_CATALOG`). Ítem "Métricas soporte" en el nav.
 - Verificado: build+lint (0 errores), migración por MCP (grants a hsm_app OK) y la lógica SQL contra
   datos reales (8 RMA abiertos, 3 con >7 días; tiempo medio a tramitar 4,4 h; 80 transiciones).
+
+### 2026-09-09 — PROYECTO ⑬: Corcho de notas del equipo (+ aviso en Mi día)
+
+Commits en `main`: `b04af18`, `4f88fc4`, `f09c974`. Migración `sql/028` aplicada.
+Build + lint en verde y 210/210 tests. **Pendiente de desplegar** (el despliegue es
+manual por decisión del equipo; producción sigue en `6a10d29`).
+Handoff detallado en `docs/HANDOFF-2026-09-09-corcho.md`.
+
+**Objetivo (Domi):** `/corcho` pintaba las incidencias como post-its automáticos —
+información ya presente en su tabla, el Kanban y Mi día. Pasa a ser un tablero de notas
+que escribe el equipo, sueltas o ligadas a una incidencia o un RMA, con aviso en Mi día
+tanto si la nota es para mí como si la escribo para otro técnico.
+
+**Decisión de fondo: una nota ES un recordatorio.** No se creó tabla nueva —
+`hsm.reminders` ya tenía dueño, autor, vínculo polimórfico, título, texto y estado, así
+que reutilizarla dio gratis completar, reasignar y posponer. `sql/028` hace `due_at` y
+`user_id` anulables (nota sin fecha / para todo el equipo), y añade `color` y `kind`.
+**`kind` (`nota` | `seguimiento`) es imprescindible**: la ronda diaria crea un
+recordatorio "Seguimiento X" por cada «Siguiente paso» (`ronda-actions.tsx:116`); sin
+separarlos el corcho se llenaría de automáticos.
+
+**"Visto" ≠ "hecho".** Tabla `hsm.reminder_views` (una fila por nota y persona): abrir
+una nota la quita de *mi* aviso pero la deja en el tablero para los demás. El aviso de
+Mi día cuenta las notas dirigidas a mí o a todo el equipo que no he abierto.
+
+**Tablero compartido**, filtros Todas / Las mías / Sin ver y agrupado opcional por
+técnico. Se conserva la simulación física (corcho, chinchetas, rotación determinista por
+id, esquina despegada). El post-it pasó de `<button>` a tarjeta con botón estirado
+porque ahora anida botones.
+
+**Correcciones sobre la marcha (probando con datos reales):**
+- «Nueva nota» arrastraba el contenido de la nota anterior: se reseteaba en un
+  `useEffect`, que corre después del render, y al escribir rápido el texto se
+  concatenaba. El editor pasa a montarse/desmontarse con cada apertura (`key` por nota).
+- El pie del post-it se solapaba: «hace unos segundos» partía en dos líneas y cortaba el
+  nombre a media palabra. Nuevo `formatRelativeShort` («ahora», «3 min», «2 h», «5 d»).
+- El avatar era una inicial pudiendo ser la foto: `users.avatar_url` ya existía y
+  `Avatar` ya aceptaba `src`, solo faltaba traerlo en la consulta.
+- **Dar por hecha ya no borra** (`f09c974`): era destructivo y sin deshacer evidente.
+  Ahora `setCorkNoteDone(id, done)` alterna hecho/pendiente; la nota se queda tachada y
+  en gris al final del tablero. Quitarla del corcho sigue siendo cosa de la papelera.
+
+**Hallazgos abiertos, ajenos a este cambio** (detalle en el handoff): el login no
+verifica contraseña (`auth/config.ts:80`, `TODO` explícito); `/corcho`, `/mi-dia`,
+`/casos`, `/inventario` y `/tablero` no están en la lista blanca del middleware; un
+fallo de conexión se reporta como «no se encontró ninguna cuenta»; y el bloque de MCP de
+CLAUDE.md está desfasado.
+
