@@ -837,6 +837,70 @@ a { color: inherit; text-decoration: none; }
 }
 .postit__flag--late { background: var(--red-500); color: #fff; }
 .postit__flag--paused { background: #fff; color: var(--blue-900); border: 1px solid var(--blue-500); }
+.postit__flag--due { background: var(--blue-900); color: #fff; }
+.postit__flag--new { background: #fff; color: var(--primary); border: 1px solid var(--primary); }
+
+/* ─── Notas del corcho ──────────────────────────────────────── */
+/* La nota es una tarjeta, no un botón: lleva botones dentro (acciones,
+   vínculo). El botón principal se estira por encima del papel. */
+.postit--note { justify-content: flex-start; }
+.postit__open {
+  position: absolute; inset: 0;
+  border: 0; padding: 0; margin: 0;
+  background: transparent; cursor: pointer;
+  border-radius: inherit;
+}
+.postit__open:focus-visible { outline: 3px solid var(--ring); outline-offset: 3px; }
+.postit__body {
+  font-size: 13px; line-height: 1.42; opacity: 0.85;
+  display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+  white-space: pre-wrap; word-break: break-word;
+}
+.postit__link {
+  position: relative; z-index: 2;
+  align-self: flex-start;
+  display: inline-flex; align-items: center; gap: 4px;
+  font: 700 11px/1 var(--font-mono);
+  background: rgba(0,0,0,0.10);
+  color: inherit;
+  border: 0; cursor: pointer;
+  padding: 4px 7px; border-radius: 5px;
+}
+.postit__link:hover { background: rgba(0,0,0,0.18); }
+.postit__audience {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12px; font-weight: 700;
+  max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.postit__audience--all { opacity: 0.7; font-weight: 600; font-style: italic; }
+.postit__actions {
+  position: absolute; z-index: 3;
+  top: 6px; right: 6px;
+  display: none; gap: 3px;
+}
+.postit:hover .postit__actions,
+.postit:focus-within .postit__actions { display: flex; }
+.postit__act {
+  display: grid; place-items: center;
+  width: 24px; height: 24px;
+  border: 0; border-radius: 6px; cursor: pointer;
+  background: rgba(255,255,255,0.72); color: inherit;
+}
+.postit__act:hover { background: #fff; }
+.postit__act--danger:hover { background: var(--red-500); color: #fff; }
+.postit--seen { opacity: 0.82; }
+.postit--seen:hover { opacity: 1; }
+.postit__author {
+  font-size: 10px; font-weight: 600; opacity: 0.55;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cork__empty {
+  grid-column: 1 / -1;
+  text-align: center; padding: 60px 20px;
+  color: rgba(255,255,255,0.9);
+}
+.cork--flat { display: block; }
+.cork--flat .cork__notes { gap: 26px; }
 
 @media (max-width: 900px) {
   .cork { grid-template-columns: 1fr; }

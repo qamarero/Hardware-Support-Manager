@@ -1,203 +1,293 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Plus, Loader2, Clock, Ticket, Laptop } from "lucide-react";
-import { fetchIncidents, fetchUsersForSelect } from "@/server/actions/incidents";
-import { Avatar, slaProgress } from "@/components/proto/badges";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
+import { toast } from "sonner";
+import { Plus, Loader2, StickyNote, Check, Pencil, Trash2, Eye, Link2, CalendarClock } from "lucide-react";
+import { fetchUsersForSelect } from "@/server/actions/incidents";
+import {
+  fetchCorkNotes,
+  createCorkNote,
+  updateCorkNote,
+  completeReminder,
+  deleteReminder,
+  markCorkNoteSeen,
+} from "@/server/actions/reminders";
+import { Avatar } from "@/components/proto/badges";
 import { IncidentDetailDrawer } from "@/components/incidents-v2/incident-detail-drawer";
-import { IncidentFormDrawer } from "@/components/incidents-v2/incident-form-drawer";
-import { RmaWizard } from "@/components/incidents/rma-wizard";
-import { INCIDENT_STATUS_LABELS, INCIDENT_PRIORITY_LABELS, type IncidentStatus, type IncidentPriority } from "@/lib/constants/incidents";
-import { PAUSED_INCIDENT_STATES } from "@/lib/constants/statuses";
+import { RmaDetailDrawer } from "@/components/rmas-v2/rma-detail-drawer";
+import { corkPaper } from "@/lib/constants/corcho";
 import { formatRelativeTime } from "@/lib/utils/date-format";
-import type { IncidentRow } from "@/server/queries/incidents";
+import { NoteEditor } from "./note-editor";
+import type { CorkNoteRow } from "@/server/queries/reminders";
 
-// Paleta de post-it por prioridad (papel cálido, coherente con Qamarero).
-const POSTIT: Record<string, { bg: string; edge: string; ink: string }> = {
-  critica: { bg: "#ffd4cc", edge: "#ffb8aa", ink: "#8a1c00" },
-  alta: { bg: "#ffe7b3", edge: "#ffd98a", ink: "#7a4e00" },
-  media: { bg: "#fff79a", edge: "#fff04d", ink: "#6b5e00" },
-  baja: { bg: "#d7f0d2", edge: "#bce4b4", ink: "#1f5a17" },
-};
-
-// Rotación pequeña determinista por id (estable entre renders).
+/** Rotación pequeña determinista por id (estable entre renders). */
 function rotFor(id: string): number {
   let h = 0;
   for (const c of id) h = (h * 31 + c.charCodeAt(0)) & 0xffff;
   return (h % 700) / 100 - 3.5; // -3.5° .. +3.5°
 }
 
-const COLUMN_ORDER: IncidentStatus[] = [
-  "nuevo", "en_gestion", "esperando_pieza", "esperando_proveedor", "esperando_cliente", "resuelto", "cerrado", "cancelado",
-];
-const PRIORITY_ORDER: IncidentPriority[] = ["critica", "alta", "media", "baja"];
-const CLOSED = ["resuelto", "cerrado", "cancelado"];
+type Scope = "todas" | "mias" | "sin-ver";
 
-type GroupBy = "status" | "priority" | "assignee";
+function startOfToday() { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }
 
 export function CorchoScreen() {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [formOpen, setFormOpen] = useState(false);
-  const [rmaFor, setRmaFor] = useState<IncidentRow | null>(null);
-  const [groupBy, setGroupBy] = useState<GroupBy>("status");
-  const [hideClosed, setHideClosed] = useState(true);
-  const [assignee, setAssignee] = useState("all");
+  const qc = useQueryClient();
+  const { data: session } = useSession();
+  const meId = (session?.user as { id?: string } | undefined)?.id;
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["incidents-v2"],
-    queryFn: () => fetchIncidents({ page: 1, pageSize: 500, sortBy: "updatedAt", sortOrder: "desc" }),
+  const [scope, setScope] = useState<Scope>("todas");
+  const [groupByTech, setGroupByTech] = useState(false);
+  const [editing, setEditing] = useState<CorkNoteRow | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [incidentId, setIncidentId] = useState<string | null>(null);
+  const [rmaId, setRmaId] = useState<string | null>(null);
+
+  const { data: notes = [], isLoading } = useQuery({
+    queryKey: ["cork-notes"],
+    queryFn: () => fetchCorkNotes(),
   });
   const { data: users = [] } = useQuery({
     queryKey: ["users", "select"],
     queryFn: () => fetchUsersForSelect(),
   });
 
-  const all: IncidentRow[] = useMemo(() => data?.data ?? [], [data]);
+  function invalidate() {
+    qc.invalidateQueries({ queryKey: ["cork-notes"] });
+    qc.invalidateQueries({ queryKey: ["cork-unseen"] });
+    qc.invalidateQueries({ queryKey: ["reminders"] });
+  }
+
+  const doneM = useMutation({
+    mutationFn: (id: string) => completeReminder(id),
+    onSuccess: (r) => { if (!r.success) { toast.error(r.error); return; } toast.success("Nota hecha"); invalidate(); },
+  });
+  const discardM = useMutation({
+    mutationFn: (id: string) => deleteReminder(id),
+    onSuccess: (r) => { if (!r.success) { toast.error(r.error); return; } toast.success("Nota quitada del corcho"); invalidate(); },
+  });
+  const seenM = useMutation({
+    mutationFn: (id: string) => markCorkNoteSeen(id),
+    onSuccess: () => invalidate(),
+  });
+  const saveM = useMutation({
+    mutationFn: (input: Record<string, unknown>) =>
+      input.id ? updateCorkNote(input) : createCorkNote(input),
+    onSuccess: (r) => {
+      if (!r.success) { toast.error(r.error); return; }
+      toast.success(editing ? "Nota guardada" : "Nota clavada en el corcho");
+      setEditing(null);
+      setCreating(false);
+      invalidate();
+    },
+    onError: () => toast.error("No se pudo guardar la nota"),
+  });
+
+  /** Una nota "me toca" si es mía o va dirigida a todo el equipo. */
+  function concernsMe(n: CorkNoteRow) {
+    return !n.userId || n.userId === meId;
+  }
 
   const visible = useMemo(() => {
-    let arr = all.slice();
-    if (hideClosed) arr = arr.filter((i) => i.status !== "cerrado" && i.status !== "cancelado");
-    if (assignee !== "all") arr = arr.filter((i) => i.assignedUserId === assignee);
-    return arr;
-  }, [all, hideClosed, assignee]);
+    let arr = notes.slice();
+    if (scope === "mias") arr = arr.filter(concernsMe);
+    if (scope === "sin-ver") arr = arr.filter((n) => concernsMe(n) && !n.seenByMe);
+    // Sin ver primero, luego vencidas, luego las más nuevas.
+    const sot = startOfToday().getTime();
+    return arr.sort((a, b) => {
+      const unseen = Number(concernsMe(b) && !b.seenByMe) - Number(concernsMe(a) && !a.seenByMe);
+      if (unseen) return unseen;
+      const overdue =
+        Number(!!b.dueAt && new Date(b.dueAt).getTime() < sot) -
+        Number(!!a.dueAt && new Date(a.dueAt).getTime() < sot);
+      if (overdue) return overdue;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notes, scope, meId]);
+
+  const unseenMine = useMemo(
+    () => notes.filter((n) => concernsMe(n) && !n.seenByMe).length,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [notes, meId]
+  );
 
   const zones = useMemo(() => {
-    if (groupBy === "priority") {
-      return PRIORITY_ORDER.map((p) => ({
-        key: p, label: INCIDENT_PRIORITY_LABELS[p], paused: false,
-        items: visible.filter((i) => i.priority === p),
-      })).filter((z) => z.items.length);
-    }
-    if (groupBy === "assignee") {
-      const zonesByTech = users.map((t) => ({
-        key: t.id, label: t.name, paused: false,
-        items: visible.filter((i) => i.assignedUserId === t.id),
-      }));
-      const unassigned = { key: "none", label: "Sin asignar", paused: false, items: visible.filter((i) => !i.assignedUserId) };
-      return [...zonesByTech, unassigned].filter((z) => z.items.length);
-    }
-    return COLUMN_ORDER
-      .filter((s) => !(hideClosed && (s === "cerrado" || s === "cancelado")))
-      .map((s) => ({
-        key: s, label: INCIDENT_STATUS_LABELS[s],
-        paused: (PAUSED_INCIDENT_STATES as readonly string[]).includes(s),
-        items: visible.filter((i) => i.status === s),
-      }))
+    if (!groupByTech) return null;
+    const byTech = users
+      .map((u) => ({ key: u.id, label: u.name, items: visible.filter((n) => n.userId === u.id) }))
       .filter((z) => z.items.length);
-  }, [visible, groupBy, users, hideClosed]);
+    const all = { key: "todos", label: "Para todo el equipo", items: visible.filter((n) => !n.userId) };
+    return [...(all.items.length ? [all] : []), ...byTech];
+  }, [groupByTech, users, visible]);
+
+  function openNoteEntity(n: CorkNoteRow) {
+    if (n.entityType === "incident" && n.entityId) setIncidentId(n.entityId);
+    else if (n.entityType === "rma" && n.entityId) setRmaId(n.entityId);
+  }
+
+  function openNote(n: CorkNoteRow) {
+    if (concernsMe(n) && !n.seenByMe) seenM.mutate(n.id);
+    setEditing(n);
+  }
+
+  const cardProps = {
+    meId,
+    onOpen: openNote,
+    onEntity: openNoteEntity,
+    onDone: (id: string) => doneM.mutate(id),
+    onDiscard: (id: string) => discardM.mutate(id),
+  };
 
   return (
     <div className="stack">
       <div className="topbar__title" style={{ marginBottom: 4 }}>
         <h1>Corcho</h1>
-        <p>Vista rápida del día · click en una nota para abrirla</p>
+        <p>Notas del equipo · sueltas o ligadas a una incidencia o un RMA</p>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <div className="seg">
-          <button className={groupBy === "status" ? "is-active" : ""} onClick={() => setGroupBy("status")}>Por estado</button>
-          <button className={groupBy === "priority" ? "is-active" : ""} onClick={() => setGroupBy("priority")}>Por prioridad</button>
-          <button className={groupBy === "assignee" ? "is-active" : ""} onClick={() => setGroupBy("assignee")}>Por técnico</button>
+          <button className={scope === "todas" ? "is-active" : ""} onClick={() => setScope("todas")}>Todas</button>
+          <button className={scope === "mias" ? "is-active" : ""} onClick={() => setScope("mias")}>Las mías</button>
+          <button className={scope === "sin-ver" ? "is-active" : ""} onClick={() => setScope("sin-ver")}>
+            Sin ver{unseenMine > 0 ? ` (${unseenMine})` : ""}
+          </button>
         </div>
-        <select className="select" style={{ width: "auto" }} value={assignee} onChange={(e) => setAssignee(e.target.value)}>
-          <option value="all">Todos los técnicos</option>
-          {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-        </select>
-        <button className={`chip ${hideClosed ? "is-active" : ""}`} onClick={() => setHideClosed(!hideClosed)}>
-          {hideClosed ? "Ocultando cerradas" : "Mostrando cerradas"}
+        <button className={`chip ${groupByTech ? "is-active" : ""}`} onClick={() => setGroupByTech(!groupByTech)}>
+          {groupByTech ? "Agrupadas por técnico" : "Agrupar por técnico"}
         </button>
         <div style={{ flex: 1 }} />
-        <button className="btn btn--primary btn--sm" onClick={() => setFormOpen(true)}>
-          <Plus size={14} /> Nueva
+        <button className="btn btn--primary btn--sm" onClick={() => { setEditing(null); setCreating(true); }}>
+          <Plus size={14} /> Nueva nota
         </button>
       </div>
 
       {isLoading ? (
-        <div className="card empty"><Loader2 className="animate-spin" /> <span className="muted">Cargando…</span></div>
-      ) : (
+        <div className="card empty"><Loader2 className="animate-spin" /> <span className="muted">Cargando el corcho…</span></div>
+      ) : !visible.length ? (
+        <div className="cork">
+          <div className="cork__empty">
+            <StickyNote size={28} color="rgba(255,255,255,0.75)" />
+            <div className="fw-700" style={{ marginTop: 8, fontSize: 15 }}>
+              {scope === "todas" ? "El corcho está vacío" : "Nada por aquí con ese filtro"}
+            </div>
+            <div className="text-sm" style={{ opacity: 0.85 }}>
+              {scope === "todas" ? "Clava una nota para ti o para otro técnico." : "Prueba con «Todas»."}
+            </div>
+          </div>
+        </div>
+      ) : zones ? (
         <div className="cork">
           {zones.map((zone) => (
             <div key={zone.key} className="cork__zone">
               <div className="cork__zone-label">
                 {zone.label}
                 <span className="cork__zone-count">{zone.items.length}</span>
-                {zone.paused && <Clock size={11} color="rgba(255,255,255,0.7)" />}
               </div>
               <div className="cork__notes">
-                {zone.items.map((inc) => (
-                  <PostIt key={inc.id} incident={inc} onOpen={() => setSelectedId(inc.id)} />
-                ))}
+                {zone.items.map((n) => <NoteCard key={n.id} note={n} {...cardProps} />)}
               </div>
             </div>
           ))}
-          {!zones.length && (
-            <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "60px 20px", color: "rgba(255,255,255,0.85)" }}>
-              <Ticket size={28} color="rgba(255,255,255,0.7)" />
-              <div className="fw-700" style={{ marginTop: 8, fontSize: 15 }}>No hay notas que mostrar</div>
-              <div className="text-sm" style={{ opacity: 0.8 }}>Ajusta los filtros o crea una incidencia.</div>
-            </div>
-          )}
+        </div>
+      ) : (
+        <div className="cork cork--flat">
+          <div className="cork__notes">
+            {visible.map((n) => <NoteCard key={n.id} note={n} {...cardProps} />)}
+          </div>
         </div>
       )}
 
-      <IncidentDetailDrawer
-        incidentId={selectedId}
-        onClose={() => setSelectedId(null)}
-        onDeriveRma={(id) => {
-          const row = all.find((x) => x.id === id) ?? null;
-          setSelectedId(null);
-          setRmaFor(row);
-        }}
+      <NoteEditor
+        open={creating || !!editing}
+        note={editing}
+        users={users}
+        saving={saveM.isPending}
+        onSave={(values) => saveM.mutate(values)}
+        onClose={() => { setEditing(null); setCreating(false); }}
       />
-      <IncidentFormDrawer open={formOpen} onClose={() => setFormOpen(false)} onCreated={(id) => setSelectedId(id)} users={users} />
-      {rmaFor && <RmaWizard open={!!rmaFor} onOpenChange={(o) => !o && setRmaFor(null)} incident={rmaFor} />}
+
+      <IncidentDetailDrawer incidentId={incidentId} onClose={() => setIncidentId(null)} />
+      <RmaDetailDrawer rmaId={rmaId} onClose={() => setRmaId(null)} />
     </div>
   );
 }
 
-function PostIt({ incident, onOpen }: { incident: IncidentRow; onOpen: () => void }) {
-  const c = POSTIT[incident.priority] ?? POSTIT.media;
-  const rot = rotFor(incident.id);
-  const sla = slaProgress(incident);
-  const isClosed = CLOSED.includes(incident.status);
-  const device = [incident.deviceBrand, incident.deviceModel].filter(Boolean).join(" ");
+function NoteCard({
+  note, meId, onOpen, onEntity, onDone, onDiscard,
+}: {
+  note: CorkNoteRow;
+  meId?: string;
+  onOpen: (n: CorkNoteRow) => void;
+  onEntity: (n: CorkNoteRow) => void;
+  onDone: (id: string) => void;
+  onDiscard: (id: string) => void;
+}) {
+  const paper = corkPaper(note.color);
+  const rot = rotFor(note.id);
+  const concernsMe = !note.userId || note.userId === meId;
+  const unseen = concernsMe && !note.seenByMe;
+  const overdue = !!note.dueAt && new Date(note.dueAt).getTime() < startOfToday().getTime();
 
   return (
-    <button
-      type="button"
-      className="postit"
-      onClick={onOpen}
+    <article
+      className={`postit postit--note ${!unseen ? "postit--seen" : ""}`}
       style={{
         ["--rot" as string]: `${rot}deg`,
-        background: `linear-gradient(160deg, ${c.bg} 0%, ${c.edge} 100%)`,
-        color: c.ink,
+        background: `linear-gradient(160deg, ${paper.bg} 0%, ${paper.edge} 100%)`,
+        color: paper.ink,
       }}
     >
       <span className="postit__pin" aria-hidden="true" />
-      {sla.level === "paused" && <span className="postit__flag postit__flag--paused"><Clock size={11} /> En pausa</span>}
-      {sla.level === "bad" && !isClosed && <span className="postit__flag postit__flag--late">Fuera de SLA</span>}
+      <button
+        type="button"
+        className="postit__open"
+        onClick={() => onOpen(note)}
+        aria-label={`Abrir nota: ${note.title}`}
+      />
 
-      <div className="postit__id">{incident.incidentNumber}</div>
-      <div className="postit__title">{incident.title}</div>
+      {unseen && <span className="postit__flag postit__flag--new"><Eye size={11} /> Sin ver</span>}
+      {!unseen && overdue && <span className="postit__flag postit__flag--due"><CalendarClock size={11} /> Vencida</span>}
+
+      <div className="postit__actions">
+        <button type="button" className="postit__act" title="Editar" onClick={() => onOpen(note)}>
+          <Pencil size={13} />
+        </button>
+        <button type="button" className="postit__act" title="Dar por hecha" onClick={() => onDone(note.id)}>
+          <Check size={14} />
+        </button>
+        <button type="button" className="postit__act postit__act--danger" title="Quitar del corcho" onClick={() => onDiscard(note.id)}>
+          <Trash2 size={13} />
+        </button>
+      </div>
+
+      <div className="postit__title">{note.title}</div>
+      {note.note && <div className="postit__body">{note.note}</div>}
 
       <div className="postit__meta">
-        {device && (
-          <span className="postit__device">
-            <Laptop size={14} /> {device.split(" ").slice(0, 2).join(" ")}
-          </span>
+        {note.entityNumber && (
+          <button type="button" className="postit__link" onClick={() => onEntity(note)} title="Abrir la ficha vinculada">
+            <Link2 size={12} /> {note.entityNumber}
+          </button>
         )}
       </div>
 
       <div className="postit__foot">
-        {incident.assignedUserName ? (
-          <span className="postit__tech">
-            <Avatar name={incident.assignedUserName} size="sm" />
-            {incident.assignedUserName.split(" ")[0]}
+        {note.assignedUserName ? (
+          <span className="postit__audience">
+            <Avatar name={note.assignedUserName} size="sm" />
+            {note.assignedUserName.split(" ")[0]}
           </span>
-        ) : <span />}
-        <span className="postit__date">{formatRelativeTime(incident.updatedAt)}</span>
+        ) : (
+          <span className="postit__audience postit__audience--all">Para todos</span>
+        )}
+        <span className="postit__date" title={note.createdByName ? `Escrita por ${note.createdByName}` : undefined}>
+          {note.dueAt ? new Date(note.dueAt).toLocaleDateString("es-ES", { day: "2-digit", month: "short" }) : formatRelativeTime(note.createdAt)}
+        </span>
       </div>
-    </button>
+    </article>
   );
 }

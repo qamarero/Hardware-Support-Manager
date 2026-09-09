@@ -14,6 +14,7 @@ export * from "./articles";
 export * from "./intercom-inbox";
 export * from "./support-submissions";
 export * from "./reminders";
+export * from "./reminder-views";
 export * from "./assets";
 export * from "./asset-events";
 export * from "./daily-reviews";

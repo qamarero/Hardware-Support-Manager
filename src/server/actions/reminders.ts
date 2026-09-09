@@ -1,11 +1,24 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { reminders } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { reminders, reminderViews } from "@/lib/db/schema";
+import { and, eq } from "drizzle-orm";
 import { getRequiredSession } from "@/lib/auth/get-session";
-import { createReminderSchema, snoozeReminderSchema, reassignReminderSchema } from "@/lib/validators/reminder";
-import { getReminders, type ReminderFilters, type ReminderRow } from "@/server/queries/reminders";
+import {
+  createReminderSchema,
+  snoozeReminderSchema,
+  reassignReminderSchema,
+  corkNoteSchema,
+  updateCorkNoteSchema,
+} from "@/lib/validators/reminder";
+import {
+  getReminders,
+  getCorkNotes,
+  getUnseenCorkNoteCount,
+  type ReminderFilters,
+  type ReminderRow,
+  type CorkNoteRow,
+} from "@/server/queries/reminders";
 import type { ActionResult } from "@/types";
 
 export async function createReminder(input: unknown): Promise<ActionResult<{ id: string }>> {
@@ -23,7 +36,7 @@ export async function createReminder(input: unknown): Promise<ActionResult<{ id:
       entityId: d.entityId ?? null,
       title: d.title.trim(),
       note: d.note || null,
-      dueAt: d.dueAt,
+      dueAt: d.dueAt ?? null,
       recurrence: d.recurrence ?? "none",
     })
     .returning({ id: reminders.id });
@@ -51,8 +64,11 @@ export async function completeReminder(id: string): Promise<ActionResult<{ id: s
     .set({ status: "hecho", completedAt: new Date() })
     .where(eq(reminders.id, id));
 
-  // Si es recurrente, generar la siguiente ocurrencia (pendiente).
-  const next = nextOccurrence(new Date(current.dueAt), current.recurrence);
+  // Si es recurrente, generar la siguiente ocurrencia (pendiente). Una nota
+  // del corcho sin fecha no se repite: no hay desde dónde contar.
+  const next = current.dueAt
+    ? nextOccurrence(new Date(current.dueAt), current.recurrence)
+    : null;
   if (next) {
     await db.insert(reminders).values({
       userId: current.userId,
@@ -117,4 +133,95 @@ export async function fetchReminders(filters?: Omit<ReminderFilters, "userId"> &
 export async function fetchEntityReminders(entityType: "incident" | "rma", entityId: string): Promise<ReminderRow[]> {
   await getRequiredSession();
   return getReminders({ entityType, entityId, status: ["pendiente"] });
+}
+
+/* ─── Corcho ──────────────────────────────────────────────────────────────
+ * Una nota del corcho es un recordatorio con `kind = "nota"`: sin fecha
+ * obligatoria y con dueño opcional (null = para todo el equipo).
+ * ------------------------------------------------------------------------ */
+
+/** Notas pendientes del tablero (compartido), con el "visto" de quien mira. */
+export async function fetchCorkNotes(): Promise<CorkNoteRow[]> {
+  const session = await getRequiredSession();
+  return getCorkNotes(session.user.id);
+}
+
+/** Notas que me tocan y aún no he visto — alerta "revisar el corcho". */
+export async function fetchUnseenCorkNoteCount(): Promise<number> {
+  const session = await getRequiredSession();
+  return getUnseenCorkNoteCount(session.user.id);
+}
+
+export async function createCorkNote(input: unknown): Promise<ActionResult<{ id: string }>> {
+  const session = await getRequiredSession();
+  const parsed = corkNoteSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const d = parsed.data;
+
+  const [row] = await db
+    .insert(reminders)
+    .values({
+      kind: "nota",
+      color: d.color,
+      userId: d.userId ?? null,
+      createdByUserId: session.user.id,
+      entityType: d.entityType ?? null,
+      entityId: d.entityId ?? null,
+      title: d.title.trim(),
+      note: d.note || null,
+      dueAt: d.dueAt ?? null,
+    })
+    .returning({ id: reminders.id });
+
+  return { success: true, data: { id: row.id } };
+}
+
+export async function updateCorkNote(input: unknown): Promise<ActionResult<{ id: string }>> {
+  await getRequiredSession();
+  const parsed = updateCorkNoteSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const d = parsed.data;
+
+  const [row] = await db
+    .update(reminders)
+    .set({
+      color: d.color,
+      userId: d.userId ?? null,
+      entityType: d.entityType ?? null,
+      entityId: d.entityId ?? null,
+      title: d.title.trim(),
+      note: d.note || null,
+      dueAt: d.dueAt ?? null,
+    })
+    .where(and(eq(reminders.id, d.id), eq(reminders.kind, "nota")))
+    .returning({ id: reminders.id });
+
+  if (!row) return { success: false, error: "Nota no encontrada" };
+  return { success: true, data: { id: row.id } };
+}
+
+/**
+ * Marca la nota como vista POR MÍ. No la quita del tablero ni la da por hecha:
+ * solo deja de contar en mi alerta de Mi día.
+ */
+export async function markCorkNoteSeen(id: string): Promise<ActionResult<{ id: string }>> {
+  const session = await getRequiredSession();
+  await db
+    .insert(reminderViews)
+    .values({ reminderId: id, userId: session.user.id })
+    .onConflictDoNothing();
+  return { success: true, data: { id } };
+}
+
+/** Deshace el "visto" — vuelve a aparecer en mi alerta. */
+export async function unmarkCorkNoteSeen(id: string): Promise<ActionResult<{ id: string }>> {
+  const session = await getRequiredSession();
+  await db
+    .delete(reminderViews)
+    .where(and(eq(reminderViews.reminderId, id), eq(reminderViews.userId, session.user.id)));
+  return { success: true, data: { id } };
 }

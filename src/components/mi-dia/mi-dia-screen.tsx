@@ -5,10 +5,10 @@ import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
-import { Bell, Check, Clock, Loader2, Plus, Inbox, AlertTriangle, ArrowRight, LayoutGrid, Rows3 } from "lucide-react";
+import { Bell, Check, Clock, Loader2, Plus, Inbox, AlertTriangle, ArrowRight, LayoutGrid, Rows3, StickyNote } from "lucide-react";
 import { fetchIncidents, fetchUsersForSelect } from "@/server/actions/incidents";
 import { fetchRmas } from "@/server/actions/rmas";
-import { fetchReminders, completeReminder, snoozeReminder, createReminder, reassignReminder } from "@/server/actions/reminders";
+import { fetchReminders, completeReminder, snoozeReminder, createReminder, reassignReminder, fetchUnseenCorkNoteCount } from "@/server/actions/reminders";
 import { slaProgress } from "@/components/proto/badges";
 import { useAlertBadges } from "@/components/layout/sidebar-badges";
 import { IncidentDetailDrawer } from "@/components/incidents-v2/incident-detail-drawer";
@@ -43,6 +43,11 @@ export function MiDiaScreen() {
   const { data: remindersData = [], isLoading: loadingR } = useQuery({
     queryKey: ["reminders", "mine"],
     queryFn: () => fetchReminders({ mine: true, status: ["pendiente"] }),
+  });
+
+  const { data: unseenCork = 0 } = useQuery({
+    queryKey: ["cork-unseen"],
+    queryFn: () => fetchUnseenCorkNoteCount(),
   });
 
   const { data: incData, isLoading: loadingI } = useQuery({
@@ -110,6 +115,8 @@ export function MiDiaScreen() {
     const eot = endOfToday().getTime();
     const v: ReminderRow[] = [], h: ReminderRow[] = [], p: ReminderRow[] = [];
     for (const r of remindersData) {
+      // Las notas del corcho sin fecha no van a la agenda: viven en el tablero.
+      if (!r.dueAt) continue;
       const t = new Date(r.dueAt).getTime();
       if (t < sot) v.push(r);
       else if (t <= eot) h.push(r);
@@ -125,7 +132,9 @@ export function MiDiaScreen() {
       if (!res.success) { toast.error(res.error); return; }
       invalidate();
       toast.success("Recordatorio hecho", {
-        action: { label: "Deshacer", onClick: async () => { await snoozeReminder({ id: r.id, dueAt: new Date(r.dueAt).toISOString() }); invalidate(); } },
+        action: r.dueAt
+          ? { label: "Deshacer", onClick: async () => { await snoozeReminder({ id: r.id, dueAt: new Date(r.dueAt!).toISOString() }); invalidate(); } }
+          : undefined,
       });
     },
   });
@@ -166,6 +175,19 @@ export function MiDiaScreen() {
           <div style={{ flex: 1 }}>
             <div className="fw-700 text-sm">{intercomPending} conversación{intercomPending !== 1 ? "es" : ""} pendiente{intercomPending !== 1 ? "s" : ""} de registrar</div>
             <div className="text-xs muted">En la Bandeja Intercom esperando que las pases a incidencia</div>
+          </div>
+          <ArrowRight size={16} style={{ color: "var(--fg-tertiary)" }} />
+        </Link>
+      )}
+
+      {unseenCork > 0 && (
+        <Link href="/corcho" className="card" style={{ padding: 14, display: "flex", alignItems: "center", gap: 12, textDecoration: "none", color: "inherit" }}>
+          <div style={{ width: 34, height: 34, borderRadius: 9, background: "var(--orange-50)", color: "var(--primary)", display: "grid", placeItems: "center", flexShrink: 0 }}>
+            <StickyNote size={17} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div className="fw-700 text-sm">{unseenCork} nota{unseenCork !== 1 ? "s" : ""} sin ver en el corcho</div>
+            <div className="text-xs muted">Para ti o para todo el equipo · se quitan de aquí al abrirlas</div>
           </div>
           <ArrowRight size={16} style={{ color: "var(--fg-tertiary)" }} />
         </Link>
