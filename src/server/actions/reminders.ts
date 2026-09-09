@@ -225,3 +225,27 @@ export async function unmarkCorkNoteSeen(id: string): Promise<ActionResult<{ id:
     .where(and(eq(reminderViews.reminderId, id), eq(reminderViews.userId, session.user.id)));
   return { success: true, data: { id } };
 }
+
+/**
+ * Marca o desmarca una nota como hecha. A diferencia de `completeReminder`,
+ * esto es REVERSIBLE y no la quita del corcho: se pinta tachada y se puede
+ * volver atrás. Quitarla del tablero es cosa de `deleteReminder`.
+ */
+export async function setCorkNoteDone(
+  id: string,
+  done: boolean
+): Promise<ActionResult<{ id: string }>> {
+  await getRequiredSession();
+
+  const [row] = await db
+    .update(reminders)
+    .set({
+      status: done ? "hecho" : "pendiente",
+      completedAt: done ? new Date() : null,
+    })
+    .where(and(eq(reminders.id, id), eq(reminders.kind, "nota")))
+    .returning({ id: reminders.id });
+
+  if (!row) return { success: false, error: "Nota no encontrada" };
+  return { success: true, data: { id: row.id } };
+}

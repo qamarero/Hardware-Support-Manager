@@ -51,8 +51,12 @@ export async function getReminders(filters: ReminderFilters): Promise<ReminderRo
 }
 
 /**
- * Notas pendientes del corcho. El tablero es COMPARTIDO: devuelve todas las
- * notas, con el "visto" resuelto para quien mira (`viewerId`).
+ * Notas del corcho. El tablero es COMPARTIDO: devuelve todas las notas, con el
+ * "visto" resuelto para quien mira (`viewerId`).
+ *
+ * Incluye las marcadas como hechas: dar una nota por hecha NO la quita del
+ * tablero (se pinta tachada y se puede desmarcar). Solo desaparece al
+ * descartarla con la papelera, que la deja en "descartado".
  */
 export async function getCorkNotes(viewerId: string): Promise<CorkNoteRow[]> {
   const assignee = alias(users, "assignee");
@@ -75,13 +79,14 @@ export async function getCorkNotes(viewerId: string): Promise<CorkNoteRow[]> {
     .leftJoin(assignee, eq(reminders.userId, assignee.id))
     .leftJoin(author, eq(reminders.createdByUserId, author.id))
     .leftJoin(myView, and(eq(myView.reminderId, reminders.id), eq(myView.userId, viewerId)))
-    .where(and(eq(reminders.kind, "nota"), eq(reminders.status, "pendiente")))
+    .where(and(eq(reminders.kind, "nota"), inArray(reminders.status, ["pendiente", "hecho"])))
     .orderBy(desc(reminders.createdAt));
 }
 
 /**
  * Cuántas notas del corcho tiene pendientes de ver esta persona: las suyas y
- * las dirigidas a todo el equipo que aún no ha marcado como vistas.
+ * las dirigidas a todo el equipo que aún no ha marcado como vistas. Las ya
+ * hechas no cuentan aunque no se hayan abierto.
  * Alimenta la alerta "revisar el corcho" de Mi día.
  */
 export async function getUnseenCorkNoteCount(viewerId: string): Promise<number> {

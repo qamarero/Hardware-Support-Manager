@@ -4,13 +4,13 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
-import { Plus, Loader2, StickyNote, Check, Pencil, Trash2, Eye, Link2, CalendarClock } from "lucide-react";
+import { Plus, Loader2, StickyNote, Check, RotateCcw, Pencil, Trash2, Eye, Link2, CalendarClock } from "lucide-react";
 import { fetchUsersForSelect } from "@/server/actions/incidents";
 import {
   fetchCorkNotes,
   createCorkNote,
   updateCorkNote,
-  completeReminder,
+  setCorkNoteDone,
   deleteReminder,
   markCorkNoteSeen,
 } from "@/server/actions/reminders";
@@ -60,9 +60,14 @@ export function CorchoScreen() {
     qc.invalidateQueries({ queryKey: ["reminders"] });
   }
 
+  // Marcar hecha NO borra la nota: se queda tachada y se puede deshacer.
   const doneM = useMutation({
-    mutationFn: (id: string) => completeReminder(id),
-    onSuccess: (r) => { if (!r.success) { toast.error(r.error); return; } toast.success("Nota hecha"); invalidate(); },
+    mutationFn: ({ id, done }: { id: string; done: boolean }) => setCorkNoteDone(id, done),
+    onSuccess: (r, vars) => {
+      if (!r.success) { toast.error(r.error); return; }
+      toast.success(vars.done ? "Nota marcada como hecha" : "Nota reabierta");
+      invalidate();
+    },
   });
   const discardM = useMutation({
     mutationFn: (id: string) => deleteReminder(id),
@@ -93,10 +98,13 @@ export function CorchoScreen() {
   const visible = useMemo(() => {
     let arr = notes.slice();
     if (scope === "mias") arr = arr.filter(concernsMe);
-    if (scope === "sin-ver") arr = arr.filter((n) => concernsMe(n) && !n.seenByMe);
+    if (scope === "sin-ver") arr = arr.filter((n) => n.status !== "hecho" && concernsMe(n) && !n.seenByMe);
     // Sin ver primero, luego vencidas, luego las más nuevas.
     const sot = startOfToday().getTime();
     return arr.sort((a, b) => {
+      // Las hechas caen al final del tablero.
+      const done = Number(a.status === "hecho") - Number(b.status === "hecho");
+      if (done) return done;
       const unseen = Number(concernsMe(b) && !b.seenByMe) - Number(concernsMe(a) && !a.seenByMe);
       if (unseen) return unseen;
       const overdue =
@@ -109,7 +117,7 @@ export function CorchoScreen() {
   }, [notes, scope, meId]);
 
   const unseenMine = useMemo(
-    () => notes.filter((n) => concernsMe(n) && !n.seenByMe).length,
+    () => notes.filter((n) => n.status !== "hecho" && concernsMe(n) && !n.seenByMe).length,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [notes, meId]
   );
@@ -137,7 +145,7 @@ export function CorchoScreen() {
     meId,
     onOpen: openNote,
     onEntity: openNoteEntity,
-    onDone: (id: string) => doneM.mutate(id),
+    onToggleDone: (id: string, done: boolean) => doneM.mutate({ id, done }),
     onDiscard: (id: string) => discardM.mutate(id),
   };
 
@@ -222,24 +230,25 @@ export function CorchoScreen() {
 }
 
 function NoteCard({
-  note, meId, onOpen, onEntity, onDone, onDiscard,
+  note, meId, onOpen, onEntity, onToggleDone, onDiscard,
 }: {
   note: CorkNoteRow;
   meId?: string;
   onOpen: (n: CorkNoteRow) => void;
   onEntity: (n: CorkNoteRow) => void;
-  onDone: (id: string) => void;
+  onToggleDone: (id: string, done: boolean) => void;
   onDiscard: (id: string) => void;
 }) {
   const paper = corkPaper(note.color);
   const rot = rotFor(note.id);
+  const done = note.status === "hecho";
   const concernsMe = !note.userId || note.userId === meId;
-  const unseen = concernsMe && !note.seenByMe;
-  const overdue = !!note.dueAt && new Date(note.dueAt).getTime() < startOfToday().getTime();
+  const unseen = !done && concernsMe && !note.seenByMe;
+  const overdue = !done && !!note.dueAt && new Date(note.dueAt).getTime() < startOfToday().getTime();
 
   return (
     <article
-      className={`postit postit--note ${!unseen ? "postit--seen" : ""}`}
+      className={`postit postit--note ${!unseen ? "postit--seen" : ""} ${done ? "postit--done" : ""}`}
       style={{
         ["--rot" as string]: `${rot}deg`,
         background: `linear-gradient(160deg, ${paper.bg} 0%, ${paper.edge} 100%)`,
@@ -254,15 +263,22 @@ function NoteCard({
         aria-label={`Abrir nota: ${note.title}`}
       />
 
+      {done && <span className="postit__flag postit__flag--done"><Check size={11} /> Hecha</span>}
       {unseen && <span className="postit__flag postit__flag--new"><Eye size={11} /> Sin ver</span>}
-      {!unseen && overdue && <span className="postit__flag postit__flag--due"><CalendarClock size={11} /> Vencida</span>}
+      {!unseen && !done && overdue && <span className="postit__flag postit__flag--due"><CalendarClock size={11} /> Vencida</span>}
 
       <div className="postit__actions">
         <button type="button" className="postit__act" title="Editar" onClick={() => onOpen(note)}>
           <Pencil size={13} />
         </button>
-        <button type="button" className="postit__act" title="Dar por hecha" onClick={() => onDone(note.id)}>
-          <Check size={14} />
+        <button
+          type="button"
+          className="postit__act"
+          title={done ? "Desmarcar: vuelve a estar pendiente" : "Marcar como hecha (no la borra)"}
+          aria-pressed={done}
+          onClick={() => onToggleDone(note.id, !done)}
+        >
+          {done ? <RotateCcw size={13} /> : <Check size={14} />}
         </button>
         <button type="button" className="postit__act postit__act--danger" title="Quitar del corcho" onClick={() => onDiscard(note.id)}>
           <Trash2 size={13} />

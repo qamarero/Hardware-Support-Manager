@@ -892,6 +892,14 @@ a { color: inherit; text-decoration: none; }
 .postit__act--danger:hover { background: var(--red-500); color: #fff; }
 .postit--seen { opacity: 0.82; }
 .postit--seen:hover { opacity: 1; }
+
+/* Hecha: se queda en el corcho, apagada y tachada, hasta que se desmarque.
+   Quitarla del tablero es cosa de la papelera. */
+.postit--done { filter: grayscale(0.55); opacity: 0.6; }
+.postit--done:hover { opacity: 0.95; filter: grayscale(0.2); }
+.postit--done .postit__title { text-decoration: line-through; }
+.postit--done .postit__body { text-decoration: line-through; opacity: 0.6; }
+.postit__flag--done { background: var(--gray-900); color: #fff; }
 .postit__author {
   font-size: 10px; font-weight: 600; opacity: 0.55;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
