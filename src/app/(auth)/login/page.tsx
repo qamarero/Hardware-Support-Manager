@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,8 +31,14 @@ export default function LoginPage() {
       setError("No se encontró una cuenta con ese correo electrónico");
       setIsLoading(false);
     } else {
-      router.push("/dashboard");
-      router.refresh();
+      // Se entra directo al destino del rol en vez de mandar a todo el mundo a
+      // /dashboard y dejar que el middleware rebote al Visor hasta /consulta.
+      // Ese rebote, encadenado con un router.refresh(), descartaba las Server
+      // Actions que /consulta lanza al montar: Next deja su promesa sin
+      // resolver ni rechazar, y la pantalla se quedaba en «Cargando…» para
+      // siempre. El refresh sobra: push ya trae el árbol nuevo del servidor.
+      const session = await getSession();
+      router.push(session?.user?.role === "viewer" ? "/consulta" : "/dashboard");
     }
   }
 

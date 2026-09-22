@@ -99,12 +99,14 @@ function initials(name: string): string {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const { data: badges } = useAlertBadges();
   const isAdmin = session?.user?.role === "admin";
   const userName = session?.user?.name ?? "Usuario";
   const userRole = session?.user?.role ?? "viewer";
   // Visor (compañeros de soporte): confinado a la pestaña Consulta.
   const isViewer = userRole === "viewer";
+  // Un Visor no ve badges: su nav solo tiene Consulta. Se apaga la consulta
+  // para no ocupar la cola de Server Actions por delante de la pantalla.
+  const { data: badges } = useAlertBadges({ enabled: !isViewer });
 
   // Mapea cada badge del nav a su contador (incidencias = estancadas+SLA;
   // RMA = atascados en proveedor + almacén; intercom = pendientes de registrar).
@@ -185,7 +187,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {/* next-themes estaba activo desde el principio pero sin ningún
               control para cambiar de tema: el interruptor ya existía. */}
           <ThemeToggle />
-          <NotificationsBell />
+          {/* La campana lleva a incidencias y RMA, que un Visor no puede
+              abrir. Además su consulta es la más cara de la app y bloqueaba
+              la cola de Server Actions por delante de /consulta. */}
+          {!isViewer && <NotificationsBell />}
         </div>
 
         <div className="page">{children}</div>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, MessageSquare, Eye, ChevronRight, ChevronDown } from "lucide-react";
+import { Loader2, MessageSquare, Eye, ChevronRight, ChevronDown, AlertTriangle, RotateCcw } from "lucide-react";
 import { Drawer } from "@/components/proto/drawer";
 import { IncidentStatusBadge, RmaStatusBadge, PriorityPill } from "@/components/proto/badges";
 import { CopyId } from "@/components/proto/copy-id";
@@ -112,6 +112,29 @@ function RmaTable({ rows, onSelect }: { rows: RmaRow[]; onSelect: (r: RmaRow) =>
   );
 }
 
+/**
+ * Aviso de que la carga falló, con reintento.
+ *
+ * Sin esta rama, un fallo dejaba `data` en undefined y la pantalla pintaba
+ * «Sin incidencias activas»: un vacío falso, indistinguible de no tener
+ * ninguna, que escondía el error real al usuario y al depurarlo.
+ */
+function LoadError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="card empty">
+      <h4 style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
+        <AlertTriangle size={17} /> No se pudieron cargar los datos
+      </h4>
+      <div className="text-sm muted" style={{ marginBottom: 12 }}>
+        La consulta al servidor falló. Si se repite, avisa a soporte hardware.
+      </div>
+      <button type="button" className="btn btn--sm btn--outline" onClick={() => onRetry()}>
+        <RotateCcw size={14} /> Reintentar
+      </button>
+    </div>
+  );
+}
+
 const bandStyle: React.CSSProperties = { display: "flex", alignItems: "center", gap: 8 };
 const bandBtnStyle: React.CSSProperties = {
   ...bandStyle,
@@ -133,11 +156,21 @@ export function ConsultaScreen() {
   const [selected, setSelected] = useState<Selected>(null);
   const [comment, setComment] = useState("");
 
-  const { data: incidents, isLoading: loadingInc } = useQuery({
+  const {
+    data: incidents,
+    isLoading: loadingInc,
+    isError: errorInc,
+    refetch: retryInc,
+  } = useQuery({
     queryKey: ["consulta-incidents"],
     queryFn: () => fetchIncidents({ page: 1, pageSize: 300 }),
   });
-  const { data: rmas, isLoading: loadingRma } = useQuery({
+  const {
+    data: rmas,
+    isLoading: loadingRma,
+    isError: errorRma,
+    refetch: retryRma,
+  } = useQuery({
     queryKey: ["consulta-rmas"],
     queryFn: () => fetchRmas({ page: 1, pageSize: 300 }),
   });
@@ -236,6 +269,8 @@ export function ConsultaScreen() {
       {tab === "incidencias" ? (
         loadingInc ? (
           <div className="card empty"><Loader2 className="animate-spin" /> <span className="muted">Cargando…</span></div>
+        ) : errorInc ? (
+          <LoadError onRetry={retryInc} />
         ) : (
           <div className="stack" style={{ gap: 18 }}>
             {/* Activas */}
@@ -267,6 +302,8 @@ export function ConsultaScreen() {
         )
       ) : loadingRma ? (
         <div className="card empty"><Loader2 className="animate-spin" /> <span className="muted">Cargando…</span></div>
+      ) : errorRma ? (
+        <LoadError onRetry={retryRma} />
       ) : (
         <div className="stack" style={{ gap: 18 }}>
           {/* Activas */}
