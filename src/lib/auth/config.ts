@@ -1,13 +1,10 @@
 import type { NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { z } from "zod";
+import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
-import { eq, isNull, and } from "drizzle-orm";
-
-const emailOnlySchema = z.object({
-  email: z.string().email(),
-});
+import { isNull, and, sql } from "drizzle-orm";
+import { loginSchema } from "@/lib/validators/user";
 
 export const authConfig: NextAuthConfig = {
   pages: {
@@ -83,26 +80,39 @@ export const authConfig: NextAuthConfig = {
     Credentials({
       credentials: {
         email: { label: "Email", type: "email" },
+        password: { label: "Contraseña", type: "password" },
       },
       async authorize(credentials) {
-        const parsed = emailOnlySchema.safeParse(credentials);
+        const parsed = loginSchema.safeParse(credentials);
         if (!parsed.success) return null;
 
-        const { email } = parsed.data;
+        const { email, password } = parsed.data;
 
-        // TODO: Re-enable password verification
         const [user] = await db
           .select({
             id: users.id,
             name: users.name,
             email: users.email,
             role: users.role,
+            passwordHash: users.passwordHash,
+            active: users.active,
           })
           .from(users)
-          .where(and(eq(users.email, email), isNull(users.deletedAt)))
+          // lower() en vez de comparar tal cual: quien teclea su correo no
+          // tiene por qué respetar las mayúsculas con que se dio de alta.
+          // No se usa ilike porque trataría el _ de un correo como comodín.
+          .where(
+            and(
+              sql`lower(${users.email}) = ${email.trim().toLowerCase()}`,
+              isNull(users.deletedAt),
+            ),
+          )
           .limit(1);
 
-        if (!user) return null;
+        if (!user || !user.active) return null;
+
+        const passwordOk = await bcrypt.compare(password, user.passwordHash);
+        if (!passwordOk) return null;
 
         return {
           id: user.id,

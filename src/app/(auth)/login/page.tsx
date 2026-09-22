@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mail } from "lucide-react";
+import { Mail, Lock } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -21,14 +21,18 @@ export default function LoginPage() {
 
     const formData = new FormData(e.currentTarget);
     const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
 
     const result = await signIn("credentials", {
       email,
+      password,
       redirect: false,
     });
 
     if (result?.error) {
-      setError("No se encontró una cuenta con ese correo electrónico");
+      // Mensaje deliberadamente genérico: decir «no existe ese correo»
+      // confirmaría a un desconocido qué cuentas hay dadas de alta.
+      setError("Correo o contraseña incorrectos");
       setIsLoading(false);
     } else {
       // Se entra directo al destino del rol en vez de mandar a todo el mundo a
@@ -49,7 +53,7 @@ export default function LoginPage() {
           HSM
         </div>
         <CardTitle className="text-2xl font-bold">Iniciar Sesión</CardTitle>
-        <CardDescription>Introduce tu correo para continuar</CardDescription>
+        <CardDescription>Introduce tus credenciales para continuar</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-4">
@@ -62,6 +66,22 @@ export default function LoginPage() {
                 name="email"
                 type="email"
                 placeholder="tu@empresa.com"
+                className="pl-10"
+                required
+                disabled={isLoading}
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="password">Contraseña</Label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                placeholder="••••••••"
                 className="pl-10"
                 required
                 disabled={isLoading}
