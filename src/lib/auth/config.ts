@@ -19,6 +19,19 @@ export const authConfig: NextAuthConfig = {
       const role = (auth?.user as { role?: string } | undefined)?.role;
       const path = nextUrl.pathname;
 
+      // Rutas abiertas a cualquiera, con o sin sesión. Va ANTES del
+      // confinamiento del Visor: si no, un compañero de soporte con la sesión
+      // abierta no podía usar /submit — el formulario con el que reporta — y
+      // acababa rebotado a /consulta sin entender por qué.
+      //
+      // La comparación es por segmento exacto a propósito:
+      // "/submissions".startsWith("/submit") es true, y un startsWith a secas
+      // abriría al público la cola interna de revisión.
+      const PUBLIC_PREFIXES = ["/submit"];
+      if (PUBLIC_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`))) {
+        return true;
+      }
+
       // Rol "viewer" (compañeros de soporte): confinado a la pestaña Consulta
       // (solo lectura + comentarios). Cualquier otra ruta → redirige a /consulta.
       if (isLoggedIn && role === "viewer") {
