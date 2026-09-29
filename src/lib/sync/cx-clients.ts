@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { clients } from "@/lib/db/schema";
-import { and, isNull, isNotNull, sql } from "drizzle-orm";
-import { fetchCxLocations, type CxLocation } from "@/lib/db/cx-advisor";
+import { isNull, isNotNull, sql } from "drizzle-orm";
+import { fetchCxLocations, cleanLocationName, type CxLocation } from "@/lib/db/cx-advisor";
 import { INTERCOM_APP_ID } from "@/lib/utils/intercom-url";
 
 export interface SyncClientsResult {
@@ -10,8 +10,11 @@ export interface SyncClientsResult {
   adoptados: number;
   insertados: number;
   actualizados: number;
-  /** Clientes de HSM con external_id que NO existe en CX Advisor. Cada uno
-   *  acabará conviviendo con la ficha nueva: son los duplicados a revisar. */
+  /** Desglose del casado: por restaurant_id y, si no, por nombre normalizado. */
+  adoptadosPorId: number;
+  adoptadosPorNombre: number;
+  /** Clientes de HSM que no casan ni por id ni por nombre. Cada uno acabará
+   *  conviviendo con la ficha nueva: son los duplicados a revisar. */
   huerfanosSinPareja: number;
   /** Muestra de esos huérfanos, para poder mirarlos a ojo antes de decidir. */
   ejemplosHuerfanos: string[];
@@ -49,6 +52,8 @@ export async function syncClientsFromCxAdvisor(
       simulacion: true,
       leidos: locations.length,
       adoptados: plan.pares.length,
+      adoptadosPorId: plan.porRestaurantId,
+      adoptadosPorNombre: plan.porNombre,
       insertados: insertaria,
       actualizados: locations.length - insertaria,
       huerfanosSinPareja: plan.huerfanosSinPareja.length,
@@ -70,6 +75,8 @@ export async function syncClientsFromCxAdvisor(
     simulacion: false,
     leidos: locations.length,
     adoptados: plan.pares.length,
+    adoptadosPorId: plan.porRestaurantId,
+    adoptadosPorNombre: plan.porNombre,
     insertados,
     actualizados: locations.length - insertados,
     huerfanosSinPareja: plan.huerfanosSinPareja.length,
@@ -89,8 +96,27 @@ export async function syncClientsFromCxAdvisor(
  */
 interface PlanAdopcion {
   pares: { id: string; cxDealId: string }[];
-  /** Nombres de clientes de HSM cuyo external_id no existe en CX Advisor. */
+  porRestaurantId: number;
+  porNombre: number;
+  /** Nombres de clientes de HSM que no casan ni por id ni por nombre. */
   huerfanosSinPareja: string[];
+}
+
+/**
+ * Nombre comparable entre las dos bases.
+ *
+ * Hace falta porque los mismos restaurantes están escritos distinto en cada
+ * lado: "La Bella Caffé Tejeringos" contra "La Bella Caffe Tejeringos" (un
+ * acento) y "La esquina del buen sabor" contra "La Esquina del Buen Sabor"
+ * (mayúsculas). Sin normalizar, esos casan por nombre y se duplican.
+ */
+export function normalizarNombre(raw: string): string {
+  return cleanLocationName(raw)
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "") // acentos
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ") // signos, guiones, apóstrofes
+    .trim();
 }
 
 async function planificarAdopcion(locations: CxLocation[]): Promise<PlanAdopcion> {
@@ -104,33 +130,73 @@ async function planificarAdopcion(locations: CxLocation[]): Promise<PlanAdopcion
     }
   }
 
+  // Todos los clientes sin cx_deal_id, tengan external_id o no: los que no lo
+  // tienen también pueden casar por nombre.
   const huerfanos = await db
     .select({ id: clients.id, name: clients.name, externalId: clients.externalId })
     .from(clients)
-    .where(and(isNull(clients.cxDealId), isNotNull(clients.externalId)));
+    .where(isNull(clients.cxDealId));
 
   const pares: { id: string; cxDealId: string }[] = [];
-  const huerfanosSinPareja: string[] = [];
   // Un mismo restaurant_id puede estar repetido en hsm.clients (fichas
   // duplicadas de la importación antigua). Solo se adopta la primera: el
   // índice único de cx_deal_id rechazaría la segunda y tumbaría el lote.
   const yaAsignados = new Set<string>();
+  const sinCasarPorId: typeof huerfanos = [];
 
+  // ── Pase 1: por restaurant_id, que es un identificador de verdad ──
   for (const c of huerfanos) {
     const cxDealId = porRestaurantId.get((c.externalId ?? "").trim().toLowerCase());
-    if (!cxDealId) {
-      // Su restaurant_id ya no existe en CX Advisor: o cambió, o el
-      // restaurante se dio de alta otra vez con otro id. Su ficha se queda y
-      // convivirá con la nueva que traiga el sync.
-      huerfanosSinPareja.push(c.name);
+    if (!cxDealId || yaAsignados.has(cxDealId)) {
+      if (!cxDealId) sinCasarPorId.push(c);
       continue;
     }
-    if (yaAsignados.has(cxDealId)) continue;
     yaAsignados.add(cxDealId);
     pares.push({ id: c.id, cxDealId });
   }
+  const porRestaurantIdCount = pares.length;
 
-  return { pares, huerfanosSinPareja };
+  // ── Pase 2: por nombre normalizado ──
+  // Manda CX Advisor, así que un restaurante que allí tiene otro restaurant_id
+  // debe quedarse con UNA ficha, no con dos. Casar por nombre recupera esos
+  // casos y conserva la ficha de HSM con sus incidencias y RMA enlazados.
+  //
+  // Solo se casa cuando el nombre es inequívoco en AMBOS lados. Un "Bar La
+  // Plaza" repetido no se toca: fusionar dos negocios distintos es peor que
+  // dejar un duplicado, porque mezcla su historial y no hay vuelta atrás.
+  const nombresCx = new Map<string, string[]>();
+  for (const l of locations) {
+    const k = normalizarNombre(l.locationName);
+    if (!k) continue;
+    (nombresCx.get(k) ?? nombresCx.set(k, []).get(k)!).push(l.cxDealId);
+  }
+  const nombresHsm = new Map<string, string[]>();
+  for (const c of sinCasarPorId) {
+    const k = normalizarNombre(c.name);
+    if (!k) continue;
+    (nombresHsm.get(k) ?? nombresHsm.set(k, []).get(k)!).push(c.id);
+  }
+
+  const huerfanosSinPareja: string[] = [];
+  for (const c of sinCasarPorId) {
+    const k = normalizarNombre(c.name);
+    const candidatosCx = nombresCx.get(k) ?? [];
+    const mismosEnHsm = nombresHsm.get(k) ?? [];
+    const inequivoco = candidatosCx.length === 1 && mismosEnHsm.length === 1;
+    if (!inequivoco || yaAsignados.has(candidatosCx[0])) {
+      huerfanosSinPareja.push(c.name);
+      continue;
+    }
+    yaAsignados.add(candidatosCx[0]);
+    pares.push({ id: c.id, cxDealId: candidatosCx[0] });
+  }
+
+  return {
+    pares,
+    porRestaurantId: porRestaurantIdCount,
+    porNombre: pares.length - porRestaurantIdCount,
+    huerfanosSinPareja,
+  };
 }
 
 async function aplicarAdopcion(pares: { id: string; cxDealId: string }[]): Promise<void> {
