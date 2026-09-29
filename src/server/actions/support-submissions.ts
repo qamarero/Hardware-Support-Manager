@@ -38,6 +38,8 @@ export interface ClientSearchResult {
   /** Etapa comercial de CX Advisor, para avisar de que el cliente está de baja. */
   businessStage: string | null;
   province: string | null;
+  city: string | null;
+  email: string | null;
 }
 
 /**
@@ -81,6 +83,8 @@ export async function searchClientsForSubmit(
       externalId: clients.externalId,
       businessStage: clients.businessStage,
       province: clients.province,
+      city: clients.city,
+      email: clients.email,
     })
     .from(clients)
     .where(

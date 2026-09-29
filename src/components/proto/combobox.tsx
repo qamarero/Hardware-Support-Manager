@@ -8,6 +8,17 @@ export interface ComboOption {
   name: string;
   /** Texto secundario (p.ej. ID del cliente). Se muestra y es buscable. */
   hint?: string | null;
+  /**
+   * Los tres campos siguientes convierten la fila en una tarjeta de varias
+   * líneas. Son opcionales: sin ellos la opción se pinta como siempre, que es
+   * lo que siguen haciendo los demás usos del combobox.
+   */
+  /** Segunda línea: ciudad, provincia, correo… lo que ayude a reconocerlo. */
+  subtitle?: string | null;
+  /** Identificador largo, en monoespaciada y a línea completa. */
+  code?: string | null;
+  /** Etiqueta de estado, p.ej. «de baja». */
+  badge?: string | null;
 }
 
 /** Acorta un identificador largo (UUID) para mostrarlo sin ocupar toda la fila. */
@@ -85,6 +96,9 @@ export function Combobox({ options, value, onChange, placeholder = "Buscar…", 
     onQueryChange?.(next);
   }
 
+  /** ¿Alguna opción trae datos de tarjeta? Decide el ancho del desplegable. */
+  const hayTarjetas = filtered.some((o) => o.subtitle || o.code || o.badge);
+
   return (
     <div ref={ref} style={{ position: "relative" }}>
       {open ? (
@@ -124,7 +138,15 @@ export function Combobox({ options, value, onChange, placeholder = "Buscar…", 
           style={{
             position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 50,
             background: "#fff", border: "1px solid var(--border)", borderRadius: "var(--radius-m)",
-            boxShadow: "var(--shadow-elev)", maxHeight: 260, overflowY: "auto", padding: 4,
+            boxShadow: "var(--shadow-elev)",
+            // Las tarjetas necesitan aire: el campo del formulario es estrecho
+            // y el restaurant_id es un UUID de 36 caracteres. Se desborda hacia
+            // la derecha del campo, acotado a la pantalla para no salirse en
+            // móvil. Sin tarjetas se queda del ancho del campo, como siempre.
+            ...(hayTarjetas
+              ? { minWidth: "min(460px, calc(100vw - 48px))", maxHeight: 340 }
+              : { maxHeight: 260 }),
+            overflowY: "auto", padding: 4,
           }}
         >
           {allowFreeText && query.trim() && !options.some((o) => o.name.toLowerCase() === query.trim().toLowerCase()) && (
@@ -157,35 +179,89 @@ export function Combobox({ options, value, onChange, placeholder = "Buscar…", 
               <div className="muted text-sm" style={{ padding: "10px 12px" }}>{emptyLabel}</div>
             )
           ) : (
-            filtered.map((o) => (
-              <button
-                key={o.id}
-                type="button"
-                onClick={() => { onChange(o.id); setOpen(false); handleQuery(""); }}
-                style={{
-                  width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8,
-                  padding: "8px 10px", border: 0, background: o.id === value ? "var(--orange-50)" : "transparent",
-                  borderRadius: "var(--radius-s)", cursor: "pointer", fontSize: 13,
-                }}
-                onMouseEnter={(e) => { if (o.id !== value) e.currentTarget.style.background = "var(--gray-50)"; }}
-                onMouseLeave={(e) => { if (o.id !== value) e.currentTarget.style.background = "transparent"; }}
-              >
-                {o.id === value && <Check size={14} style={{ color: "var(--primary)", flexShrink: 0 }} />}
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>{o.name}</span>
-                {o.hint && (
-                  <span
-                    title={o.hint}
-                    style={{
-                      flexShrink: 0, fontFamily: "var(--font-mono, ui-monospace, monospace)",
-                      fontSize: 11, color: "var(--fg-tertiary)", background: "var(--gray-50)",
-                      border: "1px solid var(--border)", borderRadius: 4, padding: "1px 5px",
-                    }}
-                  >
-                    {shortHint(o.hint)}
-                  </span>
-                )}
-              </button>
-            ))
+            filtered.map((o) => {
+              const esTarjeta = !!(o.subtitle || o.code || o.badge);
+              return (
+                <button
+                  key={o.id}
+                  type="button"
+                  onClick={() => { onChange(o.id); setOpen(false); handleQuery(""); }}
+                  style={{
+                    width: "100%", textAlign: "left", display: "flex",
+                    alignItems: esTarjeta ? "flex-start" : "center", gap: 8,
+                    padding: esTarjeta ? "9px 10px" : "8px 10px", border: 0,
+                    background: o.id === value ? "var(--orange-50)" : "transparent",
+                    borderRadius: "var(--radius-s)", cursor: "pointer", fontSize: 13,
+                  }}
+                  onMouseEnter={(e) => { if (o.id !== value) e.currentTarget.style.background = "var(--gray-50)"; }}
+                  onMouseLeave={(e) => { if (o.id !== value) e.currentTarget.style.background = "transparent"; }}
+                >
+                  {o.id === value && (
+                    <Check size={14} style={{ color: "var(--primary)", flexShrink: 0, marginTop: esTarjeta ? 2 : 0 }} />
+                  )}
+
+                  {esTarjeta ? (
+                    <span style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                        {/* 700 y color primario explícito: al oscurecer el
+                            subtítulo y el identificador para que se leyeran,
+                            el nombre dejaba de destacar sobre ellos. */}
+                        <span style={{
+                          fontWeight: 700, color: "var(--fg-primary)", fontSize: 13.5,
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}>
+                          {o.name}
+                        </span>
+                        {o.badge && (
+                          <span style={{
+                            flexShrink: 0, fontSize: 11, fontWeight: 600, textTransform: "uppercase",
+                            letterSpacing: ".03em", color: "var(--gray-700)", background: "var(--gray-100)",
+                            border: "1px solid var(--border)", borderRadius: 999, padding: "1px 7px",
+                          }}>
+                            {o.badge}
+                          </span>
+                        )}
+                      </span>
+                      {/* gray-700 y no fg-tertiary: este último es #9e9e9e, que
+                          sobre blanco da 2,8:1 de contraste y en pantallas
+                          malas o con mucho brillo no se lee. gray-700 (#616161)
+                          da 5,9:1, por encima del mínimo accesible de 4,5:1. */}
+                      {o.subtitle && (
+                        <span style={{ fontSize: 12.5, color: "var(--gray-700)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {o.subtitle}
+                        </span>
+                      )}
+                      {o.code && (
+                        // Completo y seleccionable: sirve para cotejarlo contra
+                        // CX Advisor, y truncado no valdría para eso.
+                        <span style={{
+                          fontFamily: "var(--font-mono, ui-monospace, monospace)", fontSize: 11.5,
+                          color: "var(--gray-700)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}>
+                          {o.code}
+                        </span>
+                      )}
+                    </span>
+                  ) : (
+                    <>
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>{o.name}</span>
+                      {o.hint && (
+                        <span
+                          title={o.hint}
+                          style={{
+                            flexShrink: 0, fontFamily: "var(--font-mono, ui-monospace, monospace)",
+                            fontSize: 11, color: "var(--fg-tertiary)", background: "var(--gray-50)",
+                            border: "1px solid var(--border)", borderRadius: 4, padding: "1px 5px",
+                          }}
+                        >
+                          {shortHint(o.hint)}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </button>
+              );
+            })
           )}
         </div>
       )}

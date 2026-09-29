@@ -93,15 +93,20 @@ export function SubmissionForm() {
     placeholderData: (prev) => prev,
   });
 
+  // Cada resultado se pinta como tarjeta: nombre, dónde está, y el
+  // restaurant_id entero. Con nombres que se repiten entre locales, el sitio y
+  // el identificador son lo que permite elegir el correcto sin salir a mirarlo
+  // en CX Advisor.
   const clientOptions = useMemo(
     () =>
       clientsRaw.map((c) => ({
         id: c.id,
-        // El hint distingue homónimos y avisa de las bajas, que también se
-        // pueden elegir: un cliente de baja puede seguir teniendo hardware
-        // nuestro pendiente de devolver.
-        name: esBaja(c.businessStage) ? `${c.name} · de baja` : c.name,
-        hint: c.province ?? c.externalId,
+        name: c.name,
+        subtitle: [c.city, c.province, c.email].filter(Boolean).join(" · ") || null,
+        code: c.externalId,
+        // Las bajas también se pueden elegir: un cliente de baja puede seguir
+        // teniendo hardware nuestro pendiente de devolver. Solo se avisa.
+        badge: esBaja(c.businessStage) ? "de baja" : null,
       })),
     [clientsRaw]
   );
