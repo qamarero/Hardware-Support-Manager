@@ -1,14 +1,20 @@
 import { db } from "@/lib/db";
 import { clients } from "@/lib/db/schema";
-import { and, eq, isNull, isNotNull, sql } from "drizzle-orm";
+import { and, isNull, isNotNull, sql } from "drizzle-orm";
 import { fetchCxLocations, type CxLocation } from "@/lib/db/cx-advisor";
 import { INTERCOM_APP_ID } from "@/lib/utils/intercom-url";
 
 export interface SyncClientsResult {
+  simulacion: boolean;
   leidos: number;
   adoptados: number;
   insertados: number;
   actualizados: number;
+  /** Clientes de HSM con external_id que NO existe en CX Advisor. Cada uno
+   *  acabará conviviendo con la ficha nueva: son los duplicados a revisar. */
+  huerfanosSinPareja: number;
+  /** Muestra de esos huérfanos, para poder mirarlos a ojo antes de decidir. */
+  ejemplosHuerfanos: string[];
   duracionMs: number;
 }
 
@@ -24,11 +30,34 @@ const LOTE = 500;
  * `source = 'manual'` que no casen con ninguna location no se tocan en
  * absoluto — nadie pierde lo que dio de alta a mano.
  */
-export async function syncClientsFromCxAdvisor(): Promise<SyncClientsResult> {
+export async function syncClientsFromCxAdvisor(
+  opciones: { dryRun?: boolean } = {}
+): Promise<SyncClientsResult> {
+  const { dryRun = false } = opciones;
   const t0 = Date.now();
   const locations = await fetchCxLocations();
 
-  const adoptados = await adoptarPorRestaurantId(locations);
+  const plan = await planificarAdopcion(locations);
+
+  if (dryRun) {
+    // Cuántas locations todavía no tienen ficha: las que no adopta nadie y
+    // cuyo cx_deal_id no está ya en la tabla.
+    const yaEspejados = await cxDealIdsExistentes();
+    const cubiertos = new Set([...yaEspejados, ...plan.pares.map((p) => p.cxDealId)]);
+    const insertaria = locations.filter((l) => !cubiertos.has(l.cxDealId)).length;
+    return {
+      simulacion: true,
+      leidos: locations.length,
+      adoptados: plan.pares.length,
+      insertados: insertaria,
+      actualizados: locations.length - insertaria,
+      huerfanosSinPareja: plan.huerfanosSinPareja.length,
+      ejemplosHuerfanos: plan.huerfanosSinPareja.slice(0, 15),
+      duracionMs: Date.now() - t0,
+    };
+  }
+
+  await aplicarAdopcion(plan.pares);
 
   const antes = await contarEspejados();
   for (let i = 0; i < locations.length; i += LOTE) {
@@ -38,10 +67,13 @@ export async function syncClientsFromCxAdvisor(): Promise<SyncClientsResult> {
 
   const insertados = Math.max(0, despues - antes);
   return {
+    simulacion: false,
     leidos: locations.length,
-    adoptados,
+    adoptados: plan.pares.length,
     insertados,
     actualizados: locations.length - insertados,
+    huerfanosSinPareja: plan.huerfanosSinPareja.length,
+    ejemplosHuerfanos: plan.huerfanosSinPareja.slice(0, 15),
     duracionMs: Date.now() - t0,
   };
 }
@@ -55,31 +87,78 @@ export async function syncClientsFromCxAdvisor(): Promise<SyncClientsResult> {
  * restaurante. Se casa por `external_id` (el restaurant_id de Qamarero), que
  * es el único identificador que comparten ambos lados.
  */
-async function adoptarPorRestaurantId(locations: CxLocation[]): Promise<number> {
+interface PlanAdopcion {
+  pares: { id: string; cxDealId: string }[];
+  /** Nombres de clientes de HSM cuyo external_id no existe en CX Advisor. */
+  huerfanosSinPareja: string[];
+}
+
+async function planificarAdopcion(locations: CxLocation[]): Promise<PlanAdopcion> {
   const porRestaurantId = new Map<string, string>();
   for (const l of locations) {
     if (l.restaurantIdBackend) {
-      porRestaurantId.set(l.restaurantIdBackend.toLowerCase(), l.cxDealId);
+      // trim() no es cosmético: en CX Advisor hay restaurant_id_backend con un
+      // tabulador pegado al final (p. ej. el de "CX - Canela en rama"). Sin
+      // limpiarlo, esos clientes no casan y se duplican.
+      porRestaurantId.set(l.restaurantIdBackend.trim().toLowerCase(), l.cxDealId);
     }
   }
-  if (porRestaurantId.size === 0) return 0;
 
   const huerfanos = await db
-    .select({ id: clients.id, externalId: clients.externalId })
+    .select({ id: clients.id, name: clients.name, externalId: clients.externalId })
     .from(clients)
     .where(and(isNull(clients.cxDealId), isNotNull(clients.externalId)));
 
-  let adoptados = 0;
+  const pares: { id: string; cxDealId: string }[] = [];
+  const huerfanosSinPareja: string[] = [];
+  // Un mismo restaurant_id puede estar repetido en hsm.clients (fichas
+  // duplicadas de la importación antigua). Solo se adopta la primera: el
+  // índice único de cx_deal_id rechazaría la segunda y tumbaría el lote.
+  const yaAsignados = new Set<string>();
+
   for (const c of huerfanos) {
     const cxDealId = porRestaurantId.get((c.externalId ?? "").trim().toLowerCase());
-    if (!cxDealId) continue;
-    await db
-      .update(clients)
-      .set({ cxDealId, source: "cx_advisor" })
-      .where(eq(clients.id, c.id));
-    adoptados++;
+    if (!cxDealId) {
+      // Su restaurant_id ya no existe en CX Advisor: o cambió, o el
+      // restaurante se dio de alta otra vez con otro id. Su ficha se queda y
+      // convivirá con la nueva que traiga el sync.
+      huerfanosSinPareja.push(c.name);
+      continue;
+    }
+    if (yaAsignados.has(cxDealId)) continue;
+    yaAsignados.add(cxDealId);
+    pares.push({ id: c.id, cxDealId });
   }
-  return adoptados;
+
+  return { pares, huerfanosSinPareja };
+}
+
+async function aplicarAdopcion(pares: { id: string; cxDealId: string }[]): Promise<void> {
+  // Un UPDATE por lote y no uno por cliente: son miles de filas y miles de
+  // viajes a la base se comerían el tiempo de la función.
+  for (let i = 0; i < pares.length; i += LOTE) {
+    const lote = pares.slice(i, i + LOTE);
+    const valores = sql.join(
+      lote.map((p) => sql`(${p.id}::uuid, ${p.cxDealId}::varchar)`),
+      sql`, `
+    );
+    await db.execute(sql`
+      UPDATE hsm.clients AS c
+         SET cx_deal_id = v.cx_deal_id,
+             source     = 'cx_advisor'
+        FROM (VALUES ${valores}) AS v(id, cx_deal_id)
+       WHERE c.id = v.id
+    `);
+  }
+}
+
+/** cx_deal_id que ya están en la tabla, para saber qué insertaría el sync. */
+async function cxDealIdsExistentes(): Promise<Set<string>> {
+  const filas = await db
+    .select({ cxDealId: clients.cxDealId })
+    .from(clients)
+    .where(isNotNull(clients.cxDealId));
+  return new Set(filas.map((f) => f.cxDealId!).filter(Boolean));
 }
 
 async function upsertLote(lote: CxLocation[]): Promise<void> {

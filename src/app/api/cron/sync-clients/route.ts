@@ -41,7 +41,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    const resultado = await syncClientsFromCxAdvisor();
+    // ?dry=1 → simulación: cuenta lo que haría y no escribe nada. Pensado para
+    // la primera vez, en que el sync no llena una tabla vacía sino que se
+    // fusiona con ~3.700 clientes que ya estaban.
+    const dryRun = new URL(request.url).searchParams.get("dry") === "1";
+    const resultado = await syncClientsFromCxAdvisor({ dryRun });
     console.log("[sync-clients]", JSON.stringify(resultado));
     return NextResponse.json({ ok: true, ...resultado });
   } catch (err) {
