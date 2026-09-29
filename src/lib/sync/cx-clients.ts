@@ -260,6 +260,12 @@ async function upsertLote(lote: CxLocation[]): Promise<void> {
     )
     .onConflictDoUpdate({
       target: clients.cxDealId,
+      // El índice de cx_deal_id es PARCIAL (WHERE cx_deal_id IS NOT NULL, para
+      // no estorbar a los clientes manuales). Postgres solo usa un índice
+      // parcial en ON CONFLICT si se repite aquí su mismo predicado; sin esto
+      // responde "there is no unique or exclusion constraint matching the
+      // ON CONFLICT specification" aunque el índice exista.
+      targetWhere: isNotNull(clients.cxDealId),
       // Solo los campos que manda CX Advisor. notes/contact_name/phone/address
       // son del equipo de soporte y se quedan como estén.
       set: {
