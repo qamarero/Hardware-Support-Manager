@@ -47,6 +47,12 @@ interface ComboboxProps {
   loading?: boolean;
   /** Caracteres mínimos antes de buscar. Solo informativo para el mensaje. */
   minQueryLength?: number;
+  /**
+   * Salida que se ofrece SOLO cuando la búsqueda no devuelve nada. Deliberado:
+   * un escape siempre visible compite con el buscador y acaba usándose por
+   * atajo.
+   */
+  emptyAction?: { label: string; onClick: () => void };
 }
 
 /**
@@ -55,7 +61,7 @@ interface ComboboxProps {
  * Con `allowFreeText`, si lo escrito no coincide con ninguna opción se puede
  * usar como texto libre (`onFreeText`) en vez de obligar a elegir de la lista.
  */
-export function Combobox({ options, value, onChange, placeholder = "Buscar…", emptyLabel = "Sin resultados", allowFreeText = false, freeText = "", onFreeText, onQueryChange, loading = false, minQueryLength = 2 }: ComboboxProps) {
+export function Combobox({ options, value, onChange, placeholder = "Buscar…", emptyLabel = "Sin resultados", allowFreeText = false, freeText = "", onFreeText, onQueryChange, loading = false, minQueryLength = 2, emptyAction }: ComboboxProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const ref = useRef<HTMLDivElement>(null);
@@ -176,7 +182,28 @@ export function Combobox({ options, value, onChange, placeholder = "Buscar…", 
             ) : serverSide && loading ? (
               <div className="muted text-sm" style={{ padding: "10px 12px" }}>Buscando…</div>
             ) : (allowFreeText && query.trim()) ? null : (
-              <div className="muted text-sm" style={{ padding: "10px 12px" }}>{emptyLabel}</div>
+              <>
+                <div className="muted text-sm" style={{ padding: "10px 12px" }}>
+                  {emptyLabel}{query.trim() ? ` con «${query.trim()}»` : ""}.
+                </div>
+                {emptyAction && (
+                  <button
+                    type="button"
+                    onClick={() => { setOpen(false); handleQuery(""); emptyAction.onClick(); }}
+                    style={{
+                      width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8,
+                      padding: "10px 12px", border: 0, borderTop: "1px solid var(--border)",
+                      background: "transparent", borderRadius: 0, cursor: "pointer",
+                      fontSize: 13, color: "var(--primary)", fontWeight: 600,
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "var(--orange-50)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                  >
+                    <Plus size={14} style={{ flexShrink: 0 }} />
+                    <span>{emptyAction.label}</span>
+                  </button>
+                )}
+              </>
             )
           ) : (
             filtered.map((o) => {

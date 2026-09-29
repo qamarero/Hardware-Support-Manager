@@ -47,6 +47,13 @@ export const supportSubmissions = hsmSchema.table(
     deviceModel: varchar("device_model", { length: 255 }),
     deviceSerialNumber: varchar("device_serial_number", { length: 255 }),
 
+    /**
+     * restaurant_id tecleado a mano cuando el restaurante no estaba en el
+     * buscador. Es una ANOTACION: no crea cliente ni se enlaza solo. Alguien
+     * lo verifica al revisar la sumision.
+     */
+    manualClientExternalId: varchar("manual_client_external_id", { length: 255 }),
+
     // Contact info
     contactPhone: varchar("contact_phone", { length: 50 }),
     intercomUrl: varchar("intercom_url", { length: 1000 }),

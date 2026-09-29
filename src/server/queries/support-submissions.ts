@@ -37,6 +37,7 @@ export async function getSupportSubmissions(
           submitterEmail: supportSubmissions.submitterEmail,
           clientName: supportSubmissions.clientName,
           clientId: supportSubmissions.clientId,
+          manualClientExternalId: supportSubmissions.manualClientExternalId,
           title: supportSubmissions.title,
           description: supportSubmissions.description,
           priority: supportSubmissions.priority,

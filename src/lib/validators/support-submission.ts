@@ -35,6 +35,19 @@ export const createSubmissionSchema = z.object({
   deviceModel: z.string().max(255).optional().or(z.literal("")),
   deviceSerialNumber: z.string().max(255).optional().or(z.literal("")),
 
+  // restaurant_id tecleado a mano (alta manual, cuando no aparece en el
+  // buscador). Se valida la FORMA, no que exista: la gracia es justamente
+  // poder reportar restaurantes que aún no están en la base.
+  manualClientExternalId: z
+    .string()
+    .trim()
+    .regex(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+      "No parece un ID de restaurante. Son 36 caracteres con guiones."
+    )
+    .optional()
+    .or(z.literal("")),
+
   // Contact (optional)
   contactPhone: z.string().max(50).optional().or(z.literal("")),
   // Opcional: el técnico puede añadir la URL de Intercom a posteriori.

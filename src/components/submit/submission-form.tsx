@@ -35,6 +35,7 @@ import {
 import { submitSupportRequest, searchClientsForSubmit } from "@/server/actions/support-submissions";
 import { useDebouncedSearch } from "@/hooks/use-debounced-search";
 import { Combobox } from "@/components/proto/combobox";
+import { ManualClientPanel } from "@/components/submit/manual-client-panel";
 import { ALLOWED_SUBMITTER_DOMAINS, SUBMIT_IMAGE_TYPES, SUBMIT_MAX_IMAGE_SIZE, SUBMIT_MAX_ATTACHMENTS } from "@/lib/constants/support-submissions";
 import { DEVICE_TYPES, DEVICE_TYPE_LABELS, type DeviceType } from "@/lib/constants/device-types";
 import { SubmissionSuccess } from "./submission-success";
@@ -82,6 +83,8 @@ export function SubmissionForm() {
   // dejaría la cartera al alcance de cualquiera.
   const { setInputValue: setClientQuery, debouncedValue: clientQuery } =
     useDebouncedSearch(250);
+  const [altaManual, setAltaManual] = useState(false);
+  const manualExternalId = form.watch("manualClientExternalId");
 
   const { data: clientsRaw = [], isFetching: buscandoClientes } = useQuery({
     queryKey: ["clients", "submit-search", clientQuery],
@@ -260,31 +263,57 @@ export function SubmissionForm() {
                     <FormItem>
                       <FormLabel>Cliente / empresa *</FormLabel>
                       <FormControl>
-                        <Combobox
-                          options={clientOptions}
-                          value={form.watch("clientId") || ""}
-                          onChange={(id) => {
-                            form.setValue("clientId", id, { shouldValidate: true });
-                            const opt = clientsRaw.find((o) => o.id === id);
-                            // Al elegir de la lista, fijamos también el nombre.
-                            // Se coge de clientsRaw y no de clientOptions porque
-                            // esas llevan pegado el sufijo «· de baja».
-                            form.setValue("clientName", opt ? opt.name : "", { shouldValidate: true });
-                          }}
-                          placeholder="Buscar cliente por nombre o ID…"
-                          emptyLabel="Ningún cliente coincide — escríbelo para usarlo como texto"
-                          allowFreeText
-                          freeText={field.value}
-                          onFreeText={(t) => {
-                            field.onChange(t);
-                            form.setValue("clientId", "");
-                          }}
-                          onQueryChange={setClientQuery}
-                          loading={buscandoClientes}
-                        />
+                        {altaManual ? (
+                          <ManualClientPanel
+                            nombreInicial={field.value}
+                            onCancel={() => setAltaManual(false)}
+                            onConfirm={(c) => {
+                              field.onChange(c.name);
+                              form.setValue("clientId", "");
+                              form.setValue("manualClientExternalId", c.externalId, { shouldValidate: true });
+                              setAltaManual(false);
+                            }}
+                            onUseExisting={(clientId, clientName) => {
+                              // Resultó estar registrado: se enlaza la ficha real
+                              // y la anotación a mano deja de tener sentido.
+                              form.setValue("clientId", clientId, { shouldValidate: true });
+                              form.setValue("clientName", clientName, { shouldValidate: true });
+                              form.setValue("manualClientExternalId", "");
+                              setAltaManual(false);
+                            }}
+                          />
+                        ) : (
+                          <Combobox
+                            options={clientOptions}
+                            value={form.watch("clientId") || ""}
+                            onChange={(id) => {
+                              form.setValue("clientId", id, { shouldValidate: true });
+                              const opt = clientsRaw.find((o) => o.id === id);
+                              // Al elegir de la lista, fijamos también el nombre.
+                              form.setValue("clientName", opt ? opt.name : "", { shouldValidate: true });
+                              form.setValue("manualClientExternalId", "");
+                            }}
+                            placeholder="Buscar cliente por nombre o ID…"
+                            emptyLabel="Ningún restaurante coincide"
+                            freeText={field.value}
+                            onQueryChange={setClientQuery}
+                            loading={buscandoClientes}
+                            // El botón de escape solo sale cuando la búsqueda no
+                            // devuelve nada, no antes: si estuviera siempre a la
+                            // vista competiría con el buscador y se usaría por
+                            // atajo, que es como se acaba llenando la tabla de
+                            // restaurantes tecleados.
+                            emptyAction={{
+                              label: "No lo encuentro — introducirlo a mano",
+                              onClick: () => setAltaManual(true),
+                            }}
+                          />
+                        )}
                       </FormControl>
                       <FormDescription className="text-xs">
-                        Escribe al menos 2 letras. Solo salen restaurantes con ID: comprueba que coincide con el del cliente. Si no aparece, escríbelo como texto.
+                        {manualExternalId
+                          ? "Restaurante añadido a mano. Soporte hardware comprobará el ID al revisar el reporte."
+                          : "Escribe al menos 2 letras. Solo salen restaurantes con ID: comprueba que coincide con el del cliente."}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

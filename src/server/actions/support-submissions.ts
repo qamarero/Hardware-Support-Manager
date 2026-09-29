@@ -26,6 +26,9 @@ import type { ActionResult, PaginationParams } from "@/types";
 import type { SupportSubmissionStatus } from "@/lib/constants/support-submissions";
 import { ilike, isNull, isNotNull, or, sql } from "drizzle-orm";
 
+/** Forma de un restaurant_id. Se comparte entre la búsqueda y el alta manual. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /** Cuántos clientes devuelve como mucho el buscador de /submit. */
 const SUBMIT_SEARCH_LIMIT = 20;
 /** Por debajo de esto no se consulta: "ba" ya casa con media cartera. */
@@ -112,6 +115,40 @@ export async function searchClientsForSubmit(
 }
 
 /**
+ * PUBLIC action — no auth required. ¿Este restaurant_id ya tiene ficha?
+ *
+ * La usa el alta manual de /submit: antes de dejar teclear un restaurante a
+ * mano se mira si ese id ya existe, porque lo más probable es que no lo hayan
+ * encontrado por el nombre y sí esté. Devolver la ficha real evita crear una
+ * anotación redundante.
+ *
+ * Solo acepta un UUID exacto, así que no sirve para enumerar nada: hay que
+ * saber el id de antemano.
+ */
+export async function findClientByExternalId(
+  externalId: string
+): Promise<ClientSearchResult | null> {
+  const id = (externalId ?? "").trim();
+  if (!UUID_RE.test(id)) return null;
+
+  const [row] = await db
+    .select({
+      id: clients.id,
+      name: clients.name,
+      externalId: clients.externalId,
+      businessStage: clients.businessStage,
+      province: clients.province,
+      city: clients.city,
+      email: clients.email,
+    })
+    .from(clients)
+    .where(and(isNull(clients.deletedAt), sql`lower(${clients.externalId}) = ${id.toLowerCase()}`))
+    .limit(1);
+
+  return row ?? null;
+}
+
+/**
  * PUBLIC action — no auth required.
  * Creates a new support submission from the CX team public form.
  */
@@ -166,6 +203,7 @@ export async function submitSupportRequest(
     contactPhone,
     intercomUrl,
     attachments,
+    manualClientExternalId,
   } = parsed.data;
 
   try {
@@ -197,6 +235,9 @@ export async function submitSupportRequest(
         deviceSerialNumber: deviceSerialNumber || null,
         contactPhone: contactPhone || null,
         intercomUrl: intercomUrl || null,
+        // Solo se guarda si NO se eligió un cliente de la lista: con ficha
+        // enlazada la anotación sobra y solo induciría a dudar de cuál manda.
+        manualClientExternalId: matchedClientId ? null : (manualClientExternalId || null),
         attachments: attachments ?? [],
       })
       .returning({ id: supportSubmissions.id });

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { ManualClientNotice } from "@/components/submissions/manual-client-notice";
 import { Separator } from "@/components/ui/separator";
 import {
   Select,
@@ -46,6 +47,10 @@ export function SubmissionDetail({ item, onConvert, onDismiss }: SubmissionDetai
   const [contactPhone, setContactPhone] = useState(item.contactPhone ?? "");
   const [intercomUrl, setIntercomUrl] = useState(item.intercomUrl ?? "");
   const [dataOpen, setDataOpen] = useState(false);
+  // Ficha enlazada a mano desde el aviso. Prevalece sobre la de la sumisión:
+  // es una decisión que alguien acaba de tomar mirando el identificador.
+  const [enlazado, setEnlazado] = useState<{ id: string; name: string } | null>(null);
+  const clienteFinalId = enlazado?.id ?? item.clientId ?? undefined;
 
   const isPending = item.status === "pendiente";
   const isConverted = item.status === "convertida";
@@ -63,7 +68,7 @@ export function SubmissionDetail({ item, onConvert, onDismiss }: SubmissionDetai
         priority,
         category,
         hardwareOrigin,
-        clientId: item.clientId ?? undefined,
+        clientId: clienteFinalId,
         deviceType: deviceType || undefined,
         deviceBrand: deviceBrand || undefined,
         deviceModel: deviceModel || undefined,
@@ -108,7 +113,14 @@ export function SubmissionDetail({ item, onConvert, onDismiss }: SubmissionDetai
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
-          <h3 className="text-lg font-semibold">{item.clientName}</h3>
+          <h3 className="text-lg font-semibold">
+            {enlazado?.name ?? item.clientName}
+            {item.manualClientExternalId && !enlazado && (
+              <span className="ml-2 align-middle rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-300">
+                a mano
+              </span>
+            )}
+          </h3>
           <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
             <SubmissionStatusBadge status={item.status} />
             <span>·</span>
@@ -126,6 +138,20 @@ export function SubmissionDetail({ item, onConvert, onDismiss }: SubmissionDetai
           </Button>
         )}
       </div>
+
+      {/* El identificador tecleado a mano va lo primero: es el dato que se
+          coteja contra la ficha del cliente antes de convertir nada. */}
+      {item.manualClientExternalId && (
+        <ManualClientNotice
+          externalId={item.manualClientExternalId}
+          yaEnlazado={!!clienteFinalId}
+          enlazando={false}
+          onEnlazar={(id, name) => {
+            setEnlazado({ id, name });
+            toast.success(`Se usará la ficha de «${name}» al convertir`);
+          }}
+        />
+      )}
 
       {/* Extracted data preview */}
       <div className="rounded-lg border bg-muted/30">
