@@ -1,12 +1,21 @@
 import postgres from "postgres";
 
 /**
- * Conexión de SOLO LECTURA a la base de CX Advisor (proyecto
- * `olcxbtvjkjmofrbvzpat`, schema `core`), de donde se espejan los clientes.
+ * Conexión de SOLO LECTURA al proyecto `olcxbtvjkjmofrbvzpat`, donde viven
+ * CX Advisor (schema `core`) y Toolbox (`hw_staging`). De ahí se espejan los
+ * clientes.
  *
- * Es una base ajena: HSM no la administra ni escribe en ella. El rol de
- * `CX_ADVISOR_DATABASE_URL` debe tener únicamente SELECT sobre `core.locations`
- * — mismo patrón que usa Qarvis con su rol `qarvis_ro`.
+ * Reutiliza el acceso que ya existe en el ecosistema en vez de montar uno
+ * nuevo: misma variable `OLCX_DATABASE_URL` y mismo rol de solo lectura
+ * (`qarvis_ro`) que usa Qarvis en `app/src/lib/db/external.ts`. El valor se
+ * copia tal cual de las variables de entorno de Qarvis.
+ *
+ * No vale el acceso de QStatus Growth: ese va por MCP HTTP con un token de
+ * lectura, que sirve para que un agente consulte a mano pero no para que un
+ * servidor sincronice.
+ *
+ * Es una base ajena: HSM no la administra ni escribe en ella. El rol solo
+ * necesita SELECT sobre `core.locations`.
  *
  * No se usa Drizzle a propósito: solo hace falta un SELECT y declarar aquí el
  * esquema entero de `core.locations` (60+ columnas, varias deprecadas y dos con
@@ -17,22 +26,23 @@ let _cx: ReturnType<typeof postgres> | null = null;
 
 /** ¿Está configurada la conexión? Si no, el sync se salta sin romper nada. */
 export function isCxAdvisorConfigured(): boolean {
-  return !!process.env.CX_ADVISOR_DATABASE_URL;
+  return !!process.env.OLCX_DATABASE_URL;
 }
 
 export function getCxAdvisorDb() {
-  const url = process.env.CX_ADVISOR_DATABASE_URL;
+  const url = process.env.OLCX_DATABASE_URL;
   if (!url) {
     throw new Error(
-      "CX_ADVISOR_DATABASE_URL no está configurada: no se puede sincronizar clientes."
+      "OLCX_DATABASE_URL no está configurada: no se puede sincronizar clientes."
     );
   }
   if (!_cx) {
     _cx = postgres(url, {
-      prepare: false, // pooler de Supabase en modo transacción
+      prepare: false, // requerido por el pooler (Supavisor) en transaction mode
       max: 3, // el sync es un job puntual, no necesita más
       idle_timeout: 20,
       connect_timeout: 10,
+      ssl: "require",
       connection: {
         // El sync lee ~4.100 filas de una tabla ancha. 15 s se queda corto;
         // 60 s es de sobra y sigue acotando un cuelgue.

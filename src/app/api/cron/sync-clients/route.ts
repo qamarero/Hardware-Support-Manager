@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   }
   if (!isCxAdvisorConfigured()) {
     return NextResponse.json(
-      { error: "CX_ADVISOR_DATABASE_URL no está configurada" },
+      { error: "OLCX_DATABASE_URL no está configurada" },
       { status: 503 }
     );
   }
