@@ -112,12 +112,26 @@ export async function fetchCxLocations(): Promise<CxLocation[]> {
 }
 
 /**
- * Quita el prefijo "CX - " con que HubSpot nombra a unos dos tercios de las
- * locations. Es ruido del CRM: quien busca escribe "Green Planet", no
- * "CX - Green Planet".
+ * Quita los prefijos con que HubSpot nombra las locations. Es ruido del CRM:
+ * quien busca escribe "Green Planet", no "CX - S: Green Planet".
+ *
+ * Son dos y pueden venir encadenados:
+ *   "CX - "  en unos dos tercios de la cartera
+ *   "S: "    en 1.067 locations (26%), medido sobre la base
+ *
+ * El segundo apareció al comparar los que no casaban: "Sukaldea Atotxa" en HSM
+ * contra "CX - S: Sukaldea Atotxa" en CX Advisor. Sin quitarlo, ese cuarto de
+ * la cartera no casa por nombre y se duplica.
+ *
+ * NO se tocan "Restaurante", "Bar" ni "Cafetería", que también encabezan
+ * muchos nombres: ahí sí suelen ser parte del nombre real del negocio.
  */
 export function cleanLocationName(raw: string): string {
-  return raw.replace(/^\s*CX\s*[-–—]\s*/i, "").trim() || raw.trim();
+  const limpio = raw
+    .replace(/^\s*CX\s*[-–—]\s*/i, "")
+    .replace(/^\s*S\s*:\s*/i, "")
+    .trim();
+  return limpio || raw.trim();
 }
 
 function emptyToNull(v: string | null): string | null {

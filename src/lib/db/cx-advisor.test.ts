@@ -22,9 +22,22 @@ describe("cleanLocationName", () => {
     expect(cleanLocationName("Knela Cafe")).toBe("Knela Cafe");
   });
 
+  it("quita el prefijo «S: », que lleva un cuarto de la cartera", () => {
+    expect(cleanLocationName("CX - S: Sukaldea Atotxa")).toBe("Sukaldea Atotxa");
+    expect(cleanLocationName("S: El Mundo del Campero")).toBe("El Mundo del Campero");
+    expect(cleanLocationName("CX - S:Taquería Los Carnales")).toBe("Taquería Los Carnales");
+  });
+
+  it("no recorta Restaurante ni Bar, que suelen ser parte del nombre", () => {
+    expect(cleanLocationName("Restaurante La Parada")).toBe("Restaurante La Parada");
+    expect(cleanLocationName("Bar Santiago")).toBe("Bar Santiago");
+  });
+
   it("no se come un nombre que empieza por CX sin ser el prefijo", () => {
     expect(cleanLocationName("CXO Lounge")).toBe("CXO Lounge");
     expect(cleanLocationName("CX Burger")).toBe("CX Burger");
+    // "Sushi Bar" empieza por S pero no lleva dos puntos: no es el prefijo.
+    expect(cleanLocationName("Sushi Bar")).toBe("Sushi Bar");
   });
 
   it("si el nombre es solo el prefijo, devuelve el original en vez de vacío", () => {
