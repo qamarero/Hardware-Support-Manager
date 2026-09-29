@@ -17,6 +17,28 @@ import { isCxAdvisorConfigured } from "@/lib/db/cx-advisor";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // ~4.100 filas por lotes; sobra, pero acota
 
+/**
+ * Mensaje de error utilizable.
+ *
+ * Drizzle envuelve los fallos como «Failed query: <sql> params: <todos>». Con
+ * lotes de 500 filas eso son decenas de kB de marcadores y UUID que esconden
+ * lo único que importa, que es qué dijo Postgres — y el detalle real viene en
+ * `cause`. Un fallo en el sync ya costó una ejecución a ciegas.
+ */
+function resumirError(err: unknown): string {
+  if (!(err instanceof Error)) return "Error desconocido";
+  const causa = (err as { cause?: unknown }).cause;
+  const detalle =
+    causa instanceof Error
+      ? causa.message
+      : typeof causa === "string"
+        ? causa
+        : undefined;
+  // Se corta antes de "params:", donde empieza el volcado.
+  const base = err.message.split("\nparams:")[0].slice(0, 400);
+  return detalle ? `${detalle} — al ejecutar: ${base}` : base;
+}
+
 function autorizado(request: Request): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false;
@@ -50,8 +72,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, ...resultado });
   } catch (err) {
     console.error("[sync-clients] error:", err);
-    const message = err instanceof Error ? err.message : "Error desconocido";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    return NextResponse.json({ ok: false, error: resumirError(err) }, { status: 500 });
   }
 }
 

@@ -40,12 +40,16 @@ export async function syncClientsFromCxAdvisor(
   const t0 = Date.now();
   const locations = await fetchCxLocations();
 
-  const plan = await planificarAdopcion(locations);
+  // Los cx_deal_id que YA están en la tabla. Hay que pasárselos al plan, no
+  // solo contarlos: si un huérfano casa con un deal que ya tiene dueño, el
+  // índice único rechaza el UPDATE y tumba el lote entero. Pasa en cuanto el
+  // sync se ejecuta por segunda vez, o después de una ejecución a medias.
+  const yaEspejados = await cxDealIdsExistentes();
+  const plan = await planificarAdopcion(locations, yaEspejados);
 
   if (dryRun) {
     // Cuántas locations todavía no tienen ficha: las que no adopta nadie y
     // cuyo cx_deal_id no está ya en la tabla.
-    const yaEspejados = await cxDealIdsExistentes();
     const cubiertos = new Set([...yaEspejados, ...plan.pares.map((p) => p.cxDealId)]);
     const insertaria = locations.filter((l) => !cubiertos.has(l.cxDealId)).length;
     return {
@@ -119,7 +123,10 @@ export function normalizarNombre(raw: string): string {
     .trim();
 }
 
-async function planificarAdopcion(locations: CxLocation[]): Promise<PlanAdopcion> {
+async function planificarAdopcion(
+  locations: CxLocation[],
+  yaEnLaTabla: Set<string>
+): Promise<PlanAdopcion> {
   const porRestaurantId = new Map<string, string>();
   for (const l of locations) {
     if (l.restaurantIdBackend) {
@@ -138,17 +145,21 @@ async function planificarAdopcion(locations: CxLocation[]): Promise<PlanAdopcion
     .where(isNull(clients.cxDealId));
 
   const pares: { id: string; cxDealId: string }[] = [];
-  // Un mismo restaurant_id puede estar repetido en hsm.clients (fichas
-  // duplicadas de la importación antigua). Solo se adopta la primera: el
-  // índice único de cx_deal_id rechazaría la segunda y tumbaría el lote.
-  const yaAsignados = new Set<string>();
+  // Arranca con los deals que YA tienen dueño en la tabla, no vacío. Un mismo
+  // restaurant_id puede estar repetido en hsm.clients (fichas duplicadas de la
+  // importación antigua), y un deal solo puede pertenecer a una ficha: el
+  // índice único rechaza la segunda y tumba el lote entero.
+  const yaAsignados = new Set<string>(yaEnLaTabla);
   const sinCasarPorId: typeof huerfanos = [];
 
   // ── Pase 1: por restaurant_id, que es un identificador de verdad ──
   for (const c of huerfanos) {
     const cxDealId = porRestaurantId.get((c.externalId ?? "").trim().toLowerCase());
     if (!cxDealId || yaAsignados.has(cxDealId)) {
-      if (!cxDealId) sinCasarPorId.push(c);
+      // También cuando el deal ya tiene dueño: esa ficha es un duplicado
+      // interno y conviene que salga en el recuento de huérfanos, no que
+      // desaparezca del informe sin dejar rastro.
+      sinCasarPorId.push(c);
       continue;
     }
     yaAsignados.add(cxDealId);
