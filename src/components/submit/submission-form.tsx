@@ -103,7 +103,10 @@ export function SubmissionForm() {
         id: c.id,
         name: c.name,
         subtitle: [c.city, c.province, c.email].filter(Boolean).join(" · ") || null,
-        code: c.externalId,
+        // Se dice en vez de dejar el hueco: una ficha sin id es de las
+        // antiguas y no sirve para cotejar, así que hay que poder descartarla
+        // de un vistazo cuando aparece junto a la buena.
+        code: c.externalId ?? "— sin ID de restaurante —",
         // Las bajas también se pueden elegir: un cliente de baja puede seguir
         // teniendo hardware nuestro pendiente de devolver. Solo se avisa.
         badge: esBaja(c.businessStage) ? "de baja" : null,

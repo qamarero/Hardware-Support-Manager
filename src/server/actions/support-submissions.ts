@@ -93,9 +93,17 @@ export async function searchClientsForSubmit(
         or(ilike(clients.name, pattern), ilike(clients.externalId, pattern))
       )
     )
-    // Primero los que empiezan por lo tecleado: buscando "green" interesa
-    // "Green Planet" antes que "Evergreen".
-    .orderBy(sql`(${clients.name} ILIKE ${term + "%"}) DESC`, clients.name)
+    .orderBy(
+      // Primero los que empiezan por lo tecleado: buscando "green" interesa
+      // "Green Planet" antes que "Evergreen".
+      sql`(${clients.name} ILIKE ${term + "%"}) DESC`,
+      // Y antes los que traen restaurant_id. Al espejar CX Advisor pueden
+      // convivir dos fichas del mismo sitio: la sincronizada, con id, y una
+      // antigua sin él. Es soporte quien elige cotejando el id, así que la
+      // que no lo tiene va debajo — no sirve para identificar nada.
+      sql`(${clients.externalId} IS NOT NULL) DESC`,
+      clients.name
+    )
     .limit(SUBMIT_SEARCH_LIMIT);
 }
 
