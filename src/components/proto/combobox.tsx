@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
-import { Search, Check, X, Plus } from "lucide-react";
+import { Search, Check, X, Plus, Loader2 } from "lucide-react";
 
 export interface ComboOption {
   id: string;
@@ -27,6 +27,15 @@ interface ComboboxProps {
   freeText?: string;
   /** Callback al elegir un texto libre. */
   onFreeText?: (text: string) => void;
+  /**
+   * Avisa de lo que se va escribiendo, para buscar en el servidor.
+   * Al pasarlo, `options` se asume ya filtrada y no se vuelve a filtrar aquí.
+   */
+  onQueryChange?: (query: string) => void;
+  /** Hay una búsqueda en vuelo (solo con `onQueryChange`). */
+  loading?: boolean;
+  /** Caracteres mínimos antes de buscar. Solo informativo para el mensaje. */
+  minQueryLength?: number;
 }
 
 /**
@@ -35,10 +44,13 @@ interface ComboboxProps {
  * Con `allowFreeText`, si lo escrito no coincide con ninguna opción se puede
  * usar como texto libre (`onFreeText`) en vez de obligar a elegir de la lista.
  */
-export function Combobox({ options, value, onChange, placeholder = "Buscar…", emptyLabel = "Sin resultados", allowFreeText = false, freeText = "", onFreeText }: ComboboxProps) {
+export function Combobox({ options, value, onChange, placeholder = "Buscar…", emptyLabel = "Sin resultados", allowFreeText = false, freeText = "", onFreeText, onQueryChange, loading = false, minQueryLength = 2 }: ComboboxProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const ref = useRef<HTMLDivElement>(null);
+  /** Con búsqueda en servidor, `options` ya viene filtrada: filtrar otra vez
+   *  sobre un tramo parcial escondería resultados que el servidor sí encontró. */
+  const serverSide = !!onQueryChange;
 
   const selected = options.find((o) => o.id === value) ?? null;
   const displayName = selected ? selected.name : (freeText || "");
@@ -56,6 +68,7 @@ export function Combobox({ options, value, onChange, placeholder = "Buscar…", 
   }, []);
 
   const filtered = useMemo(() => {
+    if (serverSide) return options;
     const q = query.trim().toLowerCase();
     const list = q
       ? options.filter(
@@ -65,7 +78,12 @@ export function Combobox({ options, value, onChange, placeholder = "Buscar…", 
         )
       : options;
     return list.slice(0, 50); // limitar render
-  }, [options, query]);
+  }, [options, query, serverSide]);
+
+  function handleQuery(next: string) {
+    setQuery(next);
+    onQueryChange?.(next);
+  }
 
   return (
     <div ref={ref} style={{ position: "relative" }}>
@@ -76,8 +94,9 @@ export function Combobox({ options, value, onChange, placeholder = "Buscar…", 
             autoFocus
             placeholder={placeholder}
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => handleQuery(e.target.value)}
           />
+          {loading && <Loader2 size={13} className="animate-spin" style={{ color: "var(--fg-tertiary)", flexShrink: 0 }} />}
         </div>
       ) : (
         <button
@@ -111,7 +130,7 @@ export function Combobox({ options, value, onChange, placeholder = "Buscar…", 
           {allowFreeText && query.trim() && !options.some((o) => o.name.toLowerCase() === query.trim().toLowerCase()) && (
             <button
               type="button"
-              onClick={() => { onFreeText?.(query.trim()); onChange(""); setOpen(false); setQuery(""); }}
+              onClick={() => { onFreeText?.(query.trim()); onChange(""); setOpen(false); handleQuery(""); }}
               style={{
                 width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8,
                 padding: "8px 10px", border: 0, background: "transparent", borderRadius: "var(--radius-s)",
@@ -125,13 +144,24 @@ export function Combobox({ options, value, onChange, placeholder = "Buscar…", 
             </button>
           )}
           {filtered.length === 0 ? (
-            (allowFreeText && query.trim()) ? null : <div className="muted text-sm" style={{ padding: "10px 12px" }}>{emptyLabel}</div>
+            // Con búsqueda en servidor hay que distinguir tres situaciones que
+            // un «Sin resultados» a secas confunde: aún no has escrito bastante,
+            // se está buscando, o de verdad no hay nada.
+            serverSide && query.trim().length < minQueryLength ? (
+              <div className="muted text-sm" style={{ padding: "10px 12px" }}>
+                Escribe al menos {minQueryLength} letras para buscar
+              </div>
+            ) : serverSide && loading ? (
+              <div className="muted text-sm" style={{ padding: "10px 12px" }}>Buscando…</div>
+            ) : (allowFreeText && query.trim()) ? null : (
+              <div className="muted text-sm" style={{ padding: "10px 12px" }}>{emptyLabel}</div>
+            )
           ) : (
             filtered.map((o) => (
               <button
                 key={o.id}
                 type="button"
-                onClick={() => { onChange(o.id); setOpen(false); setQuery(""); }}
+                onClick={() => { onChange(o.id); setOpen(false); handleQuery(""); }}
                 style={{
                   width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 8,
                   padding: "8px 10px", border: 0, background: o.id === value ? "var(--orange-50)" : "transparent",

@@ -32,11 +32,23 @@ import {
   createSubmissionSchema,
   type CreateSubmissionInput,
 } from "@/lib/validators/support-submission";
-import { submitSupportRequest, fetchClientsForSubmit } from "@/server/actions/support-submissions";
+import { submitSupportRequest, searchClientsForSubmit } from "@/server/actions/support-submissions";
+import { useDebouncedSearch } from "@/hooks/use-debounced-search";
 import { Combobox } from "@/components/proto/combobox";
 import { ALLOWED_SUBMITTER_DOMAINS, SUBMIT_IMAGE_TYPES, SUBMIT_MAX_IMAGE_SIZE, SUBMIT_MAX_ATTACHMENTS } from "@/lib/constants/support-submissions";
 import { DEVICE_TYPES, DEVICE_TYPE_LABELS, type DeviceType } from "@/lib/constants/device-types";
 import { SubmissionSuccess } from "./submission-success";
+
+/**
+ * ¿El cliente está dado de baja en CX Advisor?
+ *
+ * La etapa llega como texto literal de HubSpot ("0.b Lost Deal"). No se filtran
+ * estos clientes: uno que se dio de baja puede seguir teniendo hardware nuestro
+ * sin devolver, así que hay que poder abrirle una incidencia. Solo se avisa.
+ */
+function esBaja(businessStage: string | null): boolean {
+  return !!businessStage && /lost\s*deal/i.test(businessStage);
+}
 
 export function SubmissionForm() {
   const [submitted, setSubmitted] = useState(false);
@@ -64,15 +76,33 @@ export function SubmissionForm() {
     },
   });
 
-  // Clientes para el buscador (acción pública). El ID (restaurant_id) se
-  // muestra como hint para distinguir homónimos (p.ej. varios "Bar La Plaza").
-  const { data: clientsRaw = [] } = useQuery({
-    queryKey: ["clients", "submit-select"],
-    queryFn: () => fetchClientsForSubmit(),
-    staleTime: 5 * 60 * 1000,
+  // Buscador de clientes. Se busca en el servidor y no se carga la lista
+  // entera: son ~4.100 clientes espejados de CX Advisor y esta acción es
+  // pública, así que traerlos todos sería un payload enorme en cada carga y
+  // dejaría la cartera al alcance de cualquiera.
+  const { setInputValue: setClientQuery, debouncedValue: clientQuery } =
+    useDebouncedSearch(250);
+
+  const { data: clientsRaw = [], isFetching: buscandoClientes } = useQuery({
+    queryKey: ["clients", "submit-search", clientQuery],
+    queryFn: () => searchClientsForSubmit(clientQuery),
+    enabled: clientQuery.trim().length >= 2,
+    staleTime: 60 * 1000,
+    // Mantiene en pantalla los resultados previos mientras llega la siguiente
+    // búsqueda, en vez de vaciar la lista en cada pulsación.
+    placeholderData: (prev) => prev,
   });
+
   const clientOptions = useMemo(
-    () => clientsRaw.map((c) => ({ id: c.id, name: c.name, hint: c.externalId })),
+    () =>
+      clientsRaw.map((c) => ({
+        id: c.id,
+        // El hint distingue homónimos y avisa de las bajas, que también se
+        // pueden elegir: un cliente de baja puede seguir teniendo hardware
+        // nuestro pendiente de devolver.
+        name: esBaja(c.businessStage) ? `${c.name} · de baja` : c.name,
+        hint: c.province ?? c.externalId,
+      })),
     [clientsRaw]
   );
 
@@ -230,8 +260,10 @@ export function SubmissionForm() {
                           value={form.watch("clientId") || ""}
                           onChange={(id) => {
                             form.setValue("clientId", id, { shouldValidate: true });
-                            const opt = clientOptions.find((o) => o.id === id);
+                            const opt = clientsRaw.find((o) => o.id === id);
                             // Al elegir de la lista, fijamos también el nombre.
+                            // Se coge de clientsRaw y no de clientOptions porque
+                            // esas llevan pegado el sufijo «· de baja».
                             form.setValue("clientName", opt ? opt.name : "", { shouldValidate: true });
                           }}
                           placeholder="Buscar cliente por nombre o ID…"
@@ -242,10 +274,12 @@ export function SubmissionForm() {
                             field.onChange(t);
                             form.setValue("clientId", "");
                           }}
+                          onQueryChange={setClientQuery}
+                          loading={buscandoClientes}
                         />
                       </FormControl>
                       <FormDescription className="text-xs">
-                        Busca el cliente y selecciónalo para fijar su ID exacto. Si no está registrado, escríbelo como texto.
+                        Escribe al menos 2 letras. Selecciónalo de la lista para fijar su ID exacto; si no aparece, escríbelo como texto.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

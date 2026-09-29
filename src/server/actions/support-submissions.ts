@@ -24,24 +24,75 @@ import {
 } from "@/server/queries/support-submissions";
 import type { ActionResult, PaginationParams } from "@/types";
 import type { SupportSubmissionStatus } from "@/lib/constants/support-submissions";
-import { ilike, isNull } from "drizzle-orm";
+import { ilike, isNull, or, sql } from "drizzle-orm";
+
+/** Cuántos clientes devuelve como mucho el buscador de /submit. */
+const SUBMIT_SEARCH_LIMIT = 20;
+/** Por debajo de esto no se consulta: "ba" ya casa con media cartera. */
+const SUBMIT_SEARCH_MIN_CHARS = 2;
+
+export interface ClientSearchResult {
+  id: string;
+  name: string;
+  externalId: string | null;
+  /** Etapa comercial de CX Advisor, para avisar de que el cliente está de baja. */
+  businessStage: string | null;
+  province: string | null;
+}
 
 /**
- * PUBLIC action — no auth required. Lista de clientes para el buscador del
- * formulario /submit (nombre + ID/restaurant_id para distinguir homónimos).
+ * PUBLIC action — no auth required. Busca clientes para el formulario /submit.
  *
- * ⚠️ ABIERTA a petición del propietario (entorno de pruebas). Cuando se
- * implemente el login de CX, restringir esta acción con getRequiredSession()
- * o un token — es el único punto que expone la lista de clientes en público.
+ * Busca en vez de listar, y es deliberado: antes devolvía la tabla entera sin
+ * límite. Con los 44 clientes tecleados a mano no se notaba, pero desde que
+ * `hsm.clients` espeja CX Advisor son ~4.100 filas, y esta acción no pide
+ * sesión: habría servido la cartera completa de Qamarero a quien llamara al
+ * endpoint. Ahora exige un término de búsqueda y devuelve como mucho 20.
+ *
+ * Sigue sin pedir sesión porque /submit es público a propósito — es el
+ * formulario con el que reporta el equipo de soporte — pero con el mínimo de
+ * caracteres, el tope de resultados y el rate limit por IP, lo que se puede
+ * extraer desde fuera es marginal.
  */
-export async function fetchClientsForSubmit(): Promise<
-  { id: string; name: string; externalId: string | null }[]
-> {
+export async function searchClientsForSubmit(
+  rawQuery: string
+): Promise<ClientSearchResult[]> {
+  const term = (rawQuery ?? "").trim();
+  if (term.length < SUBMIT_SEARCH_MIN_CHARS) return [];
+
+  const headersList = await headers();
+  const ip =
+    headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    headersList.get("x-real-ip") ??
+    "unknown";
+  // Más holgado que el de enviar: teclear dispara varias búsquedas seguidas.
+  if (!checkRateLimit(`client-search:${ip}`, 60, RATE_LIMIT_WINDOW_MS).allowed) {
+    return [];
+  }
+
+  // Se escapan los comodines de LIKE: sin esto, un "%" en el término casa con
+  // todo y devolvería los 20 primeros clientes sin filtrar de verdad.
+  const pattern = `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+
   return db
-    .select({ id: clients.id, name: clients.name, externalId: clients.externalId })
+    .select({
+      id: clients.id,
+      name: clients.name,
+      externalId: clients.externalId,
+      businessStage: clients.businessStage,
+      province: clients.province,
+    })
     .from(clients)
-    .where(isNull(clients.deletedAt))
-    .orderBy(clients.name);
+    .where(
+      and(
+        isNull(clients.deletedAt),
+        or(ilike(clients.name, pattern), ilike(clients.externalId, pattern))
+      )
+    )
+    // Primero los que empiezan por lo tecleado: buscando "green" interesa
+    // "Green Planet" antes que "Evergreen".
+    .orderBy(sql`(${clients.name} ILIKE ${term + "%"}) DESC`, clients.name)
+    .limit(SUBMIT_SEARCH_LIMIT);
 }
 
 /**
