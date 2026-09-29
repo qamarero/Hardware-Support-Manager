@@ -103,10 +103,7 @@ export function SubmissionForm() {
         id: c.id,
         name: c.name,
         subtitle: [c.city, c.province, c.email].filter(Boolean).join(" · ") || null,
-        // Se dice en vez de dejar el hueco: una ficha sin id es de las
-        // antiguas y no sirve para cotejar, así que hay que poder descartarla
-        // de un vistazo cuando aparece junto a la buena.
-        code: c.externalId ?? "— sin ID de restaurante —",
+        code: c.externalId,
         // Las bajas también se pueden elegir: un cliente de baja puede seguir
         // teniendo hardware nuestro pendiente de devolver. Solo se avisa.
         badge: esBaja(c.businessStage) ? "de baja" : null,
@@ -287,7 +284,7 @@ export function SubmissionForm() {
                         />
                       </FormControl>
                       <FormDescription className="text-xs">
-                        Escribe al menos 2 letras. Selecciónalo de la lista para fijar su ID exacto; si no aparece, escríbelo como texto.
+                        Escribe al menos 2 letras. Solo salen restaurantes con ID: comprueba que coincide con el del cliente. Si no aparece, escríbelo como texto.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

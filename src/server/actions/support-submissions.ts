@@ -24,7 +24,7 @@ import {
 } from "@/server/queries/support-submissions";
 import type { ActionResult, PaginationParams } from "@/types";
 import type { SupportSubmissionStatus } from "@/lib/constants/support-submissions";
-import { ilike, isNull, or, sql } from "drizzle-orm";
+import { ilike, isNull, isNotNull, or, sql } from "drizzle-orm";
 
 /** Cuántos clientes devuelve como mucho el buscador de /submit. */
 const SUBMIT_SEARCH_LIMIT = 20;
@@ -90,6 +90,15 @@ export async function searchClientsForSubmit(
     .where(
       and(
         isNull(clients.deletedAt),
+        // Solo clientes con restaurant_id. En hsm.clients conviven dos fichas
+        // de muchos restaurantes: la de la importación de abril, con id, y una
+        // del documento de marzo que nunca lo tuvo. La segunda no sirve para
+        // identificar nada —es justo el id lo que soporte coteja— y aparecer
+        // junto a la buena solo induce a elegir mal.
+        //
+        // Lo que no esté aquí se puede reportar igual escribiéndolo como texto
+        // libre, que es como se hacía hasta ahora.
+        isNotNull(clients.externalId),
         or(ilike(clients.name, pattern), ilike(clients.externalId, pattern))
       )
     )
@@ -97,11 +106,6 @@ export async function searchClientsForSubmit(
       // Primero los que empiezan por lo tecleado: buscando "green" interesa
       // "Green Planet" antes que "Evergreen".
       sql`(${clients.name} ILIKE ${term + "%"}) DESC`,
-      // Y antes los que traen restaurant_id. Al espejar CX Advisor pueden
-      // convivir dos fichas del mismo sitio: la sincronizada, con id, y una
-      // antigua sin él. Es soporte quien elige cotejando el id, así que la
-      // que no lo tiene va debajo — no sirve para identificar nada.
-      sql`(${clients.externalId} IS NOT NULL) DESC`,
       clients.name
     )
     .limit(SUBMIT_SEARCH_LIMIT);
