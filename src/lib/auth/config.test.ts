@@ -126,6 +126,12 @@ describe("authorized (rutas públicas y confinamiento del Visor)", () => {
   // El confinamiento del Visor llegó a encerrarlo: /login caía en la regla
   // general y lo devolvía a /consulta, así que con la cuenta de soporte
   // abierta no había forma de volver a la de administrador.
+  it("/logout funciona para todos, incluido el Visor confinado", async () => {
+    expect(await call("/logout", "viewer")).toBe(true);
+    expect(await call("/logout", "admin")).toBe(true);
+    expect(await call("/logout")).toBe(true);
+  });
+
   it("un Visor PUEDE abrir /login — es su única salida", async () => {
     expect(await call("/login", "viewer")).toBe(true);
   });

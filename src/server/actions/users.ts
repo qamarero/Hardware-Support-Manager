@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth/get-session";
@@ -99,6 +99,32 @@ export async function deleteUser(
   // Prevent self-deletion
   if (session.user.id === id) {
     return { success: false, error: "No puedes eliminarte a ti mismo" };
+  }
+
+  // No dejar la herramienta sin administradores. Sin esto, borrar al último
+  // deja a todo el mundo sin poder crear usuarios ni cambiar contraseñas, y
+  // recuperarlo exige entrar en la base a mano.
+  const [objetivo] = await db
+    .select({ role: users.role })
+    .from(users)
+    .where(and(eq(users.id, id), isNull(users.deletedAt)))
+    .limit(1);
+
+  if (!objetivo) {
+    return { success: false, error: "Usuario no encontrado" };
+  }
+
+  if (objetivo.role === "admin") {
+    const [{ n }] = await db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(users)
+      .where(and(eq(users.role, "admin"), eq(users.active, true), isNull(users.deletedAt)));
+    if (n <= 1) {
+      return {
+        success: false,
+        error: "Es el único administrador activo. Nombra a otro antes de eliminarlo.",
+      };
+    }
   }
 
   const [user] = await db

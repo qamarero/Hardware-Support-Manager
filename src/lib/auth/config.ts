@@ -42,7 +42,9 @@ export const authConfig: NextAuthConfig = {
       // La comparación es por segmento exacto a propósito:
       // "/submissions".startsWith("/submit") es true, y un startsWith a secas
       // abriría al público la cola interna de revisión.
-      const PUBLIC_PREFIXES = ["/submit"];
+      // /logout va aquí porque tiene que funcionar SIEMPRE: es la salida
+      // cuando la sesión se queda pegada y el botón no responde.
+      const PUBLIC_PREFIXES = ["/submit", "/logout"];
       if (PUBLIC_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`))) {
         return true;
       }
