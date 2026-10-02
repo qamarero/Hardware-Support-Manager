@@ -7,6 +7,24 @@ import { isNull, and, sql } from "drizzle-orm";
 import { loginSchema } from "@/lib/validators/user";
 
 export const authConfig: NextAuthConfig = {
+  /**
+   * Las URLs de auth se construyen con el dominio por el que llega la petición,
+   * no con uno fijo. Hace falta porque la app se sirve en dos:
+   * `soporte.hardware.qamarero.com` y `hardware-support-manager.vercel.app`.
+   *
+   * Sin esto, NEXTAUTH_URL fija un dominio canónico y entrar por el otro te
+   * expulsa a él: las cookies `__Secure-authjs.*` se crean allí, al volver no
+   * hay sesión, y se entra en un ir y venir entre dominios.
+   *
+   * Es seguro en este despliegue porque Vercel solo entrega peticiones cuyo
+   * Host es uno de los dominios dados de alta en el proyecto; no se puede
+   * inyectar un Host arbitrario. En un servidor propio detrás de un proxy que
+   * no sanee esa cabecera, NO sería seguro.
+   *
+   * Exige que NEXTAUTH_URL esté SIN DEFINIR en el entorno: si está, gana ella
+   * y esto no sirve de nada.
+   */
+  trustHost: true,
   pages: {
     signIn: "/login",
   },
