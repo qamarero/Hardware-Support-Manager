@@ -171,7 +171,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             type="button"
             className="btn btn--ghost btn--icon btn--sm"
             title="Cerrar sesión"
-            onClick={() => signOut({ callbackUrl: "/login" })}
+            onClick={async () => {
+              // Si signOut falla —su petición a /api/auth/* puede no devolver
+              // JSON en redes que reescriben respuestas—, la excepción dejaría
+              // al usuario dentro sin forma de salir. Se navega igualmente:
+              // peor que una sesión mal cerrada es quedarse encerrado.
+              try {
+                await signOut({ callbackUrl: "/login" });
+              } catch {
+                window.location.href = "/login";
+              }
+            }}
             style={{ marginLeft: "auto", color: "var(--gray-400)" }}
           >
             <LogOut size={16} />

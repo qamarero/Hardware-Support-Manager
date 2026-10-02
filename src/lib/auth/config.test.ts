@@ -122,4 +122,21 @@ describe("authorized (rutas públicas y confinamiento del Visor)", () => {
   it("un anónimo no entra en /dashboard", async () => {
     expect(await call("/dashboard")).toBe(false);
   });
+
+  // El confinamiento del Visor llegó a encerrarlo: /login caía en la regla
+  // general y lo devolvía a /consulta, así que con la cuenta de soporte
+  // abierta no había forma de volver a la de administrador.
+  it("un Visor PUEDE abrir /login — es su única salida", async () => {
+    expect(await call("/login", "viewer")).toBe(true);
+  });
+
+  it("un anónimo puede abrir /login", async () => {
+    expect(await call("/login")).toBe(true);
+  });
+
+  it("a un admin con sesión se le ahorra el formulario de login", async () => {
+    const res = await call("/login", "admin");
+    expect(res).toBeInstanceOf(Response);
+    expect((res as Response).headers.get("location")).toContain("/dashboard");
+  });
 });

@@ -29,6 +29,20 @@ export const authConfig: NextAuthConfig = {
         return true;
       }
 
+      // El login va ANTES del confinamiento del Visor. Si no, un Visor que
+      // quiere cerrar sesión o cambiar de cuenta es devuelto a /consulta y se
+      // queda encerrado: el guard no le deja llegar a /login ni para salir.
+      // Pasó de verdad — con la cuenta de soporte abierta no había forma de
+      // volver a la de administrador sin borrar las cookies a mano.
+      if (path === "/login") {
+        // A quien ya tiene sesión y puede navegar se le ahorra el formulario.
+        // Al Visor no: para él, /login es la única salida.
+        if (isLoggedIn && role !== "viewer") {
+          return Response.redirect(new URL("/dashboard", nextUrl));
+        }
+        return true;
+      }
+
       // Rol "viewer" (compañeros de soporte): confinado a la pestaña Consulta
       // (solo lectura + comentarios). Cualquier otra ruta → redirige a /consulta.
       if (isLoggedIn && role === "viewer") {
@@ -55,10 +69,6 @@ export const authConfig: NextAuthConfig = {
       if (isOnDashboard) {
         if (isLoggedIn) return true;
         return false;
-      }
-
-      if (isLoggedIn && path === "/login") {
-        return Response.redirect(new URL("/dashboard", nextUrl));
       }
 
       return true;
