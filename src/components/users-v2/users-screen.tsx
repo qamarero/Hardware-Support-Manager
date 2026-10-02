@@ -2,9 +2,11 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { Search, Plus, Loader2, Users as UsersIcon } from "lucide-react";
-import { fetchUsers } from "@/server/actions/users";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Search, Plus, Loader2, Users as UsersIcon, Trash2 } from "lucide-react";
+import { fetchUsers, deleteUser } from "@/server/actions/users";
+import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
 import { Avatar } from "@/components/proto/badges";
 import { USER_ROLE_LABELS, type UserRole } from "@/lib/constants/roles";
 import { formatRelativeTime } from "@/lib/utils/date-format";
@@ -17,7 +19,26 @@ const ROLE_BADGE: Record<string, string> = {
 
 export function UsersScreen() {
   const router = useRouter();
+  const qc = useQueryClient();
   const [query, setQuery] = useState("");
+  const [aEliminar, setAEliminar] = useState<{ id: string; name: string } | null>(null);
+
+  const eliminar = useMutation({
+    mutationFn: async () => {
+      if (!aEliminar) throw new Error("sin usuario");
+      return deleteUser(aEliminar.id);
+    },
+    onSuccess: (r) => {
+      // El servidor rechaza borrarse a uno mismo y borrar al último
+      // administrador activo. Ese mensaje es el que hay que enseñar: decir
+      // solo «no se pudo» dejaría al admin sin saber por qué.
+      if (!r.success) { toast.error(r.error); return; }
+      toast.success(`${aEliminar?.name} ya no tiene acceso`);
+      setAEliminar(null);
+      qc.invalidateQueries({ queryKey: ["users-v2"] });
+    },
+    onError: () => toast.error("No se pudo eliminar el usuario"),
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ["users-v2"],
@@ -69,6 +90,7 @@ export function UsersScreen() {
                 <th>Rol</th>
                 <th>Estado</th>
                 <th>Alta</th>
+                <th style={{ width: 44 }}><span className="sr-only">Acciones</span></th>
               </tr>
             </thead>
             <tbody>
@@ -88,12 +110,34 @@ export function UsersScreen() {
                       : <span className="badge badge--gray badge--dot">Inactivo</span>}
                   </td>
                   <td className="text-sm muted">{formatRelativeTime(u.createdAt)}</td>
+                  <td>
+                    {/* stopPropagation: la fila entera navega a la ficha, y sin
+                        esto borrar abriría además el usuario que se borra. */}
+                    <button
+                      type="button"
+                      className="btn btn--ghost btn--icon btn--sm"
+                      title={`Eliminar a ${u.name}`}
+                      aria-label={`Eliminar a ${u.name}`}
+                      onClick={(e) => { e.stopPropagation(); setAEliminar({ id: u.id, name: u.name }); }}
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+
+      <ConfirmDeleteDialog
+        open={!!aEliminar}
+        onOpenChange={(o) => { if (!o) setAEliminar(null); }}
+        title={`¿Eliminar a ${aEliminar?.name ?? ""}?`}
+        description="Deja de tener acceso y desaparece de la lista. No se borra su historial: las incidencias y RMA que haya tocado siguen en su sitio."
+        isLoading={eliminar.isPending}
+        onConfirm={() => eliminar.mutate()}
+      />
     </div>
   );
 }
