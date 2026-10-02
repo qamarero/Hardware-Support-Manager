@@ -23,26 +23,42 @@ export default function LoginPage() {
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
 
-    if (result?.error) {
-      // Mensaje deliberadamente genérico: decir «no existe ese correo»
-      // confirmaría a un desconocido qué cuentas hay dadas de alta.
-      setError("Correo o contraseña incorrectos");
-      setIsLoading(false);
-    } else {
+      if (result?.error) {
+        // Mensaje deliberadamente genérico: decir «no existe ese correo»
+        // confirmaría a un desconocido qué cuentas hay dadas de alta.
+        setError("Correo o contraseña incorrectos");
+        setIsLoading(false);
+        return;
+      }
+
       // Se entra directo al destino del rol en vez de mandar a todo el mundo a
-      // /dashboard y dejar que el middleware rebote al Visor hasta /consulta.
-      // Ese rebote, encadenado con un router.refresh(), descartaba las Server
-      // Actions que /consulta lanza al montar: Next deja su promesa sin
-      // resolver ni rechazar, y la pantalla se quedaba en «Cargando…» para
-      // siempre. El refresh sobra: push ya trae el árbol nuevo del servidor.
-      const session = await getSession();
-      router.push(session?.user?.role === "viewer" ? "/consulta" : "/dashboard");
+      // /dashboard. El refresh sobra: push ya trae el árbol nuevo del servidor.
+      //
+      // Leer el rol NO puede impedir entrar. getSession() llama a
+      // /api/auth/session, y si esa respuesta no es JSON —un proxy que
+      // devuelve HTML, la red del cliente— lanza un AuthError. Sin este
+      // try/catch la excepción subía, nunca se liberaba isLoading ni se
+      // navegaba, y el botón se quedaba en «Entrando…» para siempre sin decir
+      // nada. La sesión ya está establecida a estas alturas, así que lo
+      // correcto es seguir: el middleware ya manda al Visor a /consulta.
+      let destino = "/dashboard";
+      try {
+        const session = await getSession();
+        if (session?.user?.role === "viewer") destino = "/consulta";
+      } catch {
+        // Destino por defecto; el middleware corrige si hace falta.
+      }
+      router.push(destino);
+    } catch {
+      setError("No se pudo completar el inicio de sesión. Inténtalo de nuevo.");
+      setIsLoading(false);
     }
   }
 
