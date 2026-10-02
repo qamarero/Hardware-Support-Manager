@@ -15,6 +15,7 @@ import type { IncidentRow } from "@/server/queries/incidents";
 import type { RmaRow } from "@/server/queries/rmas";
 import { CLOSED_INCIDENT_STATUSES, CLOSED_RMA_STATUSES } from "@/lib/constants/statuses";
 import { formatDateTime } from "@/lib/utils/date-format";
+import { withTimeout } from "@/lib/utils/with-timeout";
 
 const CLOSED_INC = new Set<string>(CLOSED_INCIDENT_STATUSES);
 const CLOSED_RMA = new Set<string>(CLOSED_RMA_STATUSES);
@@ -163,7 +164,10 @@ export function ConsultaScreen() {
     refetch: retryInc,
   } = useQuery({
     queryKey: ["consulta-incidents"],
-    queryFn: () => fetchIncidents({ page: 1, pageSize: 300 }),
+    // Acotado en el tiempo: una Server Action descartada deja su promesa sin
+    // resolver ni rechazar, y sin esto la pantalla se queda en «Cargando…»
+    // para siempre en vez de mostrar el error y el botón de reintentar.
+    queryFn: () => withTimeout(fetchIncidents({ page: 1, pageSize: 300 })),
   });
   const {
     data: rmas,
@@ -172,7 +176,7 @@ export function ConsultaScreen() {
     refetch: retryRma,
   } = useQuery({
     queryKey: ["consulta-rmas"],
-    queryFn: () => fetchRmas({ page: 1, pageSize: 300 }),
+    queryFn: () => withTimeout(fetchRmas({ page: 1, pageSize: 300 })),
   });
 
   const commentM = useMutation({

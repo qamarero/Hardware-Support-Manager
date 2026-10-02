@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { signIn, getSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Mail, Lock } from "lucide-react";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -55,7 +53,14 @@ export default function LoginPage() {
       } catch {
         // Destino por defecto; el middleware corrige si hace falta.
       }
-      router.push(destino);
+
+      // Carga completa del servidor en vez de router.push(). Con la navegación
+      // del lado cliente, si la pantalla de destino no termina de montarse el
+      // botón se queda en «Entrando…» para siempre y no se ve ni un error: era
+      // lo que les pasaba a los Visores, que van a /consulta, mientras los
+      // Técnicos entraban porque van a /dashboard. Así el navegador navega de
+      // verdad y lo que falle, si falla, se ve en la pantalla de destino.
+      window.location.href = destino;
     } catch {
       setError("No se pudo completar el inicio de sesión. Inténtalo de nuevo.");
       setIsLoading(false);
