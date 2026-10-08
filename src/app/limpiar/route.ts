@@ -17,5 +17,19 @@ export const dynamic = "force-dynamic";
 
 export function GET(request: NextRequest) {
   const volver = safeInternalPath(request.nextUrl.searchParams.get("volver"), "/");
+
+  // El script del layout manda en `diag` lo que devolvió el chunk roto al
+  // volver a pedirlo (status, cabeceras, primeros bytes). Queda en los logs de
+  // Vercel para saber QUIÉN sirve ese HTML: si fuera solo caché, limpiar
+  // bastaría; si es la red o el firewall, esto lo delata.
+  const diag = request.nextUrl.searchParams.get("diag");
+  if (diag) {
+    console.warn("[limpiar] chunk roto", {
+      host: request.headers.get("host"),
+      ua: request.headers.get("user-agent"),
+      diag: diag.slice(0, 1000),
+    });
+  }
+
   return clearSiteResponse(volver, "Limpiando datos guardados de la aplicación…");
 }

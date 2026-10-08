@@ -37,15 +37,22 @@ export const metadata: Metadata = {
 const SELF_HEAL_SCRIPT = `(function(){
 var done=false;
 function isAsset(u){return typeof u==="string"&&u.indexOf("/_next/static/")>-1}
-function heal(){
+function go(d){
+location.replace("/limpiar?volver="+encodeURIComponent(location.pathname+location.search)+"&diag="+encodeURIComponent(JSON.stringify(d).slice(0,900)));
+}
+function heal(u){
 if(done||document.cookie.indexOf("${CLEAR_SITE_COOKIE}=")>-1)return;
 done=true;
-location.replace("/limpiar?volver="+encodeURIComponent(location.pathname+location.search));
+var h=function(r,k){return r.headers.get(k)};
+fetch(u,{cache:"no-store"}).then(function(r){return r.text().then(function(b){
+return {u:u,s:r.status,url:r.url,ct:h(r,"content-type"),sv:h(r,"server"),vid:h(r,"x-vercel-id"),mit:h(r,"x-vercel-mitigated"),b:b.slice(0,300)}})})
+.catch(function(e){return {u:u,err:String(e)}})
+.then(go,function(){go({u:u})});
 }
 window.addEventListener("error",function(e){
-var t=e.target;
-if(t&&t!==window&&(t.tagName==="SCRIPT"||t.tagName==="LINK")){if(isAsset(t.src||t.href))heal();return}
-if(isAsset(e.filename)&&e.error instanceof SyntaxError)heal();
+var t=e.target,u;
+if(t&&t!==window&&(t.tagName==="SCRIPT"||t.tagName==="LINK")){u=t.src||t.href;if(isAsset(u))heal(u);return}
+if(isAsset(e.filename)&&e.error instanceof SyntaxError)heal(e.filename);
 },true);
 })();`;
 
