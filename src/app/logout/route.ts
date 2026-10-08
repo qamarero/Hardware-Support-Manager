@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { clearSiteResponse } from "@/lib/utils/clear-site";
 
 /**
  * Cierre de sesión por URL: basta con abrir /logout.
@@ -15,12 +15,15 @@ import { cookies } from "next/headers";
  *
  * Borra las cookies por su nombre en vez de llamar a signOut() a propósito —
  * si signOut es justamente lo que falla, apoyarse en él no arreglaría nada.
+ *
+ * Además vacía la caché del navegador (ver /limpiar): el síntoma más habitual
+ * en los equipos afectados era la app sin estilos y `Unexpected token '<'`,
+ * que no se arregla borrando cookies.
  */
 export const dynamic = "force-dynamic";
 
-export async function GET(request: Request) {
-  const destino = new URL("/login", request.url);
-  const res = NextResponse.redirect(destino);
+export async function GET() {
+  const res = clearSiteResponse("/login", "Cerrando sesión y limpiando datos guardados…");
 
   const jar = await cookies();
   for (const c of jar.getAll()) {
@@ -34,8 +37,5 @@ export async function GET(request: Request) {
     }
   }
 
-  // Que ninguna capa intermedia guarde esta respuesta: devolvería un cierre de
-  // sesión ya consumido y el navegador no borraría nada.
-  res.headers.set("Cache-Control", "no-store, max-age=0");
   return res;
 }

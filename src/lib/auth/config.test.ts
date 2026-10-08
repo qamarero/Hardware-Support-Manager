@@ -130,6 +130,8 @@ describe("authorized (rutas públicas y confinamiento del Visor)", () => {
     expect(await call("/logout", "viewer")).toBe(true);
     expect(await call("/logout", "admin")).toBe(true);
     expect(await call("/logout")).toBe(true);
+    expect(await call("/limpiar", "viewer")).toBe(true);
+    expect(await call("/limpiar")).toBe(true);
   });
 
   it("un Visor PUEDE abrir /login — es su única salida", async () => {
