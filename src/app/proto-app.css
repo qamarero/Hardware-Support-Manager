@@ -229,7 +229,10 @@ a { color: inherit; text-decoration: none; }
   background: #fff;
   border: 1px solid var(--border-light);
   border-radius: 14px;
-  overflow: hidden;
+  /* auto y no hidden: si la tabla no cabe (Incidencias tiene 11 columnas),
+     hidden recortaba las de la derecha sin forma de llegar a ellas. Así se
+     desplaza en horizontal y se siguen redondeando las esquinas. */
+  overflow-x: auto;
 }
 .table {
   width: 100%;
