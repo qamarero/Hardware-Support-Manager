@@ -234,6 +234,16 @@ a { color: inherit; text-decoration: none; }
      desplaza en horizontal y se siguen redondeando las esquinas. */
   overflow-x: auto;
 }
+/* Alto acotado con useFitToViewport: la tabla se desplaza por dentro en las
+   dos direcciones y la cabecera se queda fija arriba. */
+.table-wrap--fit { overflow: auto; }
+.table-wrap--fit .table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  /* Con border-collapse el borde inferior no viaja con la celda fija. */
+  box-shadow: inset 0 -1px 0 var(--border-light);
+}
 .table {
   width: 100%;
   border-collapse: collapse;

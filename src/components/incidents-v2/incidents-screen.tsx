@@ -14,6 +14,7 @@ import { IncidentFormDrawer } from "./incident-form-drawer";
 import { RmaWizard } from "@/components/incidents/rma-wizard";
 import { useDrawers } from "@/components/shell/drawers-provider";
 import { useDailyReview } from "@/hooks/use-daily-review";
+import { useFitToViewport } from "@/hooks/use-fit-to-viewport";
 import { ContactButton, NextStepButton, reviewKeyOf, type RoundItem } from "@/components/mi-dia/ronda-actions";
 import { INCIDENT_STATUS_LABELS, priorityBucket, type IncidentStatus } from "@/lib/constants/incidents";
 import { RMA_STATUS_LABELS, type RmaStatus } from "@/lib/constants/rmas";
@@ -70,6 +71,9 @@ export function IncidentsScreen() {
   const qc = useQueryClient();
   const { openRma } = useDrawers();
   const review = useDailyReview();
+  // Abiertas y cerradas van en la misma tabla: sin acotar el alto, la barra
+  // de scroll lateral quedaba al final de todas las cerradas.
+  const [tableWrapRef, tableMaxHeight] = useFitToViewport<HTMLDivElement>();
   const { data: session } = useSession();
   const meId = (session?.user as { id?: string } | undefined)?.id;
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -260,7 +264,7 @@ export function IncidentsScreen() {
           <div className="text-sm">Ajusta los filtros o crea una nueva incidencia.</div>
         </div>
       ) : (
-        <div className="table-wrap">
+        <div ref={tableWrapRef} className="table-wrap table-wrap--fit" style={{ maxHeight: tableMaxHeight }}>
           <table className="table table--dense">
             <thead>
               <tr>
