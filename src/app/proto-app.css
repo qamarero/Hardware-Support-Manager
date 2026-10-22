@@ -51,6 +51,20 @@ a { color: inherit; text-decoration: none; }
   display: grid; place-items: center;
   color: #fff; font-weight: 700; font-size: 16px;
 }
+/* Los 18 apartados no caben en una ventana baja (portátil, zoom al 150 %): la
+   lista se desplaza dentro de la barra y el logo y el usuario quedan fijos.
+   Antes lo que no cabía se salía por debajo del fondo oscuro y la página
+   entera se podía bajar hasta dejarlo sobre blanco. */
+.sidebar__nav {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: #2e2e2e transparent;
+}
 .sidebar__brand-text { display: flex; flex-direction: column; line-height: 1.15; }
 .sidebar__brand-name { font-weight: 700; font-size: 14px; letter-spacing: -0.01em; }
 .sidebar__brand-sub { font-size: 11px; color: var(--gray-400); font-family: var(--font-mono); text-transform: uppercase; }

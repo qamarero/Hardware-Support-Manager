@@ -130,6 +130,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
+        <nav className="sidebar__nav">
         {SECTIONS.map((section) => {
           const items = section.items.filter(
             (it) => (!it.adminOnly || isAdmin) && (!isViewer || it.href === "/consulta"),
@@ -160,6 +161,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           );
         })}
+        </nav>
 
         <div className="sidebar__user">
           <div className="avatar">{initials(userName)}</div>
