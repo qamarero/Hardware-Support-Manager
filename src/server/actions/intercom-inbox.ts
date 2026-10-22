@@ -245,6 +245,7 @@ export async function convertToIncident(
           assignedUserId: session.user.id,
           clientId: resolvedClientId,
           clientName: resolvedClientName,
+          articleId: rest.articleId || null,
           deviceType: rest.deviceType || null,
           deviceBrand: rest.deviceBrand || null,
           deviceModel: rest.deviceModel || null,

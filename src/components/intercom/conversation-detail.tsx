@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -20,7 +20,10 @@ import { Separator } from "@/components/ui/separator";
 import { SearchableSelect } from "@/components/shared/searchable-select";
 import { InboxStatusBadge } from "./inbox-status-badge";
 import { ConversationThread } from "./conversation-thread";
+import { suggestArticles, matchDeviceType } from "./article-suggest";
+import { ArticleCombobox, type ArticleOption } from "@/components/proto/article-combobox";
 import { convertToIncident, dismissInboxItem, recoverDiscardedInboxItem } from "@/server/actions/intercom-inbox";
+import { fetchArticlesForSelect } from "@/server/actions/articles";
 import { fetchClientsForSelect, fetchClientByExternalId } from "@/server/actions/clients";
 import { lookupPostalCode } from "@/server/actions/geo";
 import { stripHtml } from "@/lib/utils/strip-html";
@@ -207,6 +210,55 @@ export function ConversationDetail({ item, onConvert, onDismiss }: ConversationD
     ticketData.serialNumber ?? extractSerialNumber(allText) ?? ""
   );
 
+  // Artículo del catálogo. Elegirlo rellena tipo, marca y modelo y liga la
+  // incidencia al catálogo, que es lo que alimenta las métricas por modelo.
+  const [articleId, setArticleId] = useState("");
+  const [articleAuto, setArticleAuto] = useState(false);
+  // Misma clave que usa ArticleCombobox: una sola petición para los dos.
+  const { data: articleOptions = [] } = useQuery({
+    queryKey: ["articles", "select"],
+    queryFn: () => fetchArticlesForSelect(),
+  });
+  const articleSuggestions = articleId ? [] : suggestArticles(articleOptions, deviceBrand, deviceModel);
+
+  const selectArticle = useCallback((a: ArticleOption | null) => {
+    setArticleAuto(false);
+    if (!a) {
+      setArticleId("");
+      return;
+    }
+    setArticleId(a.id);
+    setDeviceBrand(a.brand);
+    setDeviceModel(a.model);
+    // El tipo del catálogo es texto libre; solo se pasa al desplegable si
+    // equivale claramente a uno de su lista.
+    const type = matchDeviceType(a.deviceType);
+    if (type) setDeviceType(type);
+  }, []);
+
+  // Si la marca tiene un único artículo en el catálogo, se elige sola. Una
+  // sola vez, al llegar el catálogo: mientras se escribe en Marca solo se
+  // sugiere, para no reescribir el campo bajo los dedos.
+  const autoArticleDone = useRef(false);
+  useEffect(() => {
+    if (autoArticleDone.current || articleOptions.length === 0) return;
+    autoArticleDone.current = true;
+    if (articleId) return;
+    const matches = suggestArticles(articleOptions, deviceBrand, deviceModel);
+    if (matches.length === 1) {
+      selectArticle(matches[0]);
+      setArticleAuto(true);
+    }
+  }, [articleOptions, articleId, deviceBrand, deviceModel, selectArticle]);
+
+  // Cambiar marca o modelo a mano rompe el vínculo: el texto guardado dejaría
+  // de corresponder al artículo.
+  const unlinkArticle = () => {
+    if (!articleId) return;
+    setArticleId("");
+    setArticleAuto(false);
+  };
+
   // Location and address state
   const [pickupAddress, setPickupAddress] = useState("");
   const [pickupCity, setPickupCity] = useState("");
@@ -250,6 +302,7 @@ export function ConversationDetail({ item, onConvert, onDismiss }: ConversationD
         clientName,
         contactName,
         contactPhone,
+        articleId: articleId || undefined,
         deviceType: deviceType || undefined,
         deviceBrand: deviceBrand || undefined,
         deviceModel: deviceModel || undefined,
@@ -636,8 +689,44 @@ export function ConversationDetail({ item, onConvert, onDismiss }: ConversationD
               <div className="sm:col-span-2 pt-1">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Equipo</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  Extraído del texto del ticket. Corrígelo si la detección falla: se guarda tal cual en la incidencia.
+                  Elige el artículo del catálogo y se rellenan tipo, marca y modelo. Si no está, se usa lo
+                  extraído del texto del ticket: corrígelo si la detección falla.
                 </p>
+              </div>
+              <div className="sm:col-span-2 space-y-1.5">
+                <Label className="text-xs">
+                  Artículo del catálogo
+                  {articleAuto && (
+                    <span className="ml-1.5 font-normal text-muted-foreground">· sugerido por la marca</span>
+                  )}
+                </Label>
+                <ArticleCombobox
+                  value={articleId}
+                  onSelect={selectArticle}
+                  initialQuery={deviceBrand}
+                  placeholder="Buscar equipo en el catálogo…"
+                />
+                {articleSuggestions.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <span className="text-xs text-muted-foreground">En el catálogo:</span>
+                    {articleSuggestions.slice(0, 6).map((a) => (
+                      <button
+                        key={a.id}
+                        type="button"
+                        onClick={() => selectArticle(a)}
+                        className="rounded-md border border-border/60 px-2 py-0.5 text-xs hover:bg-muted"
+                      >
+                        {a.brand} {a.model}
+                        <span className="ml-1 text-muted-foreground">· {a.deviceType}</span>
+                      </button>
+                    ))}
+                    {articleSuggestions.length > 6 && (
+                      <span className="text-xs text-muted-foreground">
+                        y {articleSuggestions.length - 6} más en el buscador
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">
@@ -666,7 +755,7 @@ export function ConversationDetail({ item, onConvert, onDismiss }: ConversationD
                 </Label>
                 <Input
                   value={deviceBrand}
-                  onChange={(e) => setDeviceBrand(e.target.value)}
+                  onChange={(e) => { setDeviceBrand(e.target.value); unlinkArticle(); }}
                   placeholder="Sin especificar"
                 />
               </div>
@@ -679,7 +768,7 @@ export function ConversationDetail({ item, onConvert, onDismiss }: ConversationD
                 </Label>
                 <Input
                   value={deviceModel}
-                  onChange={(e) => setDeviceModel(e.target.value)}
+                  onChange={(e) => { setDeviceModel(e.target.value); unlinkArticle(); }}
                   placeholder="Sin especificar"
                 />
               </div>

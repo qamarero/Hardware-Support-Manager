@@ -17,6 +17,8 @@ interface Props {
   value: string; // articleId
   onSelect: (article: ArticleOption | null) => void;
   placeholder?: string;
+  /** Texto con el que se abre la búsqueda (p. ej. la marca ya detectada). */
+  initialQuery?: string;
 }
 
 function label(a: ArticleOption): string {
@@ -28,7 +30,7 @@ function label(a: ArticleOption): string {
  * Habilita métricas fiables por modelo (guarda articleId). Permite alta
  * rápida si el equipo no está en el catálogo.
  */
-export function ArticleCombobox({ value, onSelect, placeholder = "Buscar equipo en catálogo…" }: Props) {
+export function ArticleCombobox({ value, onSelect, placeholder = "Buscar equipo en catálogo…", initialQuery = "" }: Props) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -83,7 +85,7 @@ export function ArticleCombobox({ value, onSelect, placeholder = "Buscar equipo 
           type="button"
           className="select"
           style={{ textAlign: "left", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}
-          onClick={() => setOpen(true)}
+          onClick={() => { setQuery(initialQuery.trim()); setOpen(true); }}
         >
           <span style={{ display: "flex", alignItems: "center", gap: 6, color: selected ? "var(--fg-primary)" : "var(--fg-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {selected ? <><Laptop size={13} /> {label(selected)}</> : placeholder}

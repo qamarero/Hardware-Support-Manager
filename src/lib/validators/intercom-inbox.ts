@@ -11,6 +11,7 @@ export const convertToIncidentSchema = z.object({
   priority: z.enum(["baja", "media", "alta", "critica"]).default("media"),
   clientId: z.string().uuid("Cliente inválido").optional().or(z.literal("")),
   clientName: z.string().max(500).optional().or(z.literal("")),
+  articleId: z.string().uuid("Artículo inválido").optional().or(z.literal("")),
   deviceType: z.string().optional().or(z.literal("")),
   deviceBrand: z.string().optional().or(z.literal("")),
   deviceModel: z.string().optional().or(z.literal("")),
