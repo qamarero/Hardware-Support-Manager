@@ -14,6 +14,9 @@ export interface RmaShipping {
   province?: string;
   reference?: string;
   instructions?: string;
+  /** Horario que le viene bien al cliente para la recogida, «HH:MM». Viaja a MainOps. */
+  pickupFrom?: string;
+  pickupTo?: string;
   destination?: {
     type?: "oficina" | "sat" | "cliente" | "";
     name?: string;

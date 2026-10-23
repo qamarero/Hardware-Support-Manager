@@ -38,6 +38,8 @@ const rmaBaseFields = {
       province: z.string().max(255).optional(),
       reference: z.string().max(500).optional(),
       instructions: z.string().max(2000).optional(),
+      pickupFrom: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Hora no válida").or(z.literal("")).optional(),
+      pickupTo: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Hora no válida").or(z.literal("")).optional(),
       destination: z
         .object({
           type: z.enum(["oficina", "sat", "cliente"]).or(z.literal("")).optional(),

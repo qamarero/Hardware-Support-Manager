@@ -251,3 +251,27 @@ describe("pickupBlockers", () => {
     expect(out[0]).toContain("cambia el destino");
   });
 });
+
+describe("buildPickupRequest · horario del cliente", () => {
+  function withHours(from: string, to: string) {
+    const base = rma();
+    return buildPickupRequest({ ...base, shipping: { ...base.shipping, pickupFrom: from, pickupTo: to } });
+  }
+
+  it("manda la franja cuando está completa y tiene sentido", () => {
+    const r = withHours("10:00", "13:00");
+    expect(r.ok && r.body.time_from).toBe("10:00");
+    expect(r.ok && r.body.time_to).toBe("13:00");
+  });
+
+  it("no la manda a medias ni al revés (MainOps la rechazaría)", () => {
+    for (const [from, to] of [["10:00", ""], ["", "13:00"], ["13:00", "10:00"]]) {
+      const r = withHours(from, to);
+      expect(r.ok).toBe(true);
+      if (r.ok) {
+        expect(r.body.time_from).toBeUndefined();
+        expect(r.body.time_to).toBeUndefined();
+      }
+    }
+  });
+});

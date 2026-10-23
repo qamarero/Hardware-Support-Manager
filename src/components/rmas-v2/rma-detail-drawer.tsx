@@ -486,7 +486,11 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
                           {shipping.contactEmail ? ` · ${shipping.contactEmail}` : ""}
                         </div>
                       )}
+                      {shipping?.pickupFrom && shipping?.pickupTo && (
+                        <div className="text-xs muted">Horario del cliente: {shipping.pickupFrom}–{shipping.pickupTo}</div>
+                      )}
                       {shipping?.instructions && <div className="text-xs muted">{shipping.instructions}</div>}
+                      {shipping?.destination?.type === "oficina" && <div className="text-xs muted">Destino: nuestra oficina</div>}
                       {shipping?.destination && (shipping.destination.address || shipping.destination.name) && (
                         <div className="text-xs muted">
                           Destino: {[shipping.destination.name, shipping.destination.address, [shipping.destination.postalCode, shipping.destination.city].filter(Boolean).join(" ")].filter(Boolean).join(", ")}

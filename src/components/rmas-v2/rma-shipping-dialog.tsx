@@ -35,6 +35,8 @@ function buildInitial(rma: RmaRow) {
     province: s.province ?? "",
     reference: s.reference ?? rma.rmaNumber ?? "",
     instructions: s.instructions ?? "",
+    pickupFrom: s.pickupFrom ?? "",
+    pickupTo: s.pickupTo ?? "",
     destType: s.destination?.type ?? "",
     destName: s.destination?.name ?? "",
     destAddress: s.destination?.address ?? "",
@@ -109,6 +111,8 @@ export function RmaShippingDialog({ rma }: { rma: RmaRow }) {
           province: f.province,
           reference: f.reference,
           instructions: f.instructions,
+          pickupFrom: f.pickupFrom,
+          pickupTo: f.pickupTo,
           destination: {
             type: (f.destType || "") as "oficina" | "sat" | "cliente" | "",
             name: f.destName,
@@ -220,6 +224,20 @@ export function RmaShippingDialog({ rma }: { rma: RmaRow }) {
                   <option value="sat">SAT del proveedor</option>
                   <option value="cliente">Directo al cliente</option>
                 </select>
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label className="text-xs">Horario que le viene bien al cliente para la recogida</Label>
+                <div className="flex items-center gap-2">
+                  <Input type="time" aria-label="Desde" value={f.pickupFrom} onChange={(e) => set("pickupFrom", e.target.value)} />
+                  <span className="text-xs text-muted-foreground">a</span>
+                  <Input type="time" aria-label="Hasta" value={f.pickupTo} onChange={(e) => set("pickupTo", e.target.value)} />
+                </div>
+                {f.pickupFrom && f.pickupTo && f.pickupFrom >= f.pickupTo && (
+                  <p className="text-xs text-destructive">La hora de fin tiene que ser posterior a la de inicio.</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Logística lo usa al programar la recogida. Si es un horario fuera de lo normal, lo confirman con la agencia de TIPSA.
+                </p>
               </div>
               <div className="space-y-1.5 sm:col-span-2">
                 <Label className="text-xs">Instrucciones para el mensajero</Label>

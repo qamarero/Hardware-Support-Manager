@@ -59,6 +59,9 @@ export interface PickupRequestBody {
       };
   items?: { description: string; serial?: string }[];
   instructions?: string;
+  /** Horario que le viene bien al cliente («HH:MM»); MainOps lo precarga al programar. */
+  time_from?: string;
+  time_to?: string;
 }
 
 export type PickupDataCheck =
@@ -226,6 +229,15 @@ export function buildPickupRequest(
 
   const instructions = clean(s.instructions);
   if (instructions) body.instructions = instructions;
+
+  // Solo si el horario está completo y tiene sentido: MainOps rechaza (400)
+  // una franja a medias, y no merece bloquear la petición por eso.
+  const from = clean(s.pickupFrom);
+  const to = clean(s.pickupTo);
+  if (from && to && /^\d{2}:\d{2}$/.test(from) && /^\d{2}:\d{2}$/.test(to) && from < to) {
+    body.time_from = from;
+    body.time_to = to;
+  }
 
   const reqName = clean(requestedBy?.name) ?? clean(requestedBy?.email);
   if (reqName) {
