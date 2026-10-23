@@ -14,7 +14,9 @@ import { timingSafeEqual } from "crypto";
  * requiere buffers del mismo length, así que comparamos length primero.
  */
 function checkApiKey(req: Request, envVarName: string): Response | null {
-  const expected = process.env[envVarName];
+  // trim(): una clave pegada en Vercel con un salto de línea al final no debe
+  // dejar de coincidir (el cliente de MainOps ya la manda recortada).
+  const expected = process.env[envVarName]?.trim();
   if (!expected) {
     return Response.json(
       {
@@ -25,7 +27,7 @@ function checkApiKey(req: Request, envVarName: string): Response | null {
     );
   }
 
-  const provided = req.headers.get("x-api-key") ?? "";
+  const provided = (req.headers.get("x-api-key") ?? "").trim();
   if (!provided) {
     return Response.json(
       { error: "Missing X-API-Key header" },

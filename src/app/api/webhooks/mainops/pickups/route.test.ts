@@ -62,6 +62,13 @@ describe("POST /api/webhooks/mainops/pickups", () => {
     expect(applyPickupUpdate).not.toHaveBeenCalled();
   });
 
+  it("ignores a trailing newline pasted into MAINOPS_WEBHOOK_KEY", async () => {
+    vi.stubEnv("MAINOPS_WEBHOOK_KEY", "clave-webhook\n");
+    applyPickupUpdate.mockResolvedValue({ found: true, applied: false, reason: "duplicado" });
+    const res = await POST(post({ event: "pickup.status_changed", pickup }));
+    expect(res.status).toBe(200);
+  });
+
   it("answers 400 to malformed JSON or payload", async () => {
     expect((await POST(post("{no es json"))).status).toBe(400);
     const res = await POST(post({ event: "pickup.status_changed", pickup: { ...pickup, status: "perdida" } }));
