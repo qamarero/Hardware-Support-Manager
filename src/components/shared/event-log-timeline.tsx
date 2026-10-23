@@ -11,6 +11,7 @@ import {
   StickyNote,
   Phone,
   MessageSquare,
+  Truck,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,6 +57,8 @@ const ACTION_LABELS: Record<string, string> = {
   contacted: "Contactó al cliente",
   assigned: "Asignación",
   converted_from_quick: "Convertida desde consulta rápida",
+  // Recogida TIPSA pedida a MainOps: el texto va en details.comment.
+  pickup: "Recogida",
 };
 
 /**
@@ -115,6 +118,7 @@ const ACTION_ICONS: Record<string, typeof Plus> = {
   note: StickyNote,
   comment: MessageSquare,
   contacted: Phone,
+  pickup: Truck,
 };
 
 function getStatusLabel(status: string | null, entityType: EntityType): string {
@@ -155,8 +159,9 @@ export function EventLogTimeline({
             {logs.map((log, index) => {
               const Icon = ACTION_ICONS[log.action] ?? Plus;
               const isHuman = HUMAN_ACTIONS.has(log.action);
-              const author = log.userName ?? "Sistema";
               const details = log.details as Record<string, unknown> | null;
+              // Los avisos del webhook de recogidas no tienen usuario: los firma MainOps.
+              const author = log.userName ?? (details?.source === "webhook" && log.action === "pickup" ? "MainOps" : "Sistema");
               const changed = log.action === "updated" ? describeFields(details?.fields) : null;
               const quickAssign = log.action === "updated" && details?.quickAssign === true;
               const text = (k: string) => (typeof details?.[k] === "string" ? (details[k] as string) : null);

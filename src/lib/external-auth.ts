@@ -63,3 +63,15 @@ export function requireMainPortalAuth(req: Request): Response | null {
 export function requirePublicApiAuth(req: Request): Response | null {
   return checkApiKey(req, "HSM_PUBLIC_API_KEY");
 }
+
+/**
+ * Valida el header `X-API-Key` contra `process.env.MAINOPS_WEBHOOK_KEY`.
+ *
+ * Para el webhook `POST /api/webhooks/mainops/pickups`, con el que MainOps avisa
+ * de cada cambio de estado de una recogida TIPSA. Es un secreto DISTINTO de
+ * `MAINOPS_API_KEY` (el que HSM manda a MainOps): uno por dirección, como fija
+ * el contrato `docs/connectors/mainops-recogidas-contrato.md`.
+ */
+export function requireMainOpsWebhookAuth(req: Request): Response | null {
+  return checkApiKey(req, "MAINOPS_WEBHOOK_KEY");
+}

@@ -25,6 +25,34 @@ export interface RmaShipping {
     phone?: string;
   };
 }
+
+/** Estados de una recogida TIPSA pedida a MainOps (contrato v1.0). Terminales:
+ *  `recibida` y `anulada`. */
+export type RmaPickupStatus =
+  | "solicitada" | "programada" | "incidencia" | "en_curso" | "recibida" | "anulada";
+
+/** Última foto de la recogida tal como la manda MainOps (PickupDTO del contrato
+ *  `docs/connectors/mainops-recogidas-contrato.md`). Se guarda entera, en
+ *  snake_case como llega: es un documento ajeno, no un modelo nuestro. */
+export interface RmaPickup {
+  pickup_id: string;
+  rma_id: string;
+  rma_number: string | null;
+  status: RmaPickupStatus;
+  status_label: string | null;
+  /** Fecha local de Madrid (YYYY-MM-DD). null hasta que se programa. */
+  pickup_date: string | null;
+  time_from: string | null;
+  time_to: string | null;
+  tipsa_code: string | null;
+  /** Envío que genera TIPSA al recoger: el seguimiento del equipo. */
+  albaran: string | null;
+  incidence: { code: string | null; label: string | null; observations: string | null } | null;
+  last_event: { code: string | null; label: string | null; date: string | null } | null;
+  cancel_reason: string | null;
+  created_at: string | null;
+  updated_at: string;
+}
 import { incidents } from "./incidents";
 import { providers } from "./providers";
 import { clients } from "./clients";
@@ -72,6 +100,10 @@ export const rmas = hsmSchema.table("rmas", {
   repairPath: varchar("repair_path", { length: 30 }), // interna_hwtool|proveedor
   // Datos de recogida/envío (cliente + destino) capturados en el pop-up.
   shipping: jsonb("shipping").$type<RmaShipping>().default({}),
+  // Recogida TIPSA pedida a MainOps (sql/031). NULL = nunca se ha pedido.
+  // La escriben las acciones del drawer y el webhook de MainOps, nunca el
+  // formulario de edición.
+  pickup: jsonb("pickup").$type<RmaPickup>(),
   deviceValueCents: bigint("device_value_cents", { mode: "number" }),
   repairCostCents: bigint("repair_cost_cents", { mode: "number" }),
   shippingCostCents: bigint("shipping_cost_cents", { mode: "number" }),

@@ -9,6 +9,7 @@ import { RmaStatusBadge } from "@/components/proto/badges";
 import { CopyId } from "@/components/proto/copy-id";
 import { ProviderRmaProcedure } from "@/components/providers/provider-rma-procedure";
 import { RmaShippingDialog } from "./rma-shipping-dialog";
+import { RmaPickupSection } from "./rma-pickup-section";
 import { RmaProviderEmail } from "./rma-provider-email";
 import { AttachmentSection } from "@/components/shared/attachment-section";
 import { EventLogTimeline } from "@/components/shared/event-log-timeline";
@@ -28,7 +29,7 @@ function rmaFollowUpInDays(n: number): string {
 }
 import { fetchRmaById, updateRma, transitionRma, fetchProvidersForSelect } from "@/server/actions/rmas";
 import { getRmaAvailableTransitions } from "@/lib/state-machines/rma";
-import { RMA_STATUS_LABELS, RMA_OUTCOME_LABELS, RMA_LOGISTICS_LABELS, RMA_REPAIR_PATH_LABELS, type RmaStatus } from "@/lib/constants/rmas";
+import { RMA_STATUS_LABELS, RMA_OUTCOME_LABELS, RMA_LOGISTICS, RMA_LOGISTICS_LABELS, RMA_REPAIR_PATH_LABELS, type RmaStatus } from "@/lib/constants/rmas";
 import { PAUSED_RMA_STATES } from "@/lib/constants/statuses";
 import { formatDateTime, formatRelativeTime } from "@/lib/utils/date-format";
 
@@ -210,6 +211,10 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
         shipping.destination?.address ||
         shipping.destination?.name)
   );
+  // El bloque «Recogida» sale también sin datos si la recogida es cosa nuestra
+  // (para poder pedirla a MainOps) o si ya hay una pedida.
+  const showPickup =
+    hasShipping || Boolean(rma?.pickup) || rma?.logistics === RMA_LOGISTICS.NOSOTROS_INTERMEDIAMOS;
 
   const footer = rma ? (
     closingTo ? (
@@ -466,30 +471,29 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
                     )}
                   </div>
 
-                  {hasShipping && shipping && (
+                  {showPickup && (
                     <div className="grp">
                       <div className="grp__title">Recogida</div>
-                      {(shipping.address || shipping.city || shipping.postalCode) && (
+                      {shipping && (shipping.address || shipping.city || shipping.postalCode) && (
                         <div style={{ fontSize: 12.5 }}>
                           {[shipping.address, [shipping.postalCode, shipping.city].filter(Boolean).join(" "), shipping.province].filter(Boolean).join(", ")}
                         </div>
                       )}
-                      {(shipping.contactName || shipping.contactPhone || shipping.contactEmail) && (
+                      {shipping && (shipping.contactName || shipping.contactPhone || shipping.contactEmail) && (
                         <div className="text-xs muted">
                           {shipping.contactName ? <>Recoger con <span className="fw-600" style={{ color: "var(--fg-primary)" }}>{shipping.contactName}</span></> : "Contacto de recogida"}
                           {shipping.contactPhone ? ` · ${shipping.contactPhone}` : ""}
                           {shipping.contactEmail ? ` · ${shipping.contactEmail}` : ""}
                         </div>
                       )}
-                      {shipping.instructions && <div className="text-xs muted">{shipping.instructions}</div>}
-                      {shipping.destination && (shipping.destination.address || shipping.destination.name) && (
+                      {shipping?.instructions && <div className="text-xs muted">{shipping.instructions}</div>}
+                      {shipping?.destination && (shipping.destination.address || shipping.destination.name) && (
                         <div className="text-xs muted">
                           Destino: {[shipping.destination.name, shipping.destination.address, [shipping.destination.postalCode, shipping.destination.city].filter(Boolean).join(" ")].filter(Boolean).join(", ")}
                         </div>
                       )}
-                      <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginTop: 2 }}>
-                        <RmaShippingDialog rma={rma} />
-                      </div>
+                      {/* Recogida TIPSA vía MainOps + botón de datos de recogida. */}
+                      <RmaPickupSection rma={rma} />
                     </div>
                   )}
 
@@ -515,7 +519,7 @@ export function RmaDetailDrawer({ rmaId, onClose }: Props) {
                     </div>
                     <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
                       <button className="btn btn--outline btn--sm" onClick={startEdit}><Pencil size={14} /> Editar datos</button>
-                      {!hasShipping && <RmaShippingDialog rma={rma} />}
+                      {!showPickup && <RmaShippingDialog rma={rma} />}
                     </div>
 
                     {/* La rejilla completa se queda accesible, plegada: el estado

@@ -63,6 +63,9 @@ En local viven en `.env.local`. En producción están en el **dashboard de Verce
 | `INTERCOM_ADMIN_ID` | `8601230` (Domi). Admin que firma las notas automáticas. **Sin él las notas a Intercom fallan en silencio** (el default `"0"` las rechaza). |
 | `MAIN_PORTAL_API_KEY` | Shared secret (`X-API-Key`) para `GET /api/external/metrics` (consumido por el HW Main Portal). |
 | `HSM_PUBLIC_API_KEY` | Shared secret (`X-API-Key`) para `/api/external/incidents` (datos detallados + PII). Sin él el endpoint responde 503. |
+| `MAINOPS_BASE_URL` | URL base de MainOps (sin barra final) para pedir recogidas TIPSA. Sin ella el botón del RMA dice «MainOps no está configurado». |
+| `MAINOPS_API_KEY` | `X-API-Key` que HSM manda a MainOps. **Mismo valor que `HSM_API_KEY` en MainOps.** |
+| `MAINOPS_WEBHOOK_KEY` | `X-API-Key` que MainOps manda al webhook de recogidas. **Mismo valor que `HSM_WEBHOOK_KEY` en MainOps** y distinto del anterior. Sin ella el webhook responde 503. |
 
 ---
 
@@ -153,6 +156,7 @@ docs/proyecto_log.md    # changelog histórico
 - **Vercel, push-to-main = deploy automático.** Tras cambiar variables de entorno en Vercel → **Redeploy manual**.
 - **NO existe `vercel.json` en la raíz del repo todavía** (los `vercel.json` que aparecen están dentro de los dirs de referencia, no cuentan). Será necesario crearlo para el **Vercel Cron de A7** (`RESEND_API_KEY` + `CRON_SECRET` + entrada de cron → `GET /api/cron/daily-digest`).
 - Webhook Intercom: `POST /api/webhooks/intercom` (app "Hw sync HSM", workspace `hckfnffg`).
+- **Recogidas TIPSA vía MainOps** (contrato: `docs/connectors/mainops-recogidas-contrato.md`). En un RMA con logística «Nosotros recogemos y enviamos», el bloque «Recogida» del drawer pide la recogida a MainOps (`POST {MAINOPS_BASE_URL}/api/external/hsm/pickups`); logística la programa en TIPSA desde MainOps. MainOps avisa de cada cambio en `POST /api/webhooks/mainops/pickups` (auth `MAINOPS_WEBHOOK_KEY`; en MainOps, `HSM_BASE_URL` apunta a esta app). La última foto queda en `rmas.pickup` (`sql/031-rma-pickup.sql`) y cada cambio en el historial (acción `pickup`). **Nunca cambia el estado del RMA**; solo copia el albarán a «Seguimiento (envío)» si estaba vacío. Código: `src/lib/mainops/`, `src/server/actions/rma-pickups.ts`, `src/components/rmas-v2/rma-pickup-section.tsx`.
 
 ---
 
