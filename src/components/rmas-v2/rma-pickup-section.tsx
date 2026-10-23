@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Send, RefreshCw, X } from "lucide-react";
+import { Loader2, Send, RefreshCw, Truck, X } from "lucide-react";
 import { RmaShippingDialog } from "./rma-shipping-dialog";
 import { requestRmaPickup, cancelRmaPickup, syncRmaPickup } from "@/server/actions/rma-pickups";
 import { pickupBlockers } from "@/lib/mainops/pickup-request";
@@ -52,33 +52,38 @@ function PickupDetail({ pickup }: { pickup: RmaPickup }) {
   }
 }
 
+/** id del bloque «Recogida» del drawer, para que la barra pueda llevar hasta él. */
+export const PICKUP_BLOCK_ID = "rma-recogida";
+
+/** RMAs en los que ya no tiene sentido pedir una recogida. */
+const CLOSED_RMA_STATUSES = ["cerrado", "cancelado"];
+
 /**
- * Recogida TIPSA pedida a MainOps, dentro del bloque «Recogida» del drawer.
- *
- * Con logística «Nosotros recogemos y enviamos» y sin recogida en marcha ofrece
- * pedirla; si no se puede (logística sin marcar, destino o datos que faltan),
- * dice por qué debajo de los botones (`pickupBlockers`). Con recogida, enseña
- * su estado (lo actualiza el webhook de MainOps) y deja anularla mientras siga
- * `solicitada` o sincronizar a mano.
+ * ¿Se ofrece «Pedir recogida» en este RMA? No depende de la logística: aunque
+ * el proveedor «recoja y envíe», casi siempre lo recoge en nuestra oficina, así
+ * que el equipo del cliente lo traemos nosotros igual.
  */
-export function RmaPickupSection({ rma }: { rma: RmaRow }) {
+function pickupOffer(rma: RmaRow): { visible: boolean; blockers: string[] } {
+  if (isActivePickup(rma.pickup) || CLOSED_RMA_STATUSES.includes(rma.status)) {
+    return { visible: false, blockers: [] };
+  }
+  return { visible: true, blockers: pickupBlockers(rma) };
+}
+
+function useInvalidatePickup(rmaId: string) {
   const qc = useQueryClient();
-  const [confirmCancel, setConfirmCancel] = useState(false);
-  const [reason, setReason] = useState("");
-
-  const pickup = rma.pickup ?? null;
-  // Con una recogida en marcha no hay nada que pedir ni que explicar.
-  const blockers = isActivePickup(pickup) ? [] : pickupBlockers(rma);
-  const canOffer = !isActivePickup(pickup) && blockers.length === 0;
-
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ["rma-detail", rma.id] });
+  return () => {
+    qc.invalidateQueries({ queryKey: ["rma-detail", rmaId] });
     qc.invalidateQueries({ queryKey: ["rmas-v2"] });
-    qc.invalidateQueries({ queryKey: ["event-logs", "rma", rma.id] });
+    qc.invalidateQueries({ queryKey: ["event-logs", "rma", rmaId] });
   };
+}
 
-  const requestM = useMutation({
-    mutationFn: () => requestRmaPickup(rma.id),
+/** «Pedir recogida a MainOps», compartido por el bloque y la barra del RMA. */
+function useRequestPickup(rmaId: string) {
+  const invalidate = useInvalidatePickup(rmaId);
+  return useMutation({
+    mutationFn: () => requestRmaPickup(rmaId),
     onSuccess: (r) => {
       if (!r.success) { toast.error(r.error); return; }
       invalidate();
@@ -87,6 +92,58 @@ export function RmaPickupSection({ rma }: { rma: RmaRow }) {
     },
     onError: () => toast.error("No se pudo pedir la recogida"),
   });
+}
+
+/**
+ * Botón de la barra de acciones del RMA, siempre a la vista. Si faltan datos,
+ * en vez de pedirla dice cuáles y lleva al bloque «Recogida», donde está el
+ * botón «Datos de recogida/envío».
+ */
+export function RmaPickupFooterButton({ rma }: { rma: RmaRow }) {
+  const requestM = useRequestPickup(rma.id);
+  const { visible, blockers } = pickupOffer(rma);
+  if (!visible) return null;
+
+  const onClick = () => {
+    if (blockers.length > 0) {
+      toast.error(`Antes de pedir la recogida: ${blockers.join(" ")}`);
+      document.getElementById(PICKUP_BLOCK_ID)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    requestM.mutate();
+  };
+
+  return (
+    <button
+      type="button"
+      className="btn btn--outline btn--sm"
+      onClick={onClick}
+      disabled={requestM.isPending}
+      title="MainOps la recibe en Logística → Recogidas y la programa con TIPSA"
+    >
+      {requestM.isPending ? <Loader2 size={14} className="animate-spin" /> : <Truck size={14} />} Pedir recogida
+    </button>
+  );
+}
+
+/**
+ * Recogida TIPSA pedida a MainOps, dentro del bloque «Recogida» del drawer.
+ *
+ * Sin recogida en marcha (y con el RMA abierto) ofrece pedirla; si faltan datos
+ * dice cuáles debajo de los botones (`pickupBlockers`). Con recogida, enseña su
+ * estado (lo actualiza el webhook de MainOps) y deja anularla mientras siga
+ * `solicitada` o sincronizar a mano.
+ */
+export function RmaPickupSection({ rma }: { rma: RmaRow }) {
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [reason, setReason] = useState("");
+
+  const pickup = rma.pickup ?? null;
+  const { visible, blockers } = pickupOffer(rma);
+  const canOffer = visible && blockers.length === 0;
+
+  const invalidate = useInvalidatePickup(rma.id);
+  const requestM = useRequestPickup(rma.id);
 
   const cancelM = useMutation({
     mutationFn: () => cancelRmaPickup(rma.id, reason.trim() || undefined),

@@ -3,7 +3,6 @@
 import { z } from "zod";
 import { requireWriteAccess } from "@/lib/auth/get-session";
 import { getRmaById } from "@/server/queries/rmas";
-import { RMA_LOGISTICS, RMA_LOGISTICS_LABELS } from "@/lib/constants/rmas";
 import { UUID_RE } from "@/lib/validators/mainops-pickup";
 import {
   MainOpsError,
@@ -57,11 +56,11 @@ export async function requestRmaPickup(
     const rma = await getRmaById(id.data);
     if (!rma) return { success: false, error: "RMA no encontrado" };
 
-    if (rma.logistics !== RMA_LOGISTICS.NOSOTROS_INTERMEDIAMOS) {
-      return {
-        success: false,
-        error: `La recogida solo se pide a MainOps cuando la logística es «${RMA_LOGISTICS_LABELS.nosotros_intermediamos}»`,
-      };
+    // Sin mirar la logística: aunque el proveedor «recoja y envíe», casi siempre
+    // lo recoge en nuestra oficina, así que el equipo del cliente lo traemos
+    // nosotros igual. Los datos que faltan los valida buildPickupRequest.
+    if (["cerrado", "cancelado"].includes(rma.status)) {
+      return { success: false, error: "El RMA está cerrado: no se puede pedir una recogida" };
     }
     if (isActivePickup(rma.pickup)) {
       return {

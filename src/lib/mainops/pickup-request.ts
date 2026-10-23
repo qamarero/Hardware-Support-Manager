@@ -1,5 +1,4 @@
 import type { RmaShipping } from "@/lib/db/schema/rmas";
-import { RMA_LOGISTICS } from "@/lib/constants/rmas";
 
 /**
  * Cuerpo de `POST /api/external/hsm/pickups` a partir de un RMA.
@@ -22,8 +21,6 @@ export interface PickupRmaInput {
   deviceModel?: string | null;
   deviceSerialNumber?: string | null;
   shipping?: RmaShipping | null;
-  /** Quién mueve el equipo: solo con `nosotros_intermediamos` se pide a MainOps. */
-  logistics?: string | null;
 }
 
 /** Quién pulsa el botón, para el historial de MainOps. */
@@ -102,7 +99,9 @@ function originName(rma: PickupRmaInput): string | undefined {
  *
  * Origen: nombre, dirección, CP de 5 dígitos, ciudad y teléfono. Destino:
  * oficina (MainOps pone la dirección de nuestro almacén) o SAT con su
- * dirección. `missing` va en minúsculas para encajar en una frase.
+ * dirección; sin elegir cuenta como oficina, que es lo habitual (aunque el
+ * proveedor recoja, casi siempre lo hace en nuestra oficina). `missing` va en
+ * minúsculas para encajar en una frase.
  */
 export function checkPickupData(rma: PickupRmaInput): PickupDataCheck {
   const s = rma.shipping ?? {};
@@ -118,9 +117,7 @@ export function checkPickupData(rma: PickupRmaInput): PickupDataCheck {
   if (!clean(s.city)) missing.push("ciudad");
   if (!compact(s.contactPhone)) missing.push("teléfono");
 
-  if (destType === "") {
-    missing.push("destino (oficina o SAT)");
-  } else if (destType === "sat") {
+  if (destType === "sat") {
     const d = s.destination ?? {};
     if (!clean(d.name)) missing.push("nombre del SAT");
     if (!clean(d.address)) missing.push("dirección del SAT");
@@ -140,24 +137,15 @@ export function pickupDataError(check: Exclude<PickupDataCheck, { ok: true }>): 
 }
 
 /**
- * Por qué el bloque «Recogida» no ofrece «Pedir recogida a MainOps», en frases
- * para el técnico. Vacío = se puede pedir.
+ * Por qué todavía no se puede pedir la recogida, en frases para el técnico.
+ * Vacío = se puede pedir.
  *
- * Devuelve todas las causas a la vez: si faltan la logística y el destino, el
- * técnico lo ve de una sola vez en lugar de ir descubriéndolo arreglando una.
- * Antes, sin la logística marcada, el bloque no decía nada y el botón
- * simplemente no aparecía.
+ * No mira la logística del RMA: aunque el proveedor «recoja y envíe», casi
+ * siempre lo hace desde nuestra oficina, así que el equipo del cliente lo
+ * recogemos nosotros igual. Solo cuentan los datos de la recogida.
  */
 export function pickupBlockers(rma: PickupRmaInput): string[] {
   const out: string[] = [];
-  if (rma.logistics === RMA_LOGISTICS.PROVEEDOR_GESTIONA) {
-    out.push(
-      "La logística de este RMA es «Proveedor recoge y envía». Si la recogida la hacemos nosotros, cámbiala a «Nosotros recogemos y enviamos» en «Editar datos»."
-    );
-  } else if (rma.logistics !== RMA_LOGISTICS.NOSOTROS_INTERMEDIAMOS) {
-    out.push("Para pedir la recogida, marca la logística como «Nosotros recogemos y enviamos» en «Editar datos».");
-  }
-
   const check = checkPickupData(rma);
   if (!check.ok) {
     out.push(
