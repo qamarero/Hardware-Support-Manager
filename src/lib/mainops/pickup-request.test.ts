@@ -3,6 +3,7 @@ import {
   buildPickupRequest,
   checkPickupData,
   joinEs,
+  pickupBlockers,
   type PickupRmaInput,
 } from "./pickup-request";
 
@@ -208,5 +209,45 @@ describe("joinEs", () => {
     expect(joinEs(["a"])).toBe("a");
     expect(joinEs(["a", "b"])).toBe("a y b");
     expect(joinEs(["a", "b", "c"])).toBe("a, b y c");
+  });
+});
+
+describe("pickupBlockers", () => {
+  const ours = { logistics: "nosotros_intermediamos" };
+
+  it("vacío con la logística nuestra y los datos completos", () => {
+    expect(pickupBlockers(rma(ours))).toEqual([]);
+  });
+
+  it("sin logística marcada explica que hay que marcarla", () => {
+    const out = pickupBlockers(rma());
+    expect(out).toHaveLength(1);
+    expect(out[0]).toContain("marca la logística como «Nosotros recogemos y enviamos»");
+  });
+
+  it("con «Proveedor recoge y envía» lo dice tal cual", () => {
+    const out = pickupBlockers(rma({ logistics: "proveedor_gestiona" }));
+    expect(out).toHaveLength(1);
+    expect(out[0]).toContain("«Proveedor recoge y envía»");
+  });
+
+  it("junta todas las causas: logística y destino", () => {
+    const base = rma();
+    const out = pickupBlockers({ ...base, shipping: { ...base.shipping, destination: undefined } });
+    expect(out).toHaveLength(2);
+    expect(out[1]).toBe("Falta destino (oficina o SAT): complétalo en «Datos de recogida/envío».");
+  });
+
+  it("plural cuando falta más de un dato", () => {
+    const base = rma(ours);
+    const out = pickupBlockers({ ...base, shipping: { ...base.shipping, city: "", contactPhone: "" } });
+    expect(out).toEqual(["Falta ciudad y teléfono: complétalos en «Datos de recogida/envío»."]);
+  });
+
+  it("destino al cliente: pide cambiar el destino", () => {
+    const base = rma(ours);
+    const out = pickupBlockers({ ...base, shipping: { ...base.shipping, destination: { type: "cliente" } } });
+    expect(out).toHaveLength(1);
+    expect(out[0]).toContain("cambia el destino");
   });
 });

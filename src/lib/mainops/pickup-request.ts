@@ -1,4 +1,5 @@
 import type { RmaShipping } from "@/lib/db/schema/rmas";
+import { RMA_LOGISTICS } from "@/lib/constants/rmas";
 
 /**
  * Cuerpo de `POST /api/external/hsm/pickups` a partir de un RMA.
@@ -21,6 +22,8 @@ export interface PickupRmaInput {
   deviceModel?: string | null;
   deviceSerialNumber?: string | null;
   shipping?: RmaShipping | null;
+  /** Quién mueve el equipo: solo con `nosotros_intermediamos` se pide a MainOps. */
+  logistics?: string | null;
 }
 
 /** Quién pulsa el botón, para el historial de MainOps. */
@@ -131,6 +134,36 @@ export function pickupDataError(check: Exclude<PickupDataCheck, { ok: true }>): 
     return "Una recogida solo puede ir a nuestra oficina o al SAT del proveedor, no directamente al cliente. Cambia el destino en «Datos de recogida/envío».";
   }
   return `Faltan datos de recogida: ${joinEs(check.missing)}. Complétalos en «Datos de recogida/envío».`;
+}
+
+/**
+ * Por qué el bloque «Recogida» no ofrece «Pedir recogida a MainOps», en frases
+ * para el técnico. Vacío = se puede pedir.
+ *
+ * Devuelve todas las causas a la vez: si faltan la logística y el destino, el
+ * técnico lo ve de una sola vez en lugar de ir descubriéndolo arreglando una.
+ * Antes, sin la logística marcada, el bloque no decía nada y el botón
+ * simplemente no aparecía.
+ */
+export function pickupBlockers(rma: PickupRmaInput): string[] {
+  const out: string[] = [];
+  if (rma.logistics === RMA_LOGISTICS.PROVEEDOR_GESTIONA) {
+    out.push(
+      "La logística de este RMA es «Proveedor recoge y envía». Si la recogida la hacemos nosotros, cámbiala a «Nosotros recogemos y enviamos» en «Editar datos»."
+    );
+  } else if (rma.logistics !== RMA_LOGISTICS.NOSOTROS_INTERMEDIAMOS) {
+    out.push("Para pedir la recogida, marca la logística como «Nosotros recogemos y enviamos» en «Editar datos».");
+  }
+
+  const check = checkPickupData(rma);
+  if (!check.ok) {
+    out.push(
+      check.reason === "destino_cliente"
+        ? "Una recogida solo va a nuestra oficina o al SAT del proveedor: cambia el destino en «Datos de recogida/envío»."
+        : `Falta ${joinEs(check.missing)}: ${check.missing.length > 1 ? "complétalos" : "complétalo"} en «Datos de recogida/envío».`
+    );
+  }
+  return out;
 }
 
 /** Monta el cuerpo de la petición o explica qué falta. */
